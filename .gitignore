@@ -1,0 +1,49 @@
+# Local Python environment, caches, test/build artifacts
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+dist/
+build/
+*.egg-info/
+.env
+.env.*
+
+# Local Minecraft/MCio installation, world saves, training output
+/mcio-data/
+/checkpoints/
+/logs/
+/runs/
+/recordings/
+/artifacts/
+/data-local/
+*.npz
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.mca
+*.nbt
+*.mp4
+*.webm
+
+# Old pre-Git scripts may still be in the user's project root.
+# Tracked canonical versions are in experiments/.
+/random_agent.py
+/benchmark_agent.py
+/persistent_benchmark.py
+/reward_probe.py
+/navigation_learner.py
+/orientation_learner.py
+/legacy-local/
+
+# Editors, OS junk
+.DS_Store
+*~
+*.swp
+.idea/
+.vscode/

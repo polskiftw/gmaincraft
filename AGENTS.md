@@ -1,0 +1,61 @@
+# AGENTS.md — project instructions for coding assistants
+
+This file is the operating contract for anyone (including a future ChatGPT conversation) editing **polskiftw/gmaincraft**. Treat the GitHub repository, not the conversation transcript or an assumed local checkout, as the authoritative codebase.
+
+## Start every new task this way
+
+1. Read `README.md`, **`TODO.md`**, `docs/HANDOFF.md`, `docs/ARCHITECTURE.md`, and (for measured claims) `docs/EXPERIMENTS.md` from the current branch. Inspect relevant source files, their imports, and recent commits/PRs before proposing changes. Do not claim to have read them if the connector is unavailable.
+2. Determine the *last verified* milestone, the *current pending* test, and the next unchecked item in `TODO.md`. Distinguish user-supplied actual run output from forecasts, synthetic tests, and code review.
+3. Take user-provided run results seriously; extract meaningful summaries and errors. Do not assume a test passed merely because source exists, syntax compiles, or a toy simulation worked.
+4. Make the smallest coherent code change. Preserve confirmed behavior and keep test worlds, production inputs, and model weights safe.
+5. **Update `TODO.md` in the same change whenever progress, next steps, blockers, or scope change.** Update `docs/HANDOFF.md` whenever the restart instructions or latest status change. Update `docs/EXPERIMENTS.md` when a run is actually measured or an earlier claim is corrected. Update `README.md` when user-facing commands or layout change. These documents must not contradict each other.
+6. Verify with appropriate unit/syntax tests; explicitly note runtime tests you cannot perform on the user's Gentoo machine.
+7. Commit/source-control the changes on GitHub when authorized and give the user `git pull --ff-only` or other precise Git commands to bring their working copy up to date. Do not default to scattering downloadable Python attachments.
+
+## Goal and honest scope
+
+Long-term: Minecraft Java Any% agent that learns from random weights, discovers behavior through experience, and generalizes to unseen random seeds, without a scripted solution. The current experiments are **scaffolding**, NOT a pretrained or general speedrunner.
+
+Current proven stages: MCio 1.21.3 observations/actions, reset and speed benchmarks, item novelty reward plumbing, and a simple policy-gradient navigation task. As of 2026-11-01, `experiments/orientation_learner.py` has been authored; its actual result is **not yet reported**. First requested next action: review the orientation run log when the user provides it; then update TODO/EXPERIMENTS/HANDOFF before choosing the next task.
+
+Important distinctions:
+- The `navigation_learner.py` policy receives a numeric goal direction and assumes a fixed camera yaw. `orientation_learner.py` also gets a privileged goal vector in camera-relative coordinates. Both are carefully limited **curriculum experiments**, not vision or real discovery.
+- The reward probe uses Minecraft `/give` to test its detector, not to assist an agent. Controller-admin commands `/tp`, `/fill`, `/setblock`, `/effect` are for episode setup/cleanup; a learning policy must never issue them during scored gameplay.
+- A persistent-process **soft reset** restores only selected player properties and does not undo mined blocks, mobs, dropped items, exploration, or RNG/world state. Do not call soft-reset trials fully independent random worlds.
+- A network's randomly initialized weights and actual Minecraft rollouts are central requirements. Don't replace experimental RL with a hardcoded policy/planner while claiming learning.
+- A single pre/post evaluation on 20 targets is an encouraging smoke test, **not** statistical generalization proof. Use multiple runs/seeds and properly held-out scenarios before strengthening claims.
+- The ultimate task is much harder than these prototypes; single-GPU training feasibility, sample complexity, and end-to-end completion remain uncertain.
+
+## Environment and filesystem constraints
+
+Verified user's machine: Gentoo/OpenRC, Plasma Wayland, XWayland compatibility path, NVIDIA RTX 4070 SUPER 12GB, i7-14700KF, 32GB RAM, Python 3.14.10. User prefers project-local setups in `~/Documents/minecraft-discovery`, no `sudo` (if elevated action ever needed, explain `su -c`), no background daemons, and no Portage/desktop integration unless explicitly approved. Do not request access to other local directories.
+
+- Repository: `https://github.com/polskiftw/gmaincraft`, default branch `main`.
+- Local project root: `~/Documents/minecraft-discovery` (an existing working directory, may be attached to Git).
+- Source scripts: `experiments/*.py`. Reusable code moves into `src/gmaincraft/` only when it earns its abstraction; tests go in `tests/`.
+- Local-only instance/template: `mcio-data/instances/DemoInstance`, source `DemoWorld`. Scripts overwrite **only** their explicitly named disposable trial worlds; never change template `DemoWorld` or PrismLauncher worlds.
+- MCio controller: `mcio_ctrl==1.5.2`, Minecraft 1.21.3 Fabric, MCio mod 1.6.1+1.21.3 observed in logs. Keep `cbor2>=5.7.1,<6` because CBOR 6.x has a known incompatible decoding behavior; document before changing.
+- For Wayland issues use per-process `env -u WAYLAND_DISPLAY XDG_SESSION_TYPE=x11 ...` to run MCio's GLFW viewer through XWayland; don't change global graphical settings.
+- Running headless is allowed, but still needs a working graphics stack; benchmark both actual simulation speed and end-to-end restart/reset overhead.
+- Model checkpoints, worlds, local logs, large videos, profile files and binary outputs are not source code and remain Git-ignored. Don't add them or API tokens to the public repo. Never commit raw huge console logs full of irrelevant Java stack traces.
+
+## Development standards
+
+- Keep runnable entrypoints documented with exact commands and flags. Avoid breaking the existing root-relative runtime paths when moving files.
+- Prefer simple, inspectable, reproducible code; use explicit RNG seeds and record Minecraft/mod/Python versions, training/evaluation seeds, action spaces, reward definitions, sample counts and end-to-end timings.
+- Keep evaluator separate from trainer; freeze policy during evaluation; use held-out targets/world seeds and ensure train/test leakage checks.
+- Start with source-only or isolated unit tests; full Minecraft launches and GPU integration tests must be labeled and run only when requested/available. No CI job should require Mojang downloads.
+- Never silently change the objective from learn-from-scratch to scripted speedrun or from fair observations to hidden-world state.
+- Treat user feedback and factual results as primary. If a GitHub write fails, report it; do not claim the repo was updated.
+
+## Completion checklist for every substantive change
+
+- [ ] Code added/updated in the correct directories, not only a chat attachment.
+- [ ] Syntax/targeted unit tests run or limitations explicitly stated.
+- [ ] `TODO.md` updated in the same commit to reflect the new state.
+- [ ] `docs/EXPERIMENTS.md` updated if actual measured outcomes changed.
+- [ ] `docs/HANDOFF.md` updated for the next fresh-chat continuation.
+- [ ] Documentation/commands updated if paths, dependencies, or flags changed.
+- [ ] Commit/PR linked and user given safe local Git synchronization commands.
+
+**In a new chat:** do not ask the user to retell the entire project. Read the repository and request only a specific missing run result or environment detail.

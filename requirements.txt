@@ -1,0 +1,6 @@
+# Controller version verified on Gentoo; Minecraft and Fabric are managed by MCio.
+mcio_ctrl==1.5.2
+# cbor2 6.x is incompatible with the current MCio observation decoder.
+cbor2>=5.7.1,<6
+# Used directly by the prototype neural policies; other MCio deps are transitive.
+numpy>=2,<3
