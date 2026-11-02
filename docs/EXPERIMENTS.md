@@ -40,6 +40,60 @@ This is the **verified evidence ledger**, not a roadmap. Add measured results he
 - Existing known Gamescope post-child shutdown exit 139 recurred despite
   completed JSONL results. Do not label wrapper status 139 as a clean exit.
 
+## 2026-11-02 — First joint PPO, natural-world frozen transfer and GPU probes
+
+- **Project-local dependencies:** PyTorch `2.15.0+cu132` successfully
+  installed in `.venv` (Python 3.14.10). CPU forward/backpropagation and
+  optimizer updates work. **CUDA still fails** inside Gentoo Shell:
+  `nvidia_uvm` module loaded after host intervention but current sandbox
+  lacks `/dev/nvidia-uvm`; `libcuda cuInit(0)=999`, Torch CUDA false.
+  Do not report any GPU-trained model yet.
+- **OpenGL renderer:** exact nested Gamescope/XWayland GLX query reports
+  vendor `NVIDIA Corporation`, renderer `NVIDIA GeForce RTX 4070
+  SUPER/PCIe/SSE2`, OpenGL `4.6.0 NVIDIA 595.104.02`, **not** software
+  rasterization. Gamescope still exits SIGSEGV 139 after child termination.
+- **CPU synthetic throughput:** `tools/benchmark-training.py --device cpu
+  --batch-size 64 --steps 15 --threads 8` measured `0.159 s`, **94.08
+  batched gradient updates/s, 6021 images/s**. This tests *only* a fixed
+  synthetic CNN batch, NOT Minecraft simulation, PPO training or CUDA.
+- **Real Minecraft teacher arena:** `jointsmoke01`, actual Minecraft Java
+  1.21.3 with the vanilla survival input path and controller-variable tree
+  + player positions. `2` independent 140-game-tick training episodes,
+  outcomes **0/2** real log acquisitions. Model: 888,236 random-initialized
+  CNN actor-critic weights, two RGB84 frames, 11 joint movement/look/attack
+  macros; one PPO update on `34` real collected transitions. Update
+  diagnostics: finite `loss=0.04366`, `value_loss=0.14338`,
+  `entropy=2.39714`. One valid `jointsmoke01.pt` local model and JSONL
+  were saved. **Held-out fresh arena**: 2x140 ticks, **0/2** actual logs,
+  models frozen. Complete child test, known Gamescope post-close 139.
+- **Natural seeded-world transfer:** `jointtransfer01` on normal noise
+  Minecraft seed `161803398`, `spawnRadius=0`, frozen saved checkpoint
+  `jointsmoke01`, pure pixel input and normal vanilla actions, no
+  controller cheats, **0 logs in 120 game ticks**, no Python/game errors.
+  This only validates the interface; *two training episodes* cannot prove
+  any useful natural-world learning. Local JSONL:
+  `logs/natural_world_jointtransfer01.jsonl`.
+- **Not tested:** CUDA acceleration, large-scale learning, statistically
+  meaningful held-out worlds, full training speed, consistent first-log
+  competence, crafting, Nether/End or Any%.
+
+## 2026-11-02 — Atomic checkpoint / warm-start smoke
+
+- CPU `warmcheck01`: loaded pre-existing `jointsmoke01` CNN weights,
+  completed one real Minecraft 100-game-tick training episode (**0 logs**),
+  updated PPO on 23 real trajectory decisions (second update), then
+  atomically saved a valid ~11 MiB checkpoint including optimizer state and
+  metadata; local JSONL recorded all details. This *pilot* used the same
+  source train-seed and therefore repeated an earlier scenario: it verifies
+  continuity plumbing but **not** independent learning. Later code requires
+  new policy + training RNG seeds when using `--init-model`.
+- Frozen held-out evaluation was explicitly skipped in this check; no
+  generalization claim. The earlier independent `jointtransfer01` pilot
+  remains the only real natural-world frozen test of this network family.
+- 320x180 game rendering with 2-frame 84x84 RGB network input worked.
+  Prior `jointsmoke01` and `jointtransfer01` ran at 640x360 before the
+  current new-run default changed; do not conflate cross-resolution runs.
+
 ## 2026-11-02 — Fixed-spawn actual Minecraft confirmation
 
 - A second distinct *normal noise-generated* survival seed `271828183` was

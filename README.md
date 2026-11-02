@@ -4,6 +4,26 @@
 
 **Current reality (2026-11-02):** Minecraft Java 1.21.3 + MCio and three seeded numerical-navigation runs are verified. Two random-initialized, RGB-feature mouse+ATTACK models learn to aim at a controlled oak trunk (audited 15/20 and 18/20 real Minecraft logs). Two independently trained RGB-feature W/A/S/D policies learn to approach a **dropped** oak log: in a fresh 32-case offset-item audit, the best reaches **30/32**, versus **21/32** for just holding W. Combining the learned aiming and collection policies yields **51/56 real mined-log inventory pickups** over two fresh camera-angle sets for pickup model `p02`, versus **49/56** with scripted W. This does **not** establish a meaningful advantage in the centered-tree setup, and it still uses hand-engineered pixel masks, controller-only scalar rewards, fixed 100-tick attack holds, a single flat-world template, and separate training for the two neural stages. No general tree recognition or Any% speedrunning.
 
+## New joint learning and RTX GPU diagnostics (2026-11-02)
+
+The experimental course correction now includes a **single RGB CNN
+actor-critic (PPO with timed game-step advantages)** controlling look,
+movement, jumping and a fixed-duration mining macro. `jointsmoke01` verified
+its real Minecraft training/update/frozen evaluation and `jointtransfer01`
+verified natural-world checkpoint loading. All successes in those short
+smokes were **0 logs**; this is plumbing, not evidence of learning to
+speedrun. Models are local and Git-ignored. See
+[docs/JOINT_LEARNING.md](docs/JOINT_LEARNING.md) for the exact scope.
+
+The nested NVIDIA OpenGL renderer is **confirmed hardware-accelerated** on
+the RTX 4070 SUPER (not software CPU rendering). Project-local PyTorch
+2.15.0+cu132 is installed for optional CUDA training, but this sandbox's
+CUDA access remains blocked pending `/dev/nvidia-uvm` host device creation
+and bridge restart. See
+[docs/GPU_ACCELERATION.md](docs/GPU_ACCELERATION.md) for verification,
+strict CUDA diagnostics and measured CPU training reference. No Gentoo-wide
+package or driver changes were made by the agent.
+
 ## Research course correction (2026-11-02)
 
 **Do not equate toy-arena successes with progress toward Any%.** We now have a
@@ -71,7 +91,7 @@ The initial MCio demo provisions `mcio-data/` and creates the `DemoInstance` and
 
 Our camera rule is **functional, not cosmetic**. The agent need not look forward, keep its head level or move its view smoothly. It may face skyward while traveling; it must use legitimate mouse aiming and vanilla reach mechanics when breaking, placing, interacting or fighting. The intended curriculum is rendered-pixel observation → agent-selected camera/movement/attack → actual oak-log pickup. No hidden target coordinates as policy observations.
 
-The **scripted mechanics probe** verified vanilla mouse and log mining. The **learned camera/ATTACK** stage now chooses where to look and when to attack from engineered screenshot features, and a **separately learned pickup** policy chooses W/A/S/D from item-appearance pixels. Both train with controller-only *scalar* shaping while the learned policies see no hidden target positions. In two fresh integrated tests, combining `rgb02` aiming and `p02` pickup obtained **51/56 genuinely mined logs** with *no scripted post-attack movement*; simple always-forward pickup scored **49/56**, so a meaningful improvement for the centered trunk remains unproven. Off-center dropped-log tests show a clearer advantage for learned movement. The camera is free to look bizarre as long as the game rules are followed. See [the experiment ledger](docs/EXPERIMENTS.md); the next work is varying trunk/starting positions, richer scenery and learned vision.
+The **scripted mechanics probe** verified vanilla mouse and log mining. The **learned camera/ATTACK** stage now chooses where to look and when to attack from engineered screenshot features, and a **separately learned pickup** policy chooses W/A/S/D from item-appearance pixels. Both train with controller-only *scalar* shaping while the learned policies see no hidden target positions. In two fresh integrated tests, combining `rgb02` aiming and `p02` pickup obtained **51/56 genuinely mined logs** with *no scripted post-attack movement*; simple always-forward pickup scored **49/56**, so a meaningful improvement for the centered trunk remains unproven. Off-center dropped-log tests show a clearer advantage for learned movement. The camera is free to look bizarre as long as the game rules are followed. See [the experiment ledger](docs/EXPERIMENTS.md); we now have an unproven joint visual PPO prototype varying trunk/starting positions; next verify meaningful learning and natural-world transfer, not merely more toy tasks.
 
 ### Run an experiment
 

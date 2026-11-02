@@ -46,7 +46,7 @@ Define this contract *before* comparing curriculum scores to open-world speedrun
 
 1. **Working interface and measurement (done):** controllable Minecraft, video/state observations, clean-world restarts, soft-reset benchmark, reward detector.
 2. **Basic learning (controlled arena, verified):** fixed-yaw learner (7/20 to 20/20); camera-relative learner with controller-randomized initial yaw and numeric target direction replicated across 3 independent policy/training/evaluation RNG configurations (before: 9/50, 7/50, 7/50; after: 50/50 each; additional unseen target/yaw sets: 50/50 each, 2026-11-02). Still one saved-world template: no world-seed generalization, learned yaw control or visual recognition.
-3. **Autonomous perception and actions (bounded evidence):** camera+ATTACK learned from 12 handcrafted RGB features (15/20 and 18/20 audited, untrained 0/20); **W/A/S/D pickup learned separately** from 14 RGB features with controller-summoned dropped-log fixtures (30/32 p01 and 24/32 p02 vs always-W 21/32). Separate frozen policies combined into vanilla mined-log evaluation (p02 51/56 vs always-W 49/56, a small unproven edge; p01 43/56). Controller provides only scalar shaping while training, never hidden coordinates to policies. All trials use one saved-world flat-arena type and a fixed centered trunk for combined evaluation. Next vary real trunk positions, replace handcrafted visual masks, and learn joint action selection. The camera is **functional, not aesthetic**; never penalize nonhuman pose or movement. Controller camera teleports are for resets only.
+3. **Autonomous perception and actions (bounded evidence):** camera+ATTACK learned from 12 handcrafted RGB features (15/20 and 18/20 audited, untrained 0/20); **W/A/S/D pickup learned separately** from 14 RGB features with controller-summoned dropped-log fixtures (30/32 p01 and 24/32 p02 vs always-W 21/32). Separate frozen policies combined into vanilla mined-log evaluation (p02 51/56 vs always-W 49/56, a small unproven edge; p01 43/56). Controller provides only scalar shaping while training, never hidden coordinates to policies. All trials use one saved-world flat-arena type and a fixed centered trunk for combined evaluation. A later experimental joint RGB CNN/PPO now varies log/player positions, but it has no proven successful held-out learning yet. Replace handcrafted masks in legacy evaluators only if an evidence-backed natural transfer test merits doing so. The camera is **functional, not aesthetic**; never penalize nonhuman pose or movement. Controller camera teleports are for resets only.
 4. **Scale-up:** reproducible isolated episodes, offline/online experience buffers, checkpointing, held-out evaluation, graphics throughput, GPU-aware visual representation/world-model RL (DreamerV3 or a measured alternative), hierarchical skill reuse if useful.
 5. **Long-term Any%:** survival/resource economy, Nether/End progression, battle, exit detection and test-seed generalization.
 
@@ -86,3 +86,18 @@ long-horizon objective: next learners need trajectories, temporal processing,
 long-horizon credit assignment and periodic true-world evaluation. The old
 stage table above documents history, not a promise that stacking the stages
 will produce an Any% agent.
+
+## New experimental shared visual learner (2026-11-02)
+
+[JOINT_LEARNING.md](JOINT_LEARNING.md) documents the implemented two-RGB-frame
+convolutional actor-critic, 11 joint Minecraft control macros, full
+trajectory/tick-aware GAE and clipped PPO. This *replaces no legacy
+experiment*; it provides the first research path beyond hand-engineered RGB
+masks and immediate-reward single-layer REINFORCE. The actor gets only
+screen-pixel history; the teacher controls variable log/player fixtures and
+scalar shaping. Natural-world `joint_ppo` evaluation loads frozen weights and
+never receives target geometry. It is **not** a complete long-horizon
+agent: temporal context is only two frames, no crafting or inventory UI,
+fixed 80-tick mining action, and no demonstrated success on first-log
+retrieval. NVIDIA GPU/OpenGL and CUDA distinctions are in
+[GPU_ACCELERATION.md](GPU_ACCELERATION.md).

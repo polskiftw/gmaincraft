@@ -1,0 +1,6 @@
+# Optional project-local training backend; installs into .venv only.
+# Current build 2.15.0+cu132 provides CUDA 13.2 on Linux, supports Python 3.14.
+# Actual CUDA use additionally requires host nvidia_uvm and /dev/nvidia-uvm
+# exposed to the isolated Gentoo Shell (nvidia-smi alone is insufficient).
+-r requirements.txt
+torch==2.15.0

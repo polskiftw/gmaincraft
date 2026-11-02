@@ -13,7 +13,7 @@ from .agent_interface import AgentAction
 from .log_vision import VisualAimPolicy, visual_features
 from .log_pickup import PickupPolicy, PICKUP_ACTIONS, pickup_features
 
-MODES = ('idle', 'random', 'forward_attack', 'legacy_probe')
+MODES = ('idle', 'random', 'forward_attack', 'legacy_probe', 'joint_ppo')
 
 
 @dataclass(frozen=True)
@@ -107,7 +107,29 @@ class LegacyProbe:
         return AgentAction(keys=(PICKUP_ACTIONS[action],), ticks=min(5, remaining))
 
 
-def make_agent(mode, action_seed, *, aim_weights=None, pickup_weights=None):
+class JointPPOAgent:
+    """Frozen joint pixel-only PPO checkpoint for natural-world transfer.
+
+    The screenshot sequence is the ONLY input. The pre-trained checkpoint is
+    evaluated without training or added controller assistance.
+    """
+    def __init__(self, checkpoint, device='auto'):
+        from .vision_ppo import PPOTrainer, PixelHistory, action_for_index
+        self.trainer = PPOTrainer(device=device, seed=0)
+        self.metadata = self.trainer.load_weights(checkpoint)
+        self.history = PixelHistory()
+        self.started = False
+        self.action_for_index = action_for_index
+
+    def act(self, view, remaining):
+        image = self.history.append(view) if self.started else self.history.reset(view)
+        self.started = True
+        action, _, _ = self.trainer.act(image, greedy=True)
+        return self.action_for_index(action, remaining)
+
+
+def make_agent(mode, action_seed, *, aim_weights=None, pickup_weights=None,
+               joint_checkpoint=None, device='auto'):
     if mode == 'idle':
         return IdleAgent()
     if mode == 'forward_attack':
@@ -118,4 +140,8 @@ def make_agent(mode, action_seed, *, aim_weights=None, pickup_weights=None):
         if aim_weights is None or pickup_weights is None:
             raise ValueError('Legacy probe requires two frozen checkpoints')
         return LegacyProbe(aim_weights, pickup_weights)
+    if mode == 'joint_ppo':
+        if joint_checkpoint is None:
+            raise ValueError('Joint PPO mode requires a trained local checkpoint')
+        return JointPPOAgent(joint_checkpoint, device=device)
     raise ValueError(f'Unknown mode {mode}')

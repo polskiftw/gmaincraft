@@ -68,6 +68,19 @@ verifies fixed matching spawn *for these two modes on this world*, not across
 all seeds or all game versions. More seeds / longer episodes are still needed.
 As before, Gamescope exited 139 after the Python child completed.
 
+## New joint PPO prototype (built after the first transfer gate)
+
+See [JOINT_LEARNING.md](JOINT_LEARNING.md) for architecture, code and exact
+smoke results, and [GPU_ACCELERATION.md](GPU_ACCELERATION.md) for verified
+NVIDIA hardware OpenGL / blocked CUDA access. A single randomly initialized
+CNN policy can now choose joint movement/look/mine actions and update from
+complete real-game trajectories with timed PPO. Two train plus two frozen
+held-out episodes completed, 0 logs; one frozen natural-world evaluation
+completed on seed 161803398, 0 logs. These results only validate the
+pipeline, not successful learning/generalization. The fixed 80-tick mining
+macro and two-frame history remain major limitations. Do not mark the
+long-term joint control or first-log milestones complete.
+
 ## Research architecture / honest boundaries
 
 These parts are **NOT** implemented:

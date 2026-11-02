@@ -46,14 +46,21 @@ def parse_args(argv=None):
     ap.add_argument('--modes', nargs='+', choices=MODES, default=list(MODES))
     ap.add_argument('--max-ticks', type=int, default=1200)
     ap.add_argument('--visible', action='store_true', help='use nested Gamescope on sandbox')
+    ap.add_argument('--frame-width', type=int, default=320)
+    ap.add_argument('--frame-height', type=int, default=180)
     ap.add_argument('--prepare', action='store_true',
                     help='generate independent seeded survival worlds ONLY, no game evaluation')
     ap.add_argument('--dry-run', action='store_true',
                     help='inspect world generation and evaluation plan without writing')
     ap.add_argument('--aim-model', default='rgb02')
     ap.add_argument('--pickup-model', default='p02')
+    ap.add_argument('--joint-model', default=None,
+                    help='local checkpoint tag joint_log_ppo_<tag>.pt')
+    ap.add_argument('--device',choices=['auto','cpu','cuda'],default='auto')
     ap.add_argument('--action-seed', type=int, default=9971)
     args = ap.parse_args(argv)
+    if min(args.frame_width,args.frame_height)<96 or max(args.frame_width,args.frame_height)>1920:
+        ap.error('Frame dimensions must be in the range 96..1920')
     if args.max_ticks < 1 or args.max_ticks > 72000:
         ap.error('max-ticks must be from 1 to 72000')
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,23}', args.run_tag):
@@ -65,8 +72,10 @@ def parse_args(argv=None):
     if len(args.modes) != len(set(args.modes)):
         ap.error('Duplicate benchmark modes')
     if not all(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,39}', t)
-               for t in (args.aim_model, args.pickup_model)):
+               for t in (args.aim_model, args.pickup_model, args.joint_model or 'unset')):
         ap.error('Invalid checkpoint name')
+    if 'joint_ppo' in args.modes and args.joint_model is None and not (args.dry_run or args.prepare):
+        ap.error('--joint-model required for joint_ppo evaluation')
     return args
 
 
@@ -135,7 +144,7 @@ def prepare(plans):
         print(f'PREPARED {name}: noise terrain, verified seed, fixed spawnRadius=0', flush=True)
 
 
-def evaluate_one(p, args, weights):
+def evaluate_one(p, args, weights, joint_checkpoint=None):
     manager = world.WorldManager(mcio_dir=MCIO)
     source, dest = paths_for(p)
     if not (source / 'level.dat').is_file():
@@ -147,8 +156,7 @@ def evaluate_one(p, args, weights):
     opts = types.RunOptions(mcio_dir=MCIO, instance_name=INSTANCE, world_name=p.world,
                             mcio_mode=types.MCioMode.SYNC,
                             hide_window=not args.visible, gpu_lib=None if args.visible else 'nvidia',
-                            width=640 if args.visible else 320,
-                            height=360 if args.visible else 180)
+                            width=args.frame_width, height=args.frame_height)
     launch = instance.Launcher(opts)
     ctrl = None
     game_ticks = 0
@@ -170,7 +178,8 @@ def evaluate_one(p, args, weights):
         start_pitch = round(float(bridge.packet.player_pitch), 4)
         print(f'INITIAL {p.mode} seed={p.seed} pos={start_pos} yaw={start_yaw} pitch={start_pitch}', flush=True)
         policy = make_agent(p.mode, args.action_seed + p.seed,
-                            aim_weights=weights[0], pickup_weights=weights[1])
+                            aim_weights=weights[0], pickup_weights=weights[1],
+                            joint_checkpoint=joint_checkpoint, device=args.device)
         found = 0
         decisions = 0
         while game_ticks < args.max_ticks and not found:
@@ -187,6 +196,7 @@ def evaluate_one(p, args, weights):
                     found_logs=found, game_ticks=game_ticks,
                     decisions=decisions, wall_seconds=round(time.perf_counter() - started, 3),
                     start_pos=start_pos, start_yaw=start_yaw, start_pitch=start_pitch,
+                    frame_width=args.frame_width, frame_height=args.frame_height,
                     world=p.world, source=p.source)
     finally:
         if ctrl:
@@ -227,12 +237,17 @@ def main(argv=None):
     if 'legacy_probe' in args.modes:
         weights = (load_weights('log_aim_policy', args.aim_model),
                    load_weights('drop_pickup_policy', args.pickup_model))
+    joint_checkpoint = None
+    if 'joint_ppo' in args.modes:
+        joint_checkpoint = ROOT / 'checkpoints' / f'joint_log_ppo_{args.joint_model}.pt'
+        if not joint_checkpoint.is_file():
+            raise FileNotFoundError(f'Joint PPO checkpoint unavailable: {joint_checkpoint}')
     output.parent.mkdir(parents=True, exist_ok=True)
     starting_poses = {}
     with output.open('x', encoding='utf8') as file:
         for i, p in enumerate(plans, 1):
             try:
-                result = evaluate_one(p, args, weights)
+                result = evaluate_one(p, args, weights, joint_checkpoint=joint_checkpoint)
             except Exception as e:
                 result = dict(seed=p.seed, mode=p.mode, result='error',
                               error=f'{type(e).__name__}: {e}', world=p.world, source=p.source)

@@ -2,6 +2,47 @@
 
 This file is the operating contract for anyone (including a future ChatGPT conversation) editing **polskiftw/gmaincraft**. Treat the GitHub repository, not the conversation transcript or an assumed local checkout, as the authoritative codebase.
 
+## Freshest improvement: durable learning checkpoints
+
+`joint_log_ppo.py` now atomically writes local `.pt` checkpoints including
+Adam moments and source metadata. For continuation, use `--init-model` with
+**new** `--run-tag`, `--train-seed` and `--policy-seed`; this is new-world
+warm-start, not exact mid-episode replay. `warmcheck01` CPU smoke completed a
+100-tick episode / second PPO update and saved optimizer state; **0 logs**,
+scenario RNG repeated earlier seed in this *pilot*, so not fresh evidence.
+Later code now rejects repeated train/policy RNG seeds. See
+`docs/JOINT_LEARNING.md` for canonical commands. Never delete or overwrite
+older saved checkpoints to make a rerun work.
+
+## 2026-11-02 additional joint PPO + NVIDIA status (latest)
+
+**Read `docs/JOINT_LEARNING.md` and `docs/GPU_ACCELERATION.md` before continuing.**
+A new 2-RGB-frame CNN actor-critic (888,236 parameters) trains random weights
+from full collected Minecraft trajectories with timed-action GAE / clipped PPO.
+11 actions jointly select movement/look/jump/attack; 80-tick mining hold is
+still a **scripted motor primitive**, not learned duration. Controller resets
+can plant logs and supply scalar geometric shaping ONLY in the **training
+arena**. Frozen natural-world evaluation is a separate `joint_ppo` mode.
+
+Verified real game pilot `jointsmoke01`: 2 CPU-train + 2 held-out episodes at
+140 ticks; **0/2 success each**, but actual Minecraft rollout, PPO update,
+local checkpoint and independent evaluation all completed. Another natural
+seed `161803398` ran frozen `jointsmoke01` for 120 ticks with 0 logs. **Do NOT
+claim successful transferable learning or Any% progress from these smoke tests.**
+Existing old checkpoints and saves are intact; local outputs stay ignored.
+
+GPU probe inside the same nested Gamescope/XWayland GLX display actually
+reported `NVIDIA GeForce RTX 4070 SUPER` OpenGL 4.6 / driver 595.104.02,
+**not CPU llvmpipe**. System game simulation still uses CPUs. PyTorch
+2.15.0+cu132 is installed **project-locally** in `.venv` and CPU forward/
+backward was tested. Host `nvidia_uvm` module was loaded but **current bridge
+still lacks `/dev/nvidia-uvm`**; `cuInit(0)=999`, `torch.cuda.is_available()`
+false. User received root host-side `mknod` commands and must restart the
+bridge to bind devices once created. DO NOT claim or silently assume CUDA
+training worked; use `tools/gpu-preflight.py`, and `--device cuda` for strict
+failure until genuine GPU tensor allocation succeeds. Never widen filesystem
+sandbox to fix CUDA. Original shell already passes UVM devices when available.
+
 ## 2026-11-02 priority correction and direct shell/Git
 
 **Use Gentoo Shell `run_shell` for repository work when connected.** It
@@ -48,7 +89,7 @@ mode explicitly uses scripted mining timing and phase switching.
 
 Long-term: Minecraft Java Any% agent that learns from random weights, discovers behavior through experience, and generalizes to unseen random seeds, without a scripted solution. The current experiments are **scaffolding**, NOT a pretrained or general speedrunner.
 
-Current proven stages (2026-11-02): real MCio controller, benchmarks, reward checks, numerical camera-relative navigation (3 independent policy/train RNG seeds, each 50/50 on held-out and extra yaw-target tests); **learned RGB-feature mouse/ATTACK** (2 fresh 500-episode training runs, fresh-world audit 15/20 and 18/20 real mined oak logs, untrained 0/20); **learned W/A/S/D pickup** (2 fresh 150-episode training runs, separate zero-drift spawned-item audit: untrained 2/32, random 16/32, always-W 21/32, learned p01 30/32, learned p02 24/32). **Two-policy real mined-log combination** (two separately seeded camera-angle audits, 56 trials/model): untrained movement 21/56, fixed W 49/56, learned p01 43/56, learned p02 51/56. The two neural stages are NOT jointly trained and pickup chooses movements only **after** an agent-selected ATTACK; attacking is held for a fixed 100 ticks. Fixed-centered trunk in flat copied world, handcrafted brown-color RGB features, privileged controller-only scalar shaping and reset commands. Better than always-W on off-center spawned-item pickup, **not a proven advantage over W in integrated centered-tree tests**. No learned general tree recognition, cross-world generalization or Any% gameplay. **NEXT: vary actual trunk positions/terrain; learn reusable vision and joint movement/look/attack/pickup decisions.** Never reward human-like camera aesthetics. Preserve local old navigation/aim and new pickup checkpoints. See `docs/EXPERIMENTS.md` and `TODO.md`.
+Current proven stages (2026-11-02): real MCio controller, benchmarks, reward checks, numerical camera-relative navigation (3 independent policy/train RNG seeds, each 50/50 on held-out and extra yaw-target tests); **learned RGB-feature mouse/ATTACK** (2 fresh 500-episode training runs, fresh-world audit 15/20 and 18/20 real mined oak logs, untrained 0/20); **learned W/A/S/D pickup** (2 fresh 150-episode training runs, separate zero-drift spawned-item audit: untrained 2/32, random 16/32, always-W 21/32, learned p01 30/32, learned p02 24/32). **Two-policy real mined-log combination** (two separately seeded camera-angle audits, 56 trials/model): untrained movement 21/56, fixed W 49/56, learned p01 43/56, learned p02 51/56. The two neural stages are NOT jointly trained and pickup chooses movements only **after** an agent-selected ATTACK; attacking is held for a fixed 100 ticks. Fixed-centered trunk in flat copied world, handcrafted brown-color RGB features, privileged controller-only scalar shaping and reset commands. Better than always-W on off-center spawned-item pickup, **not a proven advantage over W in integrated centered-tree tests**. No learned general tree recognition, cross-world generalization or Any% gameplay. **NOW:** a variable-player/trunk joint visual PPO prototype exists and is smoke-tested, but first-log success remains unproven; next validate real learning on held-out natural worlds and CUDA training. Never reward human-like camera aesthetics. Preserve local old navigation/aim and new pickup checkpoints. See `docs/EXPERIMENTS.md` and `TODO.md`.
 
 Important distinctions:
 - **Camera rules (user decision 2026-11-02):** never reward natural-looking camera movement, looking forward, staying level or other aesthetics. Allow strange angles, walking backward/sideways and fast turns if they help. Camera orientation matters only because it changes perceived pixels and determines actual vanilla raycast interactions; the agent must still aim to break/place/interact, within vanilla reach. Use normal MCio mouse/cursor inputs for agent actions, never controller teleport commands for agent turning.

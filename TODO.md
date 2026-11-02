@@ -2,6 +2,52 @@
 
 **Last curated:** 2026-11-02. This is the live source of truth for project status. **All agents must read and update this file alongside substantive changes** (see [AGENTS.md](AGENTS.md)). Never mark a task done from source code alone; require actual run evidence where appropriate.
 
+## Continuity / checkpoint reliability
+
+- [x] Make joint PPO checkpoint writes atomic and include optimizer state,
+  metadata and accumulated updates.
+- [x] Add `--init-model` warm start under new run tag; require fresh
+  `--train-seed` and `--policy-seed`. Validated one 100-tick real-game CPU
+  warm-start `warmcheck01`, 23 transitions, updated and saved checkpoint;
+  **0 logs**, repeated old scenario seed in this smoke only. No evidence
+  of generalization.
+- [ ] Implement fully resumable multi-day online training including trainer
+  RNG, active episodes/world reset state, optimizer and trajectory batch;
+  current warm-start starts a *new* research run, not exact episode resume.
+
+## Latest work — joint visual learner / GPU (2026-11-02)
+
+- [x] Prove nested GLX hardware renderer: `NVIDIA GeForce RTX 4070 SUPER`,
+  NVIDIA OpenGL 4.6 driver 595.104.02 (NOT llvmpipe). Do not mistake
+  Minecraft's CPU world simulation for CPU rasterization.
+- [x] Install optional PyTorch 2.15.0+cu132 **in project `.venv` only**;
+  add `requirements-gpu.txt`, CUDA preflight and CPU-vs-CUDA microbenchmark.
+- [ ] **CUDA DEVICE BLOCKER**: host `nvidia_uvm` loaded, but sandbox
+  `/dev/nvidia-uvm` missing; `cuInit(0)=999`. User must create host UVM nodes
+  and reboot bridge, then verify GPU tensor allocations. Launcher already
+  binds UVM devices when present. Do not report CUDA success yet.
+- [x] Implement learned pixel-CNN actor-critic with joint movement/look/mine
+  action selection, timed (semi-Markov) trajectory GAE, clipped PPO, losses,
+  checkpointing, configurable CPU/CUDA and 320x180 default game rendering.
+- [x] Implement real variable-player/variable-log vanilla training arena,
+  privileged scalar shaping **only for training**, and independent frozen
+  evaluation with no hidden world state passed to model.
+- [x] Real Minecraft `jointsmoke01` CPU train 2 episodes + frozen eval 2,
+  each 140 ticks; PPO update, local checkpoint, results **0/2 train and
+  0/2 eval**, as expected for a smoke test. No proof of skill acquired.
+- [x] Frozen `jointsmoke01` loaded in natural seed `161803398`, 120 game
+  ticks, **0 logs**; actual vanilla inputs and no-cheat pipeline verified.
+- [ ] **Next:** make CUDA available, compare CPU/GPU measured training
+  throughput, then train sufficient independent-seed joint models and evaluate
+  whether first-log retrieval improves over controls. Extend the same run to
+  wood-to-crafting *only after* validated natural-world transfer.
+- [ ] Replace fixed 80-tick mining primitive with chosen action durations;
+  add memory beyond two frames and realistic exploration/inventory/crafting.
+
+See [docs/JOINT_LEARNING.md](docs/JOINT_LEARNING.md) and
+[docs/GPU_ACCELERATION.md](docs/GPU_ACCELERATION.md). Existing checkpoints,
+flat-arena source, real-world source saves and prior results remain preserved.
+
 ## Highest priority — speedrunner course correction (2026-11-02)
 
 - [x] Audit existing learning milestones: useful instrumented prototypes,
@@ -34,7 +80,7 @@ See [docs/COURSE_CORRECTION.md](docs/COURSE_CORRECTION.md). All previous
 verified experiments/checkpoints stay intact. Benchmarks are diagnostic, not
 an agent that can already beat Minecraft.
 
-## Current handoff: two learned camera/attack + pickup subskills verified; next variable tree positions
+## Historical subskills handoff (superseded by the joint learner and GPU priorities above)
 
 - [x] Minecraft camera-relative numeric navigation: 3 independently initialized/trained policies each achieved 50/50 held-out + 50/50 extra yaw/target scenarios (2026-11-02). Privileged goal direction; not visual.
 - [x] **Camera is functional, not cosmetic**: no human-likeness, gaze-stability or head-level rewards. Must still obey Minecraft view/raycast/reach for actual interaction.
@@ -43,7 +89,7 @@ an agent that can already beat Minecraft.
 - [x] Fresh drop-fixture audit in `MDL_DropAudit_dclean02` with zero item initial motion and clean resets (seed 8804; **32 cases/model**): no-action 0; untrained 2/32; random 16/32; always-W 21/32; trained `p01` **30/32**, `p02` **24/32**. Earlier `dclean01` audit was aborted by a conservative distance guard (item drift); preserve as invalid partial evidence.
 - [x] **Integrate both saved neural policies** in `log_mine_and_pickup_audit.py`: camera-look+ATTACK selected by `rgb02`; afterward W/A/S/D selected by frozen pickup policy, **no scripted forward walk**. Two fresh copied-world camera-angle audits (`f01` seed 8816, 24 cases; `f02` seed 8817, 32 cases): fixed-W 23/24 + 26/32 = **49/56**; untrained pickup 8/24 + 13/32 = **21/56**; `p01` 21/24 + 22/32 = **43/56**; `p02` **22/24 + 29/32 = 51/56**. No-attack control 0 in f02; all positive results require actual mined-log inventory acquisition. `p02` versus W is a *small*, unproven advantage; both mostly use W in centered setup.
 - [x] Reset hygiene: controller `kill @e[type=minecraft:item]`, clear inventory, fresh template copies for audits, no-attack/no-movement controls. The fixture now uses `Motion:[0.0d,0.0d,0.0d]` to avoid suspect distance-from-spawn audit failures. Original `DemoWorld` and all previously trained models preserved, local ignored CSVs/weights saved.
-- [ ] **NEXT: randomize actual trunk location and starting player position** in the combined learn/look/move/mine/collect curriculum, so simply holding W isn't near-optimal. Use actual pixel observations rather than hidden coordinates as policy input; compare held-out seeded scenes to always-W and scripted baselines.
+- [x] Implement variable actual trunk/player starting positions in the new joint learn/look/move/mine curriculum, with RGB policy observations and held-out scenario RNG. CPU real-Minecraft **2-train/2-eval smoke only, 0 successes**. [ ] Prove improvement against appropriate frozen baselines and genuinely natural-world transfer on unseen seeds.
 - [ ] Replace the two hand-engineered color filters with robust **learned RGB representations** and evaluate lighting, wood types/biomes, obstacles and genuine random Minecraft world seeds. Reduce/remove privileged angular/distance shaping as tasks mature.
 - [ ] Go from two **sequential separately trained** policies to a combined learned controller that decides when to look, move, attack, and collect, with nontrivial survival/block interaction objectives.
 - [ ] Investigate Gamescope shutdown SIGSEGV 139 only if it prevents future experiments; the Python game tests and checkpoints completed before compositor crashed.

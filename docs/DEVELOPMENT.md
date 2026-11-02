@@ -211,3 +211,45 @@ any paired-mode run whose observed starting position/yaw/pitch differs.
 Next: use this benchmark as the independent transfer gate on the path to
 full-trajectory RL and uninterrupted wood-to-crafting progression. See
 `docs/COURSE_CORRECTION.md` for explicit evaluation and compute limitations.
+
+## Joint RGB PPO learner and accelerator diagnostics
+
+See [JOINT_LEARNING.md](JOINT_LEARNING.md) and
+[GPU_ACCELERATION.md](GPU_ACCELERATION.md). The following is a **new run
+example**, not a report of training that already happened:
+
+```bash
+cd /workspace
+.venv/bin/python -m pip install -r requirements-gpu.txt
+.venv/bin/python tools/gpu-preflight.py
+.venv/bin/python tools/benchmark-training.py --device cpu --steps 20
+tools/test-opengl-renderer.sh
+# Only after preflight proves CUDA works:
+tools/run-mcio-viewer.sh .venv/bin/python -u -B experiments/joint_log_ppo.py --run-tag joint02 --episodes 100 --eval 20 --max-ticks 320 --device cuda --visible
+```
+
+Normal `--visible` Minecraft runs are already NVIDIA hardware accelerated;
+the temporary C GLX renderer probe showed OpenGL 4.6 and an RTX 4070 SUPER.
+CUDA training is separately blocked by UVM device-node passthrough until the
+user restarts the Gentoo Shell bridge after creating `/dev/nvidia-uvm` on
+the host. The isolation launcher **already** conditionally binds UVM nodes;
+no source code changes to the launcher are required. `--device cuda` is
+fail-fast; `--device auto` falls back to CPU and reports this fact. The
+new learner and natural benchmark default to 320x180 rendered frames before
+resizing them to 84x84 RGB for training (override with `--frame-width` and
+`--frame-height`). The user may also use `--device cpu` deliberately while
+repairing CUDA. No system-wide Gentoo modifications were performed.
+
+Verified `jointsmoke01` ran 2 real Minecraft training episodes with one
+PPO update and saved a local checkpoint; 2 held-out episodes also completed.
+All 4 had zero logs, no reason to infer learned competence. Independent
+natural-world `jointtransfer01` from seed 161803398 loaded that checkpoint,
+completed 120 game ticks with zero logs; no cheating or Python errors.
+Gamescope's pre-existing compositor shutdown exit 139 is unrelated to the
+completed experiment and should still be documented per run.
+
+The joint trainer's checkpoint is now **atomic** and includes optimizer
+state. Resume learning in a distinct new experiment with `--init-model
+OLD_TAG` and distinct policy/train seeds; this avoids overwriting good
+results. `docs/JOINT_LEARNING.md` has the exact template and clearly
+separates warm-start from an exact saved-episode resume.

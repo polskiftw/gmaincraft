@@ -2,6 +2,42 @@
 
 **Last verified: 2026-11-02.** Canonical code: [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. **Newest milestone:** learn movement W/A/S/D from real RGB features (2 independently trained models; fresh fixture audit p01 **30/32**, p02 **24/32**, always-W 21/32); then **combine frozen RGB aim/ATTACK and pickup policies** on *real mined logs* (two independent camera-angle sets, trained p02 **51/56**, hardcoded W **49/56**, untrained movement 21/56). Earlier numerical-navigation and RGB log-aiming milestones remain preserved; `docs/EXPERIMENTS.md` records all results. The initial uncleaned aim 12/14 and aborted first drop-distance audits are **invalid evidence**. No general world-seed Minecraft speedrunning. Do not ask for old test logs.
 
+## Latest checkpoint continuity check (2026-11-02)
+
+`warmcheck01` successfully loaded the old joint model, trained one more
+100-tick **CPU** Minecraft episode with 23 transitions, ran PPO's second
+update and saved a valid **atomic** 11 MiB checkpoint with optimizer state.
+No log acquired; this used repeated scenario RNG, so it is just an interface
+smoke, not independent training progress. New code rejects source train/policy
+seed repetition. For future work use `--init-model OLD_TAG` **with a new
+`--run-tag`, `--train-seed` and `--policy-seed`**. This warms weights and Adam,
+but is not an exact interrupted-episode restore. Preserve existing models
+and follow `docs/JOINT_LEARNING.md` rather than rerunning a used tag.
+
+## Newest handoff: joint visual PPO and RTX GPU, 2026-11-02
+
+Source additions: `src/gmaincraft/vision_ppo.py`, `ppo_math.py`,
+`joint_curriculum.py`, `experiments/joint_log_ppo.py`, optional
+`requirements-gpu.txt`, C GLX probe, GPU preflight, CPU/GPU training
+benchmark. Read `docs/JOINT_LEARNING.md` and `docs/GPU_ACCELERATION.md`
+first. Joint agent uses two RGB84 screenshot frames, 888,236-parameter
+CNN/PPO, 11 vanilla timed macros including a **fixed 80-tick mining hold**.
+Not trained to craft, explore general terrain, or speedrun. Verified
+CPU real-game pilot `jointsmoke01`: 2 training+2 heldout Minecraft log
+scenarios with PPO gradient update, 0/2 logs each. Frozen natural-seed pilot
+`jointtransfer01` seed 161803398, 0/120 ticks; no errors in Python child.
+These runs establish pipeline only; large-scale RL research remains pending.
+
+RTX 4070 SUPER hardware OpenGL **confirmed** via nested XWayland GLX probe
+(`GL_RENDERER=NVIDIA ...`, 4.6 NVIDIA). Torch 2.15.0+cu132 installed only
+into project `.venv` and works on CPU, but CUDA still **unavailable inside
+current bridge**: `nvidia_uvm` host module loaded, no bound `/dev/nvidia-uvm`,
+`cuInit(0)=999`. Host needs UVM node creation and bridge restart; instructions
+in `docs/GPU_ACCELERATION.md`. Do not claim real GPU training completed.
+Use `--device cuda` for fail-fast once devices are visible, verify actual
+allocation first with `tools/gpu-preflight.py`. No modifications to host
+launcher, Gentoo packages or broader sandbox permissions were made.
+
 ## NEW course correction (2026-11-02)
 
 Read `docs/COURSE_CORRECTION.md` and the highest-priority block of `TODO.md`
@@ -25,7 +61,7 @@ only for these two cases; longer multi-seed testing remains open. Gamescope stil
 
 1. Read `AGENTS.md`, `TODO.md`, `README.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, `docs/EXPERIMENTS.md`, inspect relevant code/tests and recent GitHub commits.
 2. Recognize the last verified milestone: all three camera-relative numerical policies scored **50/50 after training and 50/50 on an additional unseen target/yaw set**. Each trained for 300 real Minecraft episodes with distinct policy/train/eval/extra/action seeds. Each training CSV shows **299/300 wins**.
-3. **NEXT:** the separately learned W/A/S/D pickup skill is DONE (fresh fixture audit 30/32 p01, 24/32 p02 vs W21/32), and combining frozen aim+pickup collected real mined logs (p02 51/56, W49/56). **Now vary where the actual trunk and player spawn** so just walking W no longer suffices, and learn a more joint look/move/attack/pickup policy with stronger visual perception and valid held-out tests. Preserve old checkpoints. The user does NOT want human-looking camera behavior; odd gaze is fine if vanilla crosshair/reach and observation rules are followed. Retain no-attack/dropped-item cleanup safeguards.
+3. **NEXT:** the separately learned W/A/S/D pickup skill is DONE (fresh fixture audit 30/32 p01, 24/32 p02 vs W21/32), and combining frozen aim+pickup collected real mined logs (p02 51/56, W49/56). **Variable trunk/player positions and an initial shared visual PPO controller now exist**, but only zero-win smoke tests completed; next train/evaluate actual improvements against baselines in independent natural worlds. Preserve old checkpoints. The user does NOT want human-looking camera behavior; odd gaze is fine if vanilla crosshair/reach and observation rules are followed. Retain no-attack/dropped-item cleanup safeguards.
 4. Later remove privileged numeric goal-direction inputs for visual/perceivable goals. Independently seeded *Minecraft worlds* remain untested.
 5. Commit code, tests and all status docs together to GitHub, then give the user safe `git pull --ff-only` commands. Preserve local ignored checkpoint and world artifacts.
 
@@ -47,7 +83,7 @@ Seeds (policy/train/eval/extra/action): reference 2718/81003/60211/99501/771; `r
 - Two new independent 150-episode movement trainings: RGB screenshot → **14 handcrafted oak-item features** → random-weight 4×14 softmax network → real W/A/S/D actions. `p01` seeds policy/train/eval 4401/6601/8801, 123/150 training pickups, 14.59s learner time; `p02` seeds 4402/6602/8802, 109/150 training pickups, 15.56s. Training item is **controller-summoned as an in-game dropped item**; the subsequent corrected independent audit uses the updated zero-initial-Motion fixture; controller shapes scalar reward from item spawn position, which policy NEVER sees.
 - **Clean independent spawned-item audit:** world `MDL_DropAudit_dclean02`, seed 8804, 32 trials/controller, no-movement negative 0, untrained 2/32, random 16/32, always W 21/32, trained p01 **30/32**, trained p02 **24/32**. `logs/drop_pickup_audit_dclean02.csv` 160 rows (ignored). First `dclean01` audit is INVALID/incomplete due conservative distance-from-moving-item guard; do not quote it as success. Reset kills old items before each test.
 - **Combined actual block mining + policy-chosen collection:** pretrained `rgb02` selects camera/ATTACK from screen, fixed 100-tick Minecraft left-click mine, then frozen `p01`/`p02` chooses W/A/S/D from screen. **No scripted collection movement in neural-controller modes.** Two fresh test sets: seed 8816 (24 cases), 8817 (32 cases), all controller commands restricted to reset, score is real mined oak_log inventory. Over **56 identical cases per controller**: untrained movement **21/56**; scripted W **49/56**; trained p01 **43/56**; trained p02 **51/56**. No-attack negative control yielded zero in the second audit. In this fixed centered-trunk setup even trained p02 mostly chooses W and its 2-win edge over scripted W is **not a meaningful proven advantage**.
-- **NEXT:** randomize actual trunk positions, camera start and spawn/obstacle layout, and train/evaluate learned visual joint look-move-attack-pickup where always W is insufficient; eventually learn image representation and score natural survival resources on distinct random-world seeds. Detailed data/limitations: `docs/EXPERIMENTS.md`.
+- **NOW:** initial variable-trunk/player RGB joint PPO prototype exists, 0/2 held-out successes after just two training episodes. Next evaluate actual improvement over baselines, stronger visual perception and general survival on distinct random-world seeds. Detailed data/limitations: `docs/EXPERIMENTS.md`.
 
 ## NEW learned RGB camera/attack milestone (2026-11-02)
 
@@ -60,7 +96,7 @@ Seeds (policy/train/eval/extra/action): reference 2718/81003/60211/99501/771; `r
 
 - **User camera rule (2026-11-02):** camera pose/appearance should never receive human-likeness rewards; the agent may stare at sky or move sideways/backward, but must still use vanilla first-person line-of-sight, crosshair reach and mouse-based interactions where needed.
 - `experiments/log_interaction_probe.py`: **VERIFIED scripted vanilla log mining/pickup in actual Minecraft**, not RL. In a *new disposable copied world* (`MDL_LogInputProbe_pilot01`), the controller placed a log column, then no commands were sent after staging. MCio mouse deltas +120,+50 pixels changed yaw +18.00° and pitch +7.50°, inverse deltas restored camera. Holding left attack 100 ticks then walking forward 11 ticks yielded **1 real oak log** in observed inventory; 20.15s total launch+test. Gamescope exit 139 occurred only after printout. No `/give`. Four new pure-helper tests were added.
-- **DONE (bounded scope):** two models learned camera-turn and ATTACK choices from screenshot color features (15/20, 18/20 versus untrained 0/20); **now a separate learned RGB-based pickup policy also exists** and an integrated camera-ATTACK-plus-movement audit works on real mined logs (p02 51/56 across two angle seeds). **NEXT:** randomize real log/player location, learn a more joint policy and robust visual encoder in varied scenes. This is NOT an independent-world Any% agent.
+- **DONE (bounded scope):** two models learned camera-turn and ATTACK choices from screenshot color features (15/20, 18/20 versus untrained 0/20); **now a separate learned RGB-based pickup policy also exists** and an integrated camera-ATTACK-plus-movement audit works on real mined logs (p02 51/56 across two angle seeds). **FOLLOW-UP:** new variable-log joint CNN/PPO exists as an unproven prototype; do not claim tested general tree skill from its zero-win smoke tests. This is NOT an independent-world Any% agent.
 
 ## Runtime and local environment
 
