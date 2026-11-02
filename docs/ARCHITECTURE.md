@@ -30,7 +30,7 @@ Prototypes are each self-contained in `experiments/`. Later, extract reusable en
 
 ## Fairness and leakage
 
-The existing navigation experiments pass the exact target direction to the policy as a numeric vector. This is a **teaching shortcut**, legitimate for learning game control, but impossible to assume for arbitrary hidden Minecraft objectives. Do not claim it learned to recognize a block or navigate from pixels. Similarly, it did not learn the camera-movement controls yet.
+The existing navigation experiments pass the exact target direction to the policy as a numeric vector (absolute or camera-relative). This is a **teaching shortcut**, legitimate for learning game control, but impossible to assume for arbitrary hidden Minecraft objectives. The 2026-11-02 orientation success demonstrates handling a controller-randomized **initial** yaw, not camera turning chosen by the agent. Do not claim it learned to recognize a block or navigate from pixels.
 
 A later configurable observation contract should distinguish:
 - Human-equivalent: RGB video, visible HUD, visible GUI, inventory contents available by opening it, and self-state data that a player can directly obtain under chosen rules.
@@ -41,7 +41,7 @@ Define this contract *before* comparing curriculum scores to open-world speedrun
 ## Learning stages
 
 1. **Working interface and measurement (done):** controllable Minecraft, video/state observations, clean-world restarts, soft-reset benchmark, reward detector.
-2. **Basic learning (partly done):** a randomly initialized linear policy learned a fixed-yaw target-navigation toy task (7/20 to 20/20); yaw-generalization test pending real results.
+2. **Basic learning (controlled arena, done as a prototype):** random-weights linear policy learned fixed-yaw target navigation (7/20 to 20/20); new camera-relative policy learned with randomized starting yaw (9/50 to 50/50, plus 50/50 on a second unseen target/yaw set after 300 episodes, one training seed, 2026-11-02). Validate across independent seeds before claiming robustness.
 3. **Autonomous perception and actions:** learn camera turning, block visual targeting, mouse interaction, inventory and crafting inputs; combine event rewards without admin-command leakage.
 4. **Scale-up:** reproducible isolated episodes, offline/online experience buffers, checkpointing, held-out evaluation, graphics throughput, GPU-aware visual representation/world-model RL (DreamerV3 or a measured alternative), hierarchical skill reuse if useful.
 5. **Long-term Any%:** survival/resource economy, Nether/End progression, battle, exit detection and test-seed generalization.

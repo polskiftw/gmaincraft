@@ -1,62 +1,43 @@
 # Handoff for a brand-new ChatGPT conversation
 
-**Last verified status: 2026-11-01.** The canonical code is in [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. The current outstanding item is the **real run result** from `experiments/orientation_learner.py`; it has not yet been supplied. Do not infer success.
+**Last verified: 2026-11-02.** Canonical source: [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. **The orientation experiment has now been run successfully in real Minecraft**, so do **not** ask the user to supply an orientation log again. See `docs/EXPERIMENTS.md` for the exact run evidence and caveats.
 
-## First actions for the next assistant
+## First actions in a new chat
 
-1. Open the current GitHub versions of `AGENTS.md`, `TODO.md`, `README.md`, this file, and `docs/EXPERIMENTS.md`. Inspect the script being debugged.
-2. Ask for or process the user-provided orientation log; the user intends to bring it in the new chat.
-3. Look for these output labels: `Original (fixed camera)`, `Original (random camera)`, `New BEFORE training`, `New AFTER training`, `New extra unseen cases`, `Learning time` and `New checkpoint`.
-4. Compare before/after and the extra unseen scenarios without overclaiming. Investigate errors first.
-5. Update `docs/EXPERIMENTS.md`, `TODO.md`, and this handoff with verified results. Implement the next prioritized milestone in a GitHub commit and provide `git pull --ff-only` instructions; do not rely on old chat-generated attachments.
+1. Read current `AGENTS.md`, `TODO.md`, `README.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, and `docs/EXPERIMENTS.md`; inspect the source of any experiment you modify.
+2. Confirm the latest verified milestone: 300 Minecraft training episodes, camera-relative movement policy **9/50 before -> 50/50 after** on 50 held-out target/yaw scenarios, **50/50** on an additional unseen target/yaw set. Original policy fixed yaw **50/50**, randomized yaw **24/50**. Training CSV: **299/300 wins**. Learner time: **30.16s**. Only one training seed/world.
+3. **NEXT:** parameterize independent RNG seeds (policy initialization, training, held-out evaluation, extra evaluation) and separate output paths **before** repeating the experiment. Do not overwrite the validated `checkpoints/orientation_policy.npz`.
+4. Replicate with several independent seeds; capture success/variance/steps/compute costs, label all same-world arena tests honestly. After replication, teach actual camera-turning action and ultimately move away from privileged numeric goal vectors.
+5. Commit code/tests/status docs together, verify real Minecraft runs when available, and give the user a `git pull --ff-only` command.
 
-A user can start the new chat with:
+## Goal and scope
 
-> Read my GitHub repository `polskiftw/gmaincraft`, especially `AGENTS.md`, `TODO.md` and `docs/HANDOFF.md`. We were about to review the orientation-learner result. Here is the run output: [paste].
+Long-term from-scratch reinforcement-learning agent for Minecraft Java Any% on unseen random world seeds, without scripted speedrun logic or privileged hidden-world inputs. **We are not close to a general visual speedrunner.** These are controlled training curricula using known numeric goal direction, flat arena and W/A/S/D actions only. Randomized camera yaw is set by the experiment controller at spawn; policy has no mouse/camera turning action.
 
-## Project intention
+## Verified runtime and infrastructure
 
-Experimental agent that starts from random neural-network weights and eventually learns Minecraft Java Any% (kill Ender Dragon, exit) on unseen random seeds without hand-programmed speedrun logic or unfair hidden-world inputs. The objective is ambitious and unsolved here. Initial learning experiments intentionally simplify the task and supply a target-direction vector; this is not end-to-end visual speedrunning.
+- Gentoo/OpenRC, Plasma Wayland, NVIDIA RTX 4070 SUPER (driver 595.104.02), i7-14700KF, 32GB RAM, Python 3.14.10.
+- Project root on host: `~/Documents/minecraft-discovery`, available via Gentoo Shell MCP as `/workspace`. Its Bubblewrap sandbox **hides `/home`**, keeps network namespace loopback-only and mounts selected GPU/DRM/sysfs resources plus one Wayland socket.
+- Minecraft Java **1.21.3**, Fabric MCio **1.6.1+1.21.3**, `mcio_ctrl==1.5.2`, `cbor2==5.9.0`; MCio-managed instance `mcio-data/instances/DemoInstance` and template `DemoWorld`.
+- The MCP sandbox launches accelerated game **through nested Gamescope with local Xwayland wrapper**; see `docs/DEVELOPMENT.md`. Direct NVIDIA/MCio headless EGL failed here. Nested Gamescope exits with SIGSEGV **139 after the experiment child exits**, although orientation results/checkpoint/CSV were completed and validated.
+- **Local-only, ignored assets:** `checkpoints/navigation_policy.npz`, `checkpoints/orientation_policy.npz` (validated saved model), `logs/orientation_training.csv` (300 rows), local world saves, and the custom sandbox launcher/wrapper under `mcio-data/`. They are **not on GitHub**. Do not delete these or copy personal Minecraft saves.
+- Prior verified foundations: MCio actions/observations, clean-world-copy experiments, throughput benchmarking, local soft resets (world mutations persist), controller item-novelty detection, original navigation 7/20 -> 20/20 after 120 episodes/12.8s training.
 
-## Verified local machine and setup
+## Orientation evidence (2026-11-02)
 
-- Gentoo Linux / OpenRC; Plasma Wayland and XWayland workaround.
-- i7-14700KF, NVIDIA RTX 4070 SUPER 12GB, 32GB RAM; NVIDIA driver 595.104.02 reported previously.
-- Python 3.14.10; host Java 25.0.4.1; MCio-managed Fabric/Minecraft logs show a Java 21 runtime.
-- Existing project directory: `~/Documents/minecraft-discovery`.
-- Local Python venv `.venv/`, installed `mcio_ctrl==1.5.2` with a fixed `cbor2>=5.7.1,<6`.
-- Local MCio data `mcio-data/`; instance `DemoInstance`; original template world `DemoWorld`, Minecraft Java **1.21.3** and MCio mod **1.6.1+1.21.3**. User's main PrismLauncher and newer Minecraft installation are separate.
-- Visual viewer on Wayland initially was invisible; use `env -u WAYLAND_DISPLAY XDG_SESSION_TYPE=x11` for MCio launcher/client. The viewer then was black until `cbor2<6` was installed.
-- Missing `libflite.so` narrator error and remote Mojang profile lookup timeouts are observed and nonfatal; do not modify Gentoo on their account unless a test actually blocks.
-- User prefers copy/paste commands, no `sudo`, no daemons, no global integration, no unrequested access outside the project directory.
+| Evaluation | Wins | Final distance (mean) | Ticks among wins (mean) |
+|---|---:|---:|---:|
+| Original fixed yaw | 50/50 | 0.72 | 25.6 |
+| Original randomized yaw | 24/50 | 7.03 | 41.2 |
+| New random initial weights | 9/50 | 7.22 | 71.3 |
+| New AFTER 300 training episodes | 50/50 | 0.66 | 25.6 |
+| New on extra unseen target/yaw set | 50/50 | 0.65 | 26.0 |
 
-## Experiments already verified
+Policy seed 2718; training scenarios seed 81003; evaluation scenario seed 60211; extra seed 99501; action RNG seed 771. Trial world `MDL_OrientationLab_v1`; never overwrote template `DemoWorld` or original navigation checkpoint. Full protocol and SHA-256 of artifacts are in `docs/EXPERIMENTS.md`.
 
-- Random controls and a genuine fresh saved-world copy restart worked.
-- Full restart: approx 195 active steps/s visible, 185.5 active steps/s headless. Headless full-run 2,000 steps in 55.5s.
-- Persistent-process soft resets: 5 × 1,000 steps, 284.5 active steps/s average and 123.5 end-to-end, ~0.08–0.11s between episodes. **World remains mutated between resets**.
-- Reward probe: oak log first seen +1, repeat +0, stone pickaxe +1, reset, oak log +1. Commands injected the items solely for unit-style verification.
-- Navigation learner: before 7/20 on held-out target positions; after 120 real Minecraft training episodes 20/20; average successful time 98 -> 24 ticks; 12.8s training. Goal direction supplied as numeric vector; yaw fixed. Local `checkpoints/navigation_policy.npz` and `logs/navigation_training.csv` exist on the user's machine, **not** on GitHub.
+## Safety and scientific integrity
 
-## Orientation experiment ready, outcome pending
-
-Script: `experiments/orientation_learner.py`, imported `navigation_learner.py` module. Needs `checkpoints/navigation_policy.npz` from the previous run. It tests old weights with fixed and random camera orientations, trains a new random-initialized egocentric-goal policy for 300 episodes, then evaluates on the held-out targets and a new unseen set. Uses disposable `MDL_OrientationLab_v1`, preserves original `DemoWorld` and original checkpoint.
-
-Run locally (from project root):
-
-```bash
-env -u WAYLAND_DISPLAY XDG_SESSION_TYPE=x11 .venv/bin/python experiments/orientation_learner.py --visible
-```
-
-After the user has attached Git to the existing directory, this command replaces the old root-level script path; the Python source is in `experiments/`, with outputs still in the root-level `logs/` and `checkpoints/`.
-
-## Integrity cautions
-
-- MCio setup/admin `/fill`/`/tp`/`/give` is outside the policy's action space, never to be used to solve a scored challenge.
-- Training/evaluation on one small arena cannot prove unseen-world generalization.
-- Soft reset ≠ exact world reset.
-- Git tracks source/docs/tests, not models, logs, saves or recordings. An unavailable local checkpoint must be recreated by training or explicitly brought over by the user.
-
-## Immediate next step
-
-**Review actual orientation results; then decide whether to fix camera generalization or teach learned mouse/camera turning and fair object observations.** Update all status docs and the TODO in the same GitHub change.
+- Minecraft admin commands (`/tp`, `/fill`, `/setblock`, etc.) belong solely to the privileged experiment controller for resets/arena setup, never to scored policy actions.
+- A randomized target/yaw in the **same** saved-world arena does **not** demonstrate cross-seed survival or visual recognition. Do not conflate in-game learner time with total process start/stop time.
+- The 100% evaluations are two 50-case sets after a **single** trained model on a controlled curriculum; quantify multi-seed robustness and separate trainer from frozen evaluator before stronger claims.
+- Original host checkpoints, worlds, personal data, and local raw logs remain git-ignored; do not add them to the public repository. No host root/sudo access or system services should be required.

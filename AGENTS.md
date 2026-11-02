@@ -16,7 +16,7 @@ This file is the operating contract for anyone (including a future ChatGPT conve
 
 Long-term: Minecraft Java Any% agent that learns from random weights, discovers behavior through experience, and generalizes to unseen random seeds, without a scripted solution. The current experiments are **scaffolding**, NOT a pretrained or general speedrunner.
 
-Current proven stages: MCio 1.21.3 observations/actions, reset and speed benchmarks, item novelty reward plumbing, and a simple policy-gradient navigation task. As of 2026-11-01, `experiments/orientation_learner.py` has been authored; its actual result is **not yet reported**. First requested next action: review the orientation run log when the user provides it; then update TODO/EXPERIMENTS/HANDOFF before choosing the next task.
+Current proven stages (as of **2026-11-02**): real MCio 1.21.3 observations/actions, resets/benchmarks, item novelty plumbing, fixed-yaw navigation training, and **camera-relative movement with randomized starting yaw**. Actual orientation run: original fixed yaw 50/50, original randomized yaw 24/50, new untrained 9/50, new trained 50/50, second unseen target/yaw set 50/50 (300 episodes, 30.16s learner time, 299/300 training successes). These are **one controlled arena and one training seed**; no vision or learned mouse turning. **NEXT:** implement non-overwriting independent training/evaluation RNG seeds and reproduce across multiple runs before tackling camera control. See `docs/EXPERIMENTS.md` and `TODO.md`.
 
 Important distinctions:
 - The `navigation_learner.py` policy receives a numeric goal direction and assumes a fixed camera yaw. `orientation_learner.py` also gets a privileged goal vector in camera-relative coordinates. Both are carefully limited **curriculum experiments**, not vision or real discovery.
@@ -35,8 +35,9 @@ Verified user's machine: Gentoo/OpenRC, Plasma Wayland, XWayland compatibility p
 - Source scripts: `experiments/*.py`. Reusable code moves into `src/gmaincraft/` only when it earns its abstraction; tests go in `tests/`.
 - Local-only instance/template: `mcio-data/instances/DemoInstance`, source `DemoWorld`. Scripts overwrite **only** their explicitly named disposable trial worlds; never change template `DemoWorld` or PrismLauncher worlds.
 - MCio controller: `mcio_ctrl==1.5.2`, Minecraft 1.21.3 Fabric, MCio mod 1.6.1+1.21.3 observed in logs. Keep `cbor2>=5.7.1,<6` because CBOR 6.x has a known incompatible decoding behavior; document before changing.
-- For Wayland issues use per-process `env -u WAYLAND_DISPLAY XDG_SESSION_TYPE=x11 ...` to run MCio's GLFW viewer through XWayland; don't change global graphical settings.
-- Running headless is allowed, but still needs a working graphics stack; benchmark both actual simulation speed and end-to-end restart/reset overhead.
+- For the original non-sandbox Gentoo desktop, use per-process `env -u WAYLAND_DISPLAY XDG_SESSION_TYPE=x11 ...` to run MCio's GLFW viewer through XWayland; don't change global graphical settings.
+- **Gentoo Shell MCP sandbox (verified 2026-11-02):** isolated `/workspace`, host home hidden; read-only NVIDIA sysfs, GPU/DRM devices, one Wayland socket, private localhost-only `/etc/hosts`; accelerated Minecraft launched through local nested Gamescope/Xwayland with `--visible`. The local-only `mcio-data/xwayland-sandbox-wrapper.sh` sets `-ac` for nested Xwayland only. See `docs/DEVELOPMENT.md`. Gamescope exits with code 139 after the experiment child shuts down; the Python experiment completed, logged and saved a valid checkpoint first. Direct MCio headless failed with EGL/GLFW in this sandbox. Do not weaken sandbox boundaries or expose other host folders to fix these issues.
+- Running headless on a separately configured host is allowed, but still needs a working graphics stack; benchmark active simulation versus full launch/exit overhead.
 - Model checkpoints, worlds, local logs, large videos, profile files and binary outputs are not source code and remain Git-ignored. Don't add them or API tokens to the public repo. Never commit raw huge console logs full of irrelevant Java stack traces.
 
 ## Development standards

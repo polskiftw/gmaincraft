@@ -1,13 +1,15 @@
 # TODO — gmaincraft
 
-**Last curated:** 2026-11-01. This is the live source of truth for project status. **All agents must read and update this file alongside substantive changes** (see [AGENTS.md](AGENTS.md)). Never mark a task done from source code alone; require actual run evidence where appropriate.
+**Last curated:** 2026-11-02. This is the live source of truth for project status. **All agents must read and update this file alongside substantive changes** (see [AGENTS.md](AGENTS.md)). Never mark a task done from source code alone; require actual run evidence where appropriate.
 
-## Current handoff: orientation experiment
+## Current handoff: multi-seed reproducibility, then camera control
 
-- [x] Author `experiments/orientation_learner.py`: compare old policy at fixed/random yaw, train a new camera-relative policy from scratch, evaluate held-out and fresh scenarios.
-- [x] Verify script syntax and its training math in a simplified simulation; include source in this repository.
-- [ ] **NEXT: Obtain/review the real Minecraft results** for the orientation experiment from the user in a new chat; record baseline, rotated old-policy, untrained new-policy, trained new-policy, and additional unseen-scenario performance. Diagnose crashes or weak generalization instead of assuming success.
-- [ ] Update `docs/EXPERIMENTS.md` and `docs/HANDOFF.md` with confirmed orientation outcomes, caveats, and next experiment.
+- [x] Author and syntax-test `experiments/orientation_learner.py` using camera-relative numeric goal vectors and randomized starting yaw.
+- [x] **Run in actual Minecraft (2026-11-02):** original fixed 50/50 vs random yaw 24/50; new random-initialized policy 9/50 before, **50/50 after** 300 training episodes, **50/50 on extra unseen cases**. Training CSV 299/300 successes; learner time 30.16s.
+- [x] Verify saved local `orientation_policy.npz` and 300-row `orientation_training.csv`; capture caveats in `docs/EXPERIMENTS.md` and handoff.
+- [ ] **NEXT: reproducibility:** parameterize policy/training/evaluation RNG seeds and use distinct output filenames to avoid overwriting the successful checkpoint. Run at least 3 independently initialized trainings on disjoint target/yaw scenarios; report variance, seeds, confidence bounds, and wall-clock costs.
+- [ ] Next after independent replication: learn camera-turning input and movement jointly, then remove privileged numerical goal-direction observations in favor of perceivable targets.
+- [ ] Investigate Gamescope exit-139 segfault only if it causes lost measurements, leftover processes, or prevents reliable experiments. Do not conflate the wrapper crash with Minecraft training failure.
 
 ## Verified foundations
 
@@ -20,9 +22,9 @@
 - [x] Random-weights policy-gradient navigation in real Minecraft (120 episodes): baseline 7/20, trained 20/20 on held-out targets, fixed yaw.
 - [x] Establish GitHub source-of-truth layout, `AGENTS.md`, `TODO.md`, handoff/docs, unit-test and CI scaffolding.
 
-## Next research/engineering work (prioritized, subject to orientation results)
+## Next research/engineering work (prioritized after successful orientation test)
 
-- [ ] Validate navigation gains across multiple **independent** training RNG seeds and disjoint evaluation scenarios; report success rate, confidence intervals/variance, steps, and compute cost.
+- [ ] Validate orientation/navigation gains across multiple **independent** training RNG seeds and disjoint evaluation scenarios; report success rate, confidence intervals/variance, steps, and compute cost (see NEXT above).
 - [ ] Add a camera-turning action and teach the agent to navigate using its own control of yaw/pitch, without the controller freezing orientation. Test randomized camera yaw after spawn.
 - [ ] Replace privileged numerical target-direction observations with visually detectable objectives; log exactly what information the policy receives. Keep structured *human-equivalent* HUD/inventory signals as an optional experiment, not hidden map data.
 - [ ] Develop real object interaction: look at and break a block, acquire a dropped item naturally, switch hotbar slots, place blocks, and open/use inventory/crafting UI. Connect the existing first-seen-item reward detector to agent-caused events.
