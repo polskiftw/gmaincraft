@@ -2,6 +2,71 @@
 
 This file is the operating contract for anyone (including a future ChatGPT conversation) editing **polskiftw/gmaincraft**. Treat the GitHub repository, not the conversation transcript or an assumed local checkout, as the authoritative codebase.
 
+## NEWEST — clean visual observations, self-supervision and real events (Nov 2, 2026)
+
+**Read `docs/VISUAL_SELF_SUPERVISION.md` BEFORE the next feature or training
+run.** Connected Gentoo Shell `/workspace` has GPU CUDA and direct Git;
+keep using the shell, not the GitHub connector. All previous ignored worlds,
+checkpoints, datasets and user files must remain intact. The active mission
+remains from-scratch learned Any% on unseen Minecraft Java seeds, not scripted
+completion. **No unrestricted first-log skill has been demonstrated.**
+
+The original actual 84x84 RGB observations contained large **red MCio
+command-chat overlays**. `vision_settings.ensure_clean_visual_options` now
+atomically sets `chatScale:0.0` with `chatVisibility:0` in dedicated local
+`DemoInstance/options.txt` before MCio launch: keeps HUD and normal camera
+controls. Do NOT use `chatVisibility:2`: Minecraft teleports then consistently
+reports pitch/yaw=0, invalidating seeded resets. `sendCommandFeedback false`
+did not fix error chat. The user's own Minecraft options are untouched.
+
+New `experiments/visual_dynamics_collect.py` captures the agent's OWN random
+normal Minecraft action/RGB pairs only, locally, with distinct train/validation
+scenario+action RNG seeds. 13 valid training episodes (507 before/after pairs)
+and 4 held-out validation episodes (136 pairs) were obtained; collector
+initially planned 14 train episodes but timed out after 13, so **do not claim
+14**. New fully random-weight CUDA inverse visual predictors achieved held-out
+**camera 42.6% (majority 23.5%)**, attack **84.6% (baseline 52.2%)**,
+movement **15.4% (baseline 14.7%)**. Camera-locked movement-only dataset
+achieved **38.5% vs 14.7%**; a causal GRU action-effect diagnostic achieved
+movement20.6%, camera44.9%, attack81.6% on the mixed dataset. **Offline
+self-supervised diagnostics are NOT yet a recurrent RL policy or first-log
+success.** `--vision-init-tag` in V2/V3 training supports self-collected
+raw-RGB CNN initializer, not outside pretrained models; downstream learning
+advantage remains unverified.
+
+Minecraft mining statistics (`minecraft:mined` and `minecraft:picked_up`) now
+have private evaluator caching at EACH MCio game tick in `MCioAgentBridge`;
+policy `AgentView` stays only RGB. **CRITICAL BUG HISTORY:** `v3event01`
+training result INVALID: per-episode stats cache began at 0 and then received
+cumulative absolute mine counts, producing fake 1+2+3+4+5+6=21 mined counts.
+DO NOT treat `v3event01` as clean evidence or warm start from it. Fixed with
+`CumulativeMinedTracker` scoped to a shared world arena; verified actual
+mine/no-attack/mine **1/0/1** delta across resets in `statfix01`. A clean
+`v3eventfixed01` warm-start from prebug checkpoint `v3clean01` ran 10 CUDA
+training episodes, **3 real mined oak blocks, 0 inventory logs**. Frozen
+held-out paired restricted stationary audit: `v3clean01` mined4/4, picked0/4;
+`v3eventfixed01` mined4/4, picked2/4. Fully unrestricted near is still 0/4
+for both. Different training budgets prevent causal attribution to reward.
+New natural seed31415927 with identical spawn: random and frozen V3 each
+0/240-tick logs; pipeline verified, no general-world transfer proven.
+
+`--decision-ticks 12` is separately schema-tagged V3 (6 is V2); old V1/V2
+checkpoints remain supported. `v3clean01` started 28 episodes but timed out
+after 15 recorded; LAST CHECKPOINT was after 14. Never claim 28 complete.
+An unexplained MCio I/O **slowdown to ~3.9s per 300 game ticks**, independent
+of Torch, viewport, chat scale or 6/12 action interval, is under investigation.
+Profiling shows MCio game I/O, NOT GPU inference (~0.09s). Do not blindly
+change host services, driver, sandbox mounts or GPU settings. When 90-second
+bridge calls time out, inspect valid JSONL+atomic checkpoints and terminate
+ONLY orphaned processes owned by the experiment.
+
+**NEXT:** pursue evidence-backed sample-efficient visual motion modeling,
+credit assignment and genuine unrestricted first-log acquisition. Compare
+against matched scripted 8/12 controlled-near baseline, then unseen genuine
+natural survival seeds; no infinite PPO blindly. Use own RGB/action data,
+not human/external pretrained models. Document every result in the ledger,
+commit+push code/docs, NEVER Git-add local models or world saves.
+
 ## NEWEST — factorized visual policy and real learning-efficiency audit (Nov 2, 2026)
 
 **Read `docs/FACTOR_POLICY_REVIEW.md` BEFORE any more training.** V2 is a

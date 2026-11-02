@@ -21,9 +21,16 @@ MOVE_KEYS = ((), ('W',), ('S',), ('A',), ('D',), ('W', 'SPACE'))
 LOOK_DELTAS = ((0.,0.), (-60.,0.), (60.,0.), (0.,-60.), (0.,60.))
 HEAD_SIZES = (len(MOVE_KEYS), len(LOOK_DELTAS), 2)
 SCHEMA = 'factorized_v2_move6_look5_attack2_interval6'
+SCHEMA_12 = 'factorized_v3_move6_look5_attack2_interval12'
 
 
-def action_for_factors(factors, remaining_ticks=None):
+def action_schema(decision_ticks):
+    if decision_ticks == 6:return SCHEMA
+    if decision_ticks == 12:return SCHEMA_12
+    raise ValueError('Supported action intervals are 6 or 12 game ticks')
+
+
+def action_for_factors(factors, remaining_ticks=None, decision_ticks=ACTION_TICKS):
     if (not isinstance(factors, (tuple, list)) or len(factors) != 3 or
             any(not isinstance(x, int) or isinstance(x, bool) for x in factors)):
         raise ValueError('Expected (movement, camera, attack) integer triple')
@@ -32,7 +39,8 @@ def action_for_factors(factors, remaining_ticks=None):
         raise ValueError('Invalid factorized action indices')
     if remaining_ticks is not None and (not isinstance(remaining_ticks,int) or remaining_ticks < 1):
         raise ValueError('Remaining game ticks must be positive')
-    ticks = min(ACTION_TICKS, remaining_ticks) if remaining_ticks is not None else ACTION_TICKS
+    action_schema(decision_ticks)
+    ticks = min(decision_ticks, remaining_ticks) if remaining_ticks is not None else decision_ticks
     return AgentAction(keys=MOVE_KEYS[m] + (('LEFT_BUTTON',) if attack else ()),
                        look_dx=LOOK_DELTAS[l][0], look_dy=LOOK_DELTAS[l][1],
                        ticks=ticks)

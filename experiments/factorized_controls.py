@@ -13,6 +13,7 @@ import math
 import random
 import re
 import sys
+import time
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -28,6 +29,7 @@ DATA=ROOT/'logs'
 
 def run_case(arena,case,mode,max_ticks,seed):
     ob=arena.reset(case)
+    started=time.perf_counter()
     bridge=MCioAgentBridge(arena.client.ctrl,ob)
     rng=random.Random(seed)
     ticks=0;decisions=0
@@ -70,7 +72,8 @@ def run_case(arena,case,mode,max_ticks,seed):
     return dict(outcome='success' if natural_log_count(bridge.packet) else 'timeout',
                 ticks=ticks,decisions=decisions,initial_distance=round(before_distance,2),
                 initial_angle=round(before_angle,2),final_distance=round(d,2),
-                final_angle=round(angle,2),inventory_logs=natural_log_count(bridge.packet))
+                final_angle=round(angle,2),inventory_logs=natural_log_count(bridge.packet),
+                wall_seconds=round(time.perf_counter()-started,3))
 
 
 def main(argv=None):
@@ -81,10 +84,13 @@ def main(argv=None):
     ap.add_argument('--max-ticks',type=int,default=360)
     ap.add_argument('--modes',nargs='+',choices=MODES,default=list(MODES))
     ap.add_argument('--visible',action='store_true')
+    ap.add_argument('--frame-width',type=int,default=320)
+    ap.add_argument('--frame-height',type=int,default=180)
     args=ap.parse_args(argv)
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,31}',args.run_tag):ap.error('Invalid tag')
     if args.eval<1 or args.max_ticks<10:ap.error('Invalid counts')
-    args.frame_width=320;args.frame_height=180
+    if not 96<=min(args.frame_width,args.frame_height) and max(args.frame_width,args.frame_height)<=1920:
+        ap.error('Invalid viewport dimensions')
     output=DATA/f'factor_controls_{args.run_tag}.jsonl'
     save=ROOT/'mcio-data'/'instances'/'DemoInstance'/'saves'/f'MDL_FactorControls_{args.run_tag}'
     if output.exists() or save.exists():ap.error('Refusing overwrite')

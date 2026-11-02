@@ -4,6 +4,38 @@
 
 **Current reality (2026-11-02):** Minecraft Java 1.21.3 + MCio and three seeded numerical-navigation runs are verified. Two random-initialized, RGB-feature mouse+ATTACK models learn to aim at a controlled oak trunk (audited 15/20 and 18/20 real Minecraft logs). Two independently trained RGB-feature W/A/S/D policies learn to approach a **dropped** oak log: in a fresh 32-case offset-item audit, the best reaches **30/32**, versus **21/32** for just holding W. Combining the learned aiming and collection policies yields **51/56 real mined-log inventory pickups** over two fresh camera-angle sets for pickup model `p02`, versus **49/56** with scripted W. This does **not** establish a meaningful advantage in the centered-tree setup, and it still uses hand-engineered pixel masks, controller-only scalar rewards, fixed 100-tick attack holds, a single flat-world template, and separate training for the two neural stages. No general tree recognition or Any% speedrunning.
 
+## Newest: self-collected vision learning + verified Minecraft events (2026-11-02)
+
+We inspected real policy screenshots and found that MCio reset error chat was
+obscuring the tree. The **dedicated MCio test instance** now uses
+`chatScale:0.0`, preserving crosshair/HUD and normal camera behavior without
+changing your everyday Minecraft settings. RGB is still the agent's only
+policy observation; no hidden coordinates/commands are exposed.
+
+New CUDA experiments learn visual action effects from the agent's **own
+random Minecraft inputs**, with no human demonstrations or externally
+pretrained weights. Held-out same-arena action-prediction accuracy for camera
+was 42.6% versus a 23.5% majority baseline; attack 84.6% versus 52.2%; and
+movement only 15.4% versus 14.7%. With camera fixed, movement prediction
+improved to 38.5%. A separate GRU slightly improved the diagnostic, but is
+**not** yet integrated into the live RL agent. This is perceptual learning,
+**not** Minecraft playing competence.
+
+Minecraft's real mined-block and pickup counters are now available as
+**evaluator-only** learning signals. A cumulative-counter reset bug invalidated
+one experimental reward run; we kept it excluded, then verified mine/no-
+attack/mine actually scores **1/0/1 new blocks** in the real game. Clean
+follow-up training mined three genuine logs but collected none. A paired
+restricted frozen test yielded **2/4 inventory logs** for the corrected-
+event checkpoint, versus **0/4** for the earlier checkpoint; fully free
+movement/look still scored **0/4**. Genuine random-seed survival world
+transfer remains **0 logs**. The end-to-end Any% goal is still unsolved.
+
+See [docs/VISUAL_SELF_SUPERVISION.md](docs/VISUAL_SELF_SUPERVISION.md) for the
+complete evidence, reproducible commands, tests, known MCio throughput
+regression and next research gate. All trained models, raw screenshots and
+worlds stay local/Git-ignored. Existing checkpoint families are preserved.
+
 ## Latest research gate: V2 factorized control and measured limitations
 
 The model now chooses **movement, camera, and attack simultaneously every 6

@@ -27,16 +27,21 @@ def main():
         ob=arena.reset(LogCase(0.,0.,0,2,0.,29.25))
         bridge=MCioAgentBridge(arena.client.ctrl,ob)
         assert not natural_log_count(bridge.packet)
+        baseline_mined=bridge.stat_total('minecraft:mined','minecraft:oak_log')
+        baseline_pickup=bridge.stat_total('minecraft:picked_up','minecraft:oak_log')
         distance,angle=arena.geometry(ob)
         print(f'FIXTURE initial distance={distance:.3f} angular_error={angle:.3f}',flush=True)
         for i in range(20):
             bridge.apply(action_for_factors((0,0,1)))
-        print(f'AFTER 120 TICKS left held: wood_inventory={natural_log_count(bridge.packet)}',flush=True)
+        print(f'AFTER 120 TICKS left held: wood_inventory={natural_log_count(bridge.packet)} '
+              f'mined_delta={bridge.stat_total("minecraft:mined","minecraft:oak_log")-baseline_mined}',flush=True)
         for i in range(8):
             bridge.apply(action_for_factors((1,0,0)))
             if natural_log_count(bridge.packet): break
         result=natural_log_count(bridge.packet)
-        print(f'VANILLA LOG ACQUISITION={result}; approach_steps={i+1}; pos={bridge.packet.player_pos}',flush=True)
+        print(f'VANILLA LOG ACQUISITION={result}; approach_steps={i+1}; pos={bridge.packet.player_pos} '
+              f'mined_delta={bridge.stat_total("minecraft:mined","minecraft:oak_log")-baseline_mined} '
+              f'picked_up_delta={bridge.stat_total("minecraft:picked_up","minecraft:oak_log")-baseline_pickup}',flush=True)
         if result < 1:raise RuntimeError('No wood acquired after 120-tick held attack and ordinary approach')
         return result
     launch_world('MDL_ContinuousMineProbe_'+args.run_tag,args,trial)

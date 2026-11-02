@@ -135,11 +135,12 @@ class FactorizedPPOAgent:
     no privileged target position, trainer mask or reward in evaluation.
     """
     def __init__(self, checkpoint, device='auto'):
-        from .vision_factorized import FactorizedPPOTrainer,SCHEMA,action_for_factors
+        from .vision_factorized import FactorizedPPOTrainer,action_schema,action_for_factors
         from .vision_ppo import PixelHistory
         self.trainer=FactorizedPPOTrainer(device=device,seed=0)
         metadata=self.trainer.load_weights(checkpoint)
-        if metadata.get('schema')!=SCHEMA:
+        self.decision_ticks=int(metadata.get('decision_ticks',6))
+        if metadata.get('schema')!=action_schema(self.decision_ticks):
             raise ValueError('Invalid factorized policy schema')
         self.history=PixelHistory()
         self.started=False
@@ -149,7 +150,7 @@ class FactorizedPPOAgent:
         frame=(self.history.append(view) if self.started else self.history.reset(view))
         self.started=True
         choices,_,_=self.trainer.act(frame,greedy=True)
-        return self.action_for_factors(choices,remaining)
+        return self.action_for_factors(choices,remaining,decision_ticks=self.decision_ticks)
 
 
 def make_agent(mode, action_seed, *, aim_weights=None, pickup_weights=None,

@@ -2,6 +2,55 @@
 
 **Last curated:** 2026-11-02. This is the live source of truth for project status. **All agents must read and update this file alongside substantive changes** (see [AGENTS.md](AGENTS.md)). Never mark a task done from source code alone; require actual run evidence where appropriate.
 
+## Current priority: perception and authentic mining events (2026-11-02)
+
+- [x] Inspect actual policy RGB screenshots; confirm command error overlays
+  obscure much of 84x84 scene. Add dedicated MCio `chatScale:0.0` option fix;
+  verify in real game it preserves camera/HUD. Hidden chatVisibility2 BREAKS
+  yaw/pitch reset, do not use. No changes to user's normal Minecraft options.
+- [x] Self-collect random action/RGB sequences using normal Minecraft inputs;
+  13 train/4 validation same-arena episodes (507/136 action pairs), distinct
+  RNG seeds; longer first collector run timed out after 13 valid files.
+- [x] Train own-action inverse-dynamics CNN on CUDA from random weights:
+  held-out camera **42.6%** vs majority23.5%, attack **84.6%** vs52.2%,
+  movement **15.4%** vs14.7%. Camera-locked movement **38.5%** vs14.7%.
+  Explicit temporal difference and GRU diagnosed but did NOT solve simultaneous
+  movement/camera confusion. Models are diagnostics, not Minecraft skill.
+- [x] Add optional `--vision-init-tag` loading ONLY CNN representation learned
+  from user's own Minecraft RGB/actions, with random policy heads. No verified
+  downstream game success from pretraining. No outside model weights.
+- [x] Separate schema-tagged **12-game-tick V3** factorized decisions from 6
+  ticks; preserve old checkpoint compatibility. `v3clean01` interrupted after
+  15 recorded train episodes, saved valid checkpoint after 14; never claim 28.
+- [x] Add Minecraft real mined/picked-up statistic reader on EACH MCio tick,
+  private evaluator only (not AgentView).
+- [x] **Invalidate `v3event01`** reward experiment: cumulative stat jumps
+  were incorrectly treated as per-episode new mined blocks. Implement
+  `CumulativeMinedTracker` scoped to live arena; real Minecraft negative
+  control `statfix01` mine/no-attack/mine yields **1/0/1** new oak blocks.
+- [x] Run corrected event reward experiment `v3eventfixed01` from clean
+  `v3clean01`: 10 new CUDA train episodes, **3 truly mined blocks, zero
+  collected inventory logs**. Paired frozen restricted audit: 4/4 mined both,
+  0/4 collected clean checkpoint versus 2/4 for continued checkpoint. All
+  unrestricted near **0/4**; no direct evidence event reward caused the gain.
+- [x] Load V3 in genuine fixed-spawn noise Minecraft survival world seed
+  31415927: 0 natural wood within 240 ticks for random and frozen V3,
+  exactly paired spawn, no observed transfer.
+- [ ] Resolve **unexplained MCio game I/O throughput regression**: now ~3.9s
+  per 300 game ticks even with no Torch; GPU model inference only~0.09s.
+  Chat scale / tiny viewport / 6 vs 12 action interval don't explain it.
+  Avoid unsafe host changes and keep frame-size comparisons fair.
+- [ ] **NEXT research gate:** make full-movement and camera action effects
+  separable with history/object-centric perception; evaluate online rather
+  than trusting offline classifier accuracy. Try replay-aware/sample-efficient
+  algorithms only with valid held-out tests, not stale PPO optimization.
+- [ ] Reach reliable **unrestricted** real mined-log + inventory pickup on
+  diverse controlled scenes and genuinely unseen natural worlds, then one
+  uninterrupted wood-to-crafting episode. Any% still unachieved.
+
+See `docs/VISUAL_SELF_SUPERVISION.md` and `docs/FACTOR_POLICY_REVIEW.md`.
+All local world saves/checkpoints/datasets/frames are Git-ignored.
+
 ## Current priority: V2 learning-efficiency gate (2026-11-02)
 
 - [x] Replace V1's dominating 80-tick attack-only macro with **3 simultaneous

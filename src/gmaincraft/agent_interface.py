@@ -74,12 +74,21 @@ class MCioAgentBridge:
         self.controller = controller
         self.packet = initial_packet
         self.input_manager = env_util.InputStateManager()
+        # Private evaluator-only event counters, never included in AgentView.
+        # Updated on EVERY intermediate game tick so stats deltas are not
+        # lost during a multi-tick AgentAction.
+        self._stats = env_util.StatsCache()
+        self._stats.update_cache(initial_packet)
         self.input_map = mcio_env.INPUT_MAP
         if not ALLOWED_KEYS <= set(self.input_map):
             raise RuntimeError('MCio input map lacks expected keys')
 
     def view(self):
         return AgentView.from_packet(self.packet)
+
+    def stat_total(self, category, item):
+        """Privileged Minecraft statistics; evaluator only, NOT policy input."""
+        return int(self._stats[category][item])
 
     def apply(self, action: AgentAction):
         from mcio_ctrl import network
@@ -98,6 +107,7 @@ class MCioAgentBridge:
             if observed is None or observed.version != network.MCIO_PROTOCOL_VERSION:
                 raise RuntimeError('Missing or invalid MCio observation')
             self.packet = observed
+            self._stats.update_cache(observed)
         return self.view()
 
 

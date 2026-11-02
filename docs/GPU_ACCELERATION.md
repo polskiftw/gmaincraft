@@ -175,3 +175,20 @@ stage episodes), `mixstable01` (48 interleaved episodes), and `recordpilot01`
 **unrestricted first-log success is still 0/12** on the matched benchmark.
 More GPU training loops do not fix the policy's observed continuous turning
 and drifting. See [FACTOR_POLICY_REVIEW.md](FACTOR_POLICY_REVIEW.md).
+
+## New CUDA self-supervision and MCio throughput warning
+
+The current GPU runs successfully trained from RANDOM weights on the agent's
+own Minecraft RGB/action data, with RTX 4070 SUPER/CUDA in 0.4-0.8s for
+small offline 30-epoch self-supervised experiments. However, current REAL
+Minecraft synchronous game loop is unexpectedly slow (~3.9s per 300 game
+ticks). Profiling: ~0.09s neural inference, ~0.015s RGB resize, ~3.876s
+MCio controller/game I/O for a representative 300-tick episode. A no-Torch
+control takes ~5.0s. Halving frame dimensions, reverting chat scale,
+removing command-feedback gamerule and switching 6/12 action intervals did
+not restore old throughput. Cause **NOT yet verified**; do not assume
+NVIDIA renderer or CUDA configuration is failing. The nested OpenGL GPU
+renderer and actual CUDA tensor computation both still pass preflight.
+
+Full results, valid real Minecraft mined-block event attribution and
+limitations: [`VISUAL_SELF_SUPERVISION.md`](VISUAL_SELF_SUPERVISION.md).

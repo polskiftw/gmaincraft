@@ -289,3 +289,37 @@ read-back of 40 real game decisions and two episode endings passed.
 **Do not repeatedly optimize PPO on stale saved trajectories**; off-policy
 learning requires algorithms appropriate for replay. Frozen natural-world
 testing uses `--modes joint_factorized --factorized-model NEWV2`.
+
+## New self-supervised visual experiments, event verification and V3
+
+Read [`VISUAL_SELF_SUPERVISION.md`](VISUAL_SELF_SUPERVISION.md) for exact
+verified results, specific run tags, GPU/CPU throughput limitations, and
+untrusted/invalid experiment exclusions. This is new runnable example code,
+not a claim of model success:
+
+```bash
+cd /workspace
+.venv/bin/python tools/gpu-preflight.py
+.venv/bin/python -m unittest discover -s tests -q
+# Real vanilla mining-stat no-attack negative control, NEW tag only:
+tools/run-mcio-viewer.sh .venv/bin/python -u -B experiments/mine_stat_reset_probe.py --run-tag NEWSTAT01 --visible
+# Capture own random normal Minecraft action/RGB traces (new UNIQUE tags):
+tools/run-mcio-viewer.sh .venv/bin/python -u -B experiments/visual_dynamics_collect.py --run-tag NEWTRAIN01 --split train --scenario-seed 1234 --action-seed 4321 --episodes 5 --decisions 30 --visible
+# A second independent validation capture is required to train the classifier.
+# New V3 policy uses 12-tick controls and a correctly corrected REAL event reward:
+tools/run-mcio-viewer.sh .venv/bin/python -u -B experiments/joint_log_factorized.py --run-tag NEWV301 --episodes 10 --eval 2 --max-ticks 240 --decision-ticks 12 --mine-event-bonus 6 --device cuda --skip-eval --visible
+```
+
+The script `train_inverse_dynamics.py` uses only RGB frame pairs and the
+agent's own chosen actions as labels, never external videos/human
+trajectories/pretrained weights; GRU action-effect memory is so far an
+**offline diagnostic**, not an online Minecraft controller. Ignore previous
+`v3event01` miner-count score (cumulative-stat contamination). Valid
+per-world-episode event counts require `CumulativeMinedTracker`.
+
+The Minecraft client is measured at ~3.9 s/300 simulation ticks in the
+current bridge environment, mostly game-I/O, **not GPU inference**;
+old runs were faster. Cause unknown. Keep runs below bridge timeout or
+inspect completed local checkpoints; don't broaden filesystem sandbox or
+make arbitrary host NVIDIA changes. All model checkpoints, world saves,
+rollouts and images stay under Git-ignored local folders.

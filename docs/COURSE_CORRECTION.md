@@ -68,6 +68,40 @@ verifies fixed matching spawn *for these two modes on this world*, not across
 all seeds or all game versions. More seeds / longer episodes are still needed.
 As before, Gamescope exited 139 after the Python child completed.
 
+## New visual-memory / real-event research gate (Nov 2, 2026)
+
+The latest scope and definitive run ledger are documented in
+[`VISUAL_SELF_SUPERVISION.md`](VISUAL_SELF_SUPERVISION.md). Actual policy
+screenshots were obscured by command chat; the dedicated MCio test instance
+now hides that overlay through `chatScale:0.0`, leaving vanilla HUD and camera
+working. It does not modify user's normal Minecraft options.
+
+CUDA models learned to identify camera and attack effects from the agent's
+own random normal Minecraft actions, using only RGB before/after frames.
+Camera 42.6% vs a 23.5% majority baseline, attack 84.6% vs52.2%, but
+movement15.4% vs14.7% in the simultaneous-action scene. With camera held
+still, movement recognition improved to38.5%. A causal GRU and pixel-delta
+encoder were tested, but are still offline diagnostics, NOT deployed online
+memory or general-world first-log learning.
+
+Per-game-tick Minecraft mined/picked-up statistics are now evaluator-only
+signals; policy remains pixel-only. **Do not use `v3event01` as scientific
+evidence**: reset of per-episode MCio statistic caches gave fake cumulative
+new-block rewards. A shared world-session counter fixed it, verified with
+real mine/no-attack/mine=1/0/1. Valid `v3eventfixed01` trained 10 new CUDA
+episodes (3 true mined,0 collected); paired frozen *restricted pre-aimed*
+test: mined4/4 for both old/new checkpoints, collected0/4 vs2/4;
+unrestricted movement/look still0/4 for both. Natural Minecraft seed31415927
+also gave0/240-tick logs for random and V3 at same spawn. Training-budget
+differences prohibit attributing better pickup to the event bonus itself.
+
+**Do not blindly scale PPO.** The major unresolved operational problem is
+MCio synchronous I/O throughput (~3.9s/300ticks) versus CUDA policy
+inference~0.09s, and no-ML controls are also slow. Investigate separately
+without weakening host sandbox or guessing at NVIDIA driver changes.
+Focus on disentangling camera/movement perception, temporal control, and
+reliable unrestricted *actual inventory* pickup before adding crafting stages.
+
 ## Latest hard evidence: independent controls beat the learned V2 policy
 
 V2 now has simultaneous movement/look/attack selections every 6 game ticks;

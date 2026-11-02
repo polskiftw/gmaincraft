@@ -120,3 +120,33 @@ This is a functional architecture/science scaffold, NOT successful general
 visual control: repeated real Minecraft experiments reported 0/12
 unrestricted near-log successes for all three evaluated V2 checkpoints.
 See `docs/FACTOR_POLICY_REVIEW.md` before tuning or stacking extra stages.
+
+## Latest research additions: RGB learning, event reliability and V3
+
+See [`VISUAL_SELF_SUPERVISION.md`](VISUAL_SELF_SUPERVISION.md) for the
+scientific ledger and measurable limits. The dedicated MCio instance now
+uses `chatScale:0.0`, keeping the normal HUD/crosshair and hiding giant
+admin-reset chat text that had obscured policy RGB frames. This does NOT
+change user's own Minecraft game options. `AgentView` remains RGB-only.
+
+Own-action visual data: `visual_dynamics_collect.py` saves only actual
+Minecraft RGB/action pairs in ignored local NPZ files, split by complete
+train/validation episodes. `inverse_dynamics.py` learns camera/attack/move
+effects from random weights and the agent's own actions; `temporal_pixels.py`
+offers a pixel-only delta mode; `recurrent_inverse.py` adds causal prior-
+action GRU memory for offline diagnostic accuracy. None has replaced the
+online Minecraft RL actor. `joint_log_factorized.py --vision-init-tag TAG`
+can initialize its visual CNN only from the user's self-collected raw RGB
+encoder; action/policy heads remain random. Downstream first-log gain is
+not demonstrated.
+
+Action time is separately schema-tagged V2(6) or V3(12) game ticks; older
+models remain intact. `MCioAgentBridge` privately accumulates Minecraft
+actual mined/picked-up stats on EVERY game tick, and arena-scoped
+`CumulativeMinedTracker` corrects newly observed cumulative stat values
+across per-episode cache resets. This fixed a major experiment-invalidating
+mined-block reward bug; no stats are ever policy inputs. Corrected real
+Minecraft test mine/no-attack/mine=1/0/1; frozen V3 can mine placed logs
+with camera/movement locked, but unrestricted first-log acquisition is
+still zero in measured tests. Model weight size/architecture alone is not
+proof of useful learned Minecraft ability.

@@ -5,7 +5,8 @@ import sys
 import unittest
 import numpy as np
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/'src'))
-from gmaincraft.vision_factorized import ACTION_TICKS,HEAD_SIZES,SCHEMA,action_for_factors
+from gmaincraft.vision_factorized import (ACTION_TICKS,HEAD_SIZES,SCHEMA,
+                                           SCHEMA_12,action_schema,action_for_factors)
 
 
 class FactorActionTests(unittest.TestCase):
@@ -18,6 +19,11 @@ class FactorActionTests(unittest.TestCase):
         self.assertEqual(action_for_factors((5,4,1),2).ticks,2)
         self.assertEqual(HEAD_SIZES,(6,5,2))
         self.assertEqual(ACTION_TICKS,6)
+        self.assertEqual(action_for_factors((1,2,1),decision_ticks=12).ticks,12)
+        self.assertEqual(action_for_factors((1,2,1),remaining_ticks=7,decision_ticks=12).ticks,7)
+        self.assertEqual(action_schema(6),SCHEMA)
+        self.assertEqual(action_schema(12),SCHEMA_12)
+        with self.assertRaises(ValueError):action_schema(10)
 
     def test_invalid_or_privileged_inputs(self):
         for value in [(6,0,0),(0,5,0),(0,0,2),(-1,0,0),(0,),(True,0,0),(0,'give',1)]:

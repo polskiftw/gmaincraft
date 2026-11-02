@@ -2,6 +2,57 @@
 
 **Last verified: 2026-11-02.** Canonical code: [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. **Newest milestone:** learn movement W/A/S/D from real RGB features (2 independently trained models; fresh fixture audit p01 **30/32**, p02 **24/32**, always-W 21/32); then **combine frozen RGB aim/ATTACK and pickup policies** on *real mined logs* (two independent camera-angle sets, trained p02 **51/56**, hardcoded W **49/56**, untrained movement 21/56). Earlier numerical-navigation and RGB log-aiming milestones remain preserved; `docs/EXPERIMENTS.md` records all results. The initial uncleaned aim 12/14 and aborted first drop-distance audits are **invalid evidence**. No general world-seed Minecraft speedrunning. Do not ask for old test logs.
 
+## MOST RECENT HANDOFF — clean RGB, self-learning, stats repair, V3 (2026-11-02)
+
+Read **`docs/VISUAL_SELF_SUPERVISION.md`** first for complete verified
+findings, file paths, exact experiment tags and next research gate. Latest
+code is currently on Git main (check `git status`/`git log`); use connected
+Gentoo Shell for direct Git and real NVIDIA RTX 4070 SUPER CUDA tests. Do
+not replace random-weight learner with human/external pretrained models.
+No autonomous first-log ability yet.
+
+The agent's 84x84 RGB captured huge red admin-reset chat: fixed by writing
+`chatVisibility:0`, `chatScale:0.0` only in dedicated local MCio DemoInstance.
+**Never** set `chatVisibility:2`: it consistently caused teleported yaw/pitch
+to report zero despite correct position and would contaminate all episodes.
+Real clean screenshot probe exists under Git-ignored `artifacts/`.
+
+New randomized self-action RGB collection and CNN inverse-dynamics training:
+13 valid train episodes / 507 frame-action pairs, 4 held-out episodes /136
+pairs; camera42.6% vs majority23.5%, attack84.6% vs52.2%, movement15.4%
+vs14.7%. Camera-fixed movement-only 38.5% vs14.7%. Separate causal GRU
+reached 20.6% movement, 44.9% camera,81.6% attack on same joint validation,
+**not integrated in online agent**. Raw self-trained visual encoder may
+initialize V2/V3 via `--vision-init-tag`, no downstream benefit verified.
+
+V3 separately schema-tags 12-tick decisions (V2 remains 6), actual GPU
+`v3clean01` interrupted at 15 recorded episodes, valid checkpoint after
+14, limited stationary training wins. **INVALIDATE `v3event01`:** cumulative
+stat cache reset caused fake 1+2+3+4+5+6 event counts. Preserve invalid
+checkpoint for forensic history but never warm-start/claim improvement.
+**Correct FIX:** privileged Minecraft `minecraft:mined` and
+`minecraft:picked_up` event cache updates every tick; shared
+`CumulativeMinedTracker` persists between repeated episode bridge resets.
+Real negative control `statfix01` gave **mine/no-attack/mine =1/0/1**.
+Corrected `v3eventfixed01` from prebug clean checkpoint, 10 new CUDA train
+episodes, 3 real mined blocks, **0 collected**. Paired frozen restricted
+stationary: both mine4/4, prebug clean picks0/4 vs corrected picks2/4;
+full unrestricted near remains 0/4 for both. These tests have different
+training budgets, so don't attribute gains to event reward alone.
+Natural seed31415927 paired spawn 0 wood for random and V3 in240 ticks.
+
+**Unresolved performance:** 300 game ticks now ~3.9 s inside MCio action
+send/receive, vs earlier ~0.6-0.8. CNN inference0.09s, resize0.015s,
+no-neural control ~5s, small viewport and chat setting don't fix. Do not
+speculate about driver, weaken sandbox, or run very large experiments.
+Bridge shell actions time out at90sec and Gamescope wrapper often segfaults
+139 AFTER child finishes; inspect actual JSONL/checkpoints and cleanup only
+owned orphaned processes. Prior saves/weights and local frames all ignored.
+
+**NEXT:** scientific review of action/visual representation + history for
+unrestricted tasks, then real hold-out Minecraft first-log acquisition and
+continuous wood-to-crafting; avoid adding many standalone toy subskills.
+
 ## CURRENT handoff: V2 factorized policy and scientific course correction
 
 Read `docs/FACTOR_POLICY_REVIEW.md` and the top of `TODO.md` first. This

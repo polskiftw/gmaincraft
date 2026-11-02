@@ -29,6 +29,8 @@ sys.path.insert(0, str(ROOT / 'src'))
 from gmaincraft.agent_interface import MCioAgentBridge, natural_log_count
 from gmaincraft.vision_ppo import PPOTrainer, PixelHistory, Transition, action_for_index
 from gmaincraft.joint_curriculum import LogCase, sample_cases
+from gmaincraft.vision_settings import ensure_clean_visual_options
+from gmaincraft.reward_events import CumulativeMinedTracker
 from log_interaction_probe import Client
 
 MCIO = ROOT / 'mcio-data'
@@ -46,6 +48,7 @@ class VariableLogArena:
         self.fy = math.floor(first_packet.player_pos[1]) - 1
         self.fz = math.floor(first_packet.player_pos[2])
         self.target = None
+        self.mined_events = CumulativeMinedTracker()
 
     def prepare(self):
         x,y,z = self.fx,self.fy,self.fz
@@ -89,7 +92,12 @@ class VariableLogArena:
                 natural_log_count(ob)==0):
                 break
         else:
-            raise RuntimeError('Reset did not settle to expected pose AND zero wood inventory')
+            raise RuntimeError(
+                f'Reset did not settle to expected pose AND zero wood inventory: '
+                f'expected=({px:.3f},{y+1:.3f},{pz:.3f},yaw={case.yaw:.3f},pitch={case.pitch:.3f}) '
+                f'last={tuple(round(float(v),3) for v in ob.player_pos)} '
+                f'yaw={float(ob.player_yaw):.3f} pitch={float(ob.player_pitch):.3f} '
+                f'wood={natural_log_count(ob)}')
         ob = self.client.advance(2)
         if natural_log_count(ob):
             raise RuntimeError('Old wood inventory reappeared after reset')
@@ -162,6 +170,7 @@ def launch_world(world_name, args, evaluator):
                             mcio_mode=types.MCioMode.SYNC,hide_window=not args.visible,
                             gpu_lib=None if args.visible else 'nvidia',
                             width=args.frame_width, height=args.frame_height)
+    ensure_clean_visual_options(MCIO/'instances'/'DemoInstance')
     launcher = instance.Launcher(opts)
     ctrl = None
     try:

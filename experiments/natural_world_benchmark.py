@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 from gmaincraft.agent_interface import MCioAgentBridge, natural_log_count
 from gmaincraft.natural_eval import MODES, make_agent, plan_runs
+from gmaincraft.vision_settings import ensure_clean_visual_options
 
 MCIO = ROOT / 'mcio-data'
 INSTANCE = 'DemoInstance'
@@ -162,6 +163,7 @@ def evaluate_one(p, args, weights, joint_checkpoint=None, factorized_checkpoint=
                             mcio_mode=types.MCioMode.SYNC,
                             hide_window=not args.visible, gpu_lib=None if args.visible else 'nvidia',
                             width=args.frame_width, height=args.frame_height)
+    ensure_clean_visual_options(MCIO/'instances'/INSTANCE)
     launch = instance.Launcher(opts)
     ctrl = None
     game_ticks = 0

@@ -19,7 +19,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
 from gmaincraft.joint_curriculum import sample_cases,sample_near_cases,sample_stationary_cases
-from gmaincraft.vision_factorized import FactorizedPPOTrainer,SCHEMA
+from gmaincraft.vision_factorized import FactorizedPPOTrainer,action_schema
 from joint_log_factorized import run_episode
 from joint_log_ppo import launch_world
 
@@ -59,9 +59,10 @@ def main(argv=None):
         digest=hashlib.sha256(path.read_bytes()).hexdigest()
         trainer=FactorizedPPOTrainer(device=args.device,seed=0)
         meta=trainer.load_weights(path)
-        if meta.get('schema')!=SCHEMA:
+        decision_ticks=int(meta.get('decision_ticks',6))
+        if meta.get('schema')!=action_schema(decision_ticks):
             raise ValueError(f'Incompatible {tag} schema')
-        models.append((tag,digest,trainer))
+        models.append((tag,digest,trainer,decision_ticks))
     cases={phase:PHASES[phase][0](args.eval_seed+PHASES[phase][2],args.cases)
            for phase in args.phases}
     output.parent.mkdir(parents=True,exist_ok=True)
@@ -74,12 +75,14 @@ def main(argv=None):
             for phase in args.phases:
                 mask=PHASES[phase][1]
                 for i,case in enumerate(cases[phase],1):
-                    for tag,digest,trainer in models:
+                    for tag,digest,trainer,decision_ticks in models:
                         result,_=run_episode(arena,trainer,case,max_ticks=args.max_ticks,
-                                              training=False,active_heads=mask)
+                                              training=False,active_heads=mask,
+                                              decision_ticks=decision_ticks)
                         totals[tag+'_'+phase]+=int(result['outcome']=='success')
                         out.write(json.dumps(dict(stage='eval',model=tag,model_sha256=digest,
                                                   phase=phase,case=i,active_heads=mask,
+                                                  decision_ticks=decision_ticks,
                                                   case_data=case.__dict__,**result))+'\n')
                         out.flush()
                         print(f'{phase} {i}/{len(cases[phase])} {tag} outcome={result["outcome"]} '

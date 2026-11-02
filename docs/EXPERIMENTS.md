@@ -17,6 +17,59 @@ This is the **verified evidence ledger**, not a roadmap. Add measured results he
 | `log_interaction_probe.py` (2026-11-02, MCP sandbox) | Test with controller-placed oak-log column in new copied disposable world, mouse (+120,+50) input changed yaw +18.00°/pitch +7.50°, reverse mouse restored 0/0; 100 ticks left-click mining then 11 ticks forward motion yielded **one oak log in observed inventory**. Launcher-to-finish 20.15s; Gamescope exit 139 after completion. | **Scripted INPUT PROBE, not learned behavior.** Controller /setblock and /tp only for setup; during mine/collect phase no admin commands and no `/give`; real break/pickup via vanilla game mechanics. |
 | `orientation_learner.py` (2026-11-02, MCP sandbox) | **3 independent** 300-episode policy/train/eval RNG runs: before 9/50, 7/50, 7/50; after **50/50 each** and extra unseen **50/50 each**. Training 299/300 successes each; learning 30.16s, 26.67s, 25.17s. | Real Minecraft rollouts but one flat-arena world template, numeric goal direction, no vision or learned yaw action; Gamescope exit 139 after completed child |
 
+## 2026-11-02 — Self-collected vision, V3 mining events and MCio I/O diagnosis
+
+See **[`VISUAL_SELF_SUPERVISION.md`](VISUAL_SELF_SUPERVISION.md)** for all
+measured data, sample counts, tagged run results, invalidated reward data and
+limitations. Summary of actual experiments (not future forecasts):
+
+- **Policy screenshot issue fixed.** Real 320x180 MCio RGB contained red
+  admin-command chatter obscuring game. Dedicated instance-only
+  `chatScale:0.0`, `chatVisibility:0` retained normal HUD/aim and removed it.
+  `chatVisibility:2` was proven to BREAK observed reset yaw/pitch; never use.
+- **Clean self-collected visual experience.** `dyntrain01`: 13 episodes/507
+  frame-action pairs (14th unfinished on timeout, not counted); `dynval01`:
+  4 distinct episodes/136 held-out pairs. Trained from random weights CUDA:
+  raw inverse action CNN validation movement15.4%, camera42.6%, attack84.6%
+  versus majority14.7%,23.5%,52.2%. Movement-only camera-locked data
+  38.5% prediction versus baseline14.7%. Alternative delta encoding and
+  strictly causal GRU diagnostic had modest/uneven gains and did NOT solve
+  mixed action control; these are NOT complete Minecraft policies.
+- **V3 interval 12.** 12-tick selectable action timing is schema-separated
+  from V2 6-tick policy; `v3clean01` had 15 completed training episodes by
+  bridge timeout but only 14 included in latest valid atomic checkpoint,
+  some restricted stationary mining/collection wins; unrestricted none.
+- **Minecraft actual event signal.** `eventstats01` mined and picked 1 actual
+  log via vanilla input; both `minecraft:mined` and `minecraft:picked_up`
+  increased by one. The original `v3event01` reward data are **INVALID**
+  because fresh per-episode MCio caches misread Minecraft cumulative mined
+  stat counts (fake 1+2+3+4+5+6). Its checkpoint should not be reused.
+- **Corrected reward and no-attack negative control.** Shared
+  `CumulativeMinedTracker` prevents resets from manufacturing mining; real
+  three-episode `statfix01` reports **1 mined, 0 mined (no attack), 1 mined**.
+  Clean `v3eventfixed01` from prebug checkpoint trained10 CUDA episodes,
+  **3 truly mined oak blocks**, 0 inventory pickups in training.
+- **Frozen same-case audit `v3fixedaudit01`.** Both pre-event V3 and continued
+  V3 mined4/4 logs in restricted pre-aimed station; inventory 0/4 vs2/4.
+  FULL unmasked movement/look/attack near scenario stayed 0/4 for both.
+  Different total training budgets: no proven effect of new event bonus.
+- **New actual natural world `v3worldtest01`.** Minecraft seed31415927,
+  same spawn (-15.5,76.0,16.5), random and frozen V3 each **0 logs** in240
+  game ticks. This verifies V3 natural-eval plumbing only, NOT world transfer.
+- **MCio throughput regression unexplained.** `profile01` 300ticks: ~3.876s
+  inside normal game action send/receive, versus 0.09s CNN inference and
+  0.015s RGB resize. No-Torch control5.008s, half viewport4.892s,
+  chat-scale and 6/12 decision timing did not recover earlier 0.6-0.8s.
+  Do not guess host causes or attribute to CUDA. Tests/CLI can run under
+  the shell timeout by using small fresh-tagged cohorts.
+
+**Conclusion:** genuine learning of some restricted mining/input effects,
+no demonstrated unrestricted first-log acquisition, no natural world
+survival skill, no completed Any% run. New experiments should target
+better pixel-only action/state representations, temporal credit, robust
+reward/dropped-item acquisition and sample efficiency, not raw token/episode
+count. Local video/screenshots/training data/checkpoints remain ignored.
+
 ## 2026-11-02 — V2 factorized action learning and matched controls
 
 **Read `FACTOR_POLICY_REVIEW.md` for complete methods and run commands.**
