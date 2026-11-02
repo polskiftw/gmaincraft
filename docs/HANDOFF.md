@@ -2,6 +2,25 @@
 
 **Last verified: 2026-11-02.** Canonical code: [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. **Newest milestone:** learn movement W/A/S/D from real RGB features (2 independently trained models; fresh fixture audit p01 **30/32**, p02 **24/32**, always-W 21/32); then **combine frozen RGB aim/ATTACK and pickup policies** on *real mined logs* (two independent camera-angle sets, trained p02 **51/56**, hardcoded W **49/56**, untrained movement 21/56). Earlier numerical-navigation and RGB log-aiming milestones remain preserved; `docs/EXPERIMENTS.md` records all results. The initial uncleaned aim 12/14 and aborted first drop-distance audits are **invalid evidence**. No general world-seed Minecraft speedrunning. Do not ask for old test logs.
 
+## NEW course correction (2026-11-02)
+
+Read `docs/COURSE_CORRECTION.md` and the highest-priority block of `TODO.md`
+first. Existing trained aim/pickup models remain valuable *diagnostic* baselines
+but have not transferred to general Minecraft. New source modules include
+`agent_interface.py` and `natural_eval.py`, plus the real seeded-world runner
+`experiments/natural_world_benchmark.py`. A pilot natural Minecraft seed
+314159265 was generated and run: 0 logs for idle, random, forward+attack and
+frozen `legacy_probe` within 100 ticks; no Python/game test error. Pilot
+spawn positions differed (original source default spawnRadius=10); **do not
+claim paired benchmark validity**. New `--prepare` fixes source spawnRadius=0
+and verifies natural noise terrain + exact worldgen seed. A SECOND real-game
+smoke test on new seed 271828183 ran idle and forward+attack for 25 ticks
+per mode; **both actual start positions matched exactly (0.5,77,0.5), yaw 0,
+pitch 0**, and both recorded zero logs. This verifies paired starting pose
+only for these two cases; longer multi-seed testing remains open. Gamescope still reports exit
+139 after Python child completes. Use normal `git` from Gentoo Shell on
+`/workspace`, commit/push; never expose scoped private Git credentials.
+
 ## First actions for the next assistant
 
 1. Read `AGENTS.md`, `TODO.md`, `README.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, `docs/EXPERIMENTS.md`, inspect relevant code/tests and recent GitHub commits.

@@ -163,3 +163,51 @@ For an orientation run, copy the lines containing `Original (fixed camera)`, `Or
 ## Public repository boundaries
 
 No auth tokens, personal folders, Minecraft profiles, world saves, trained model binaries, game binaries, screenshots containing sensitive information, or large logs should go into this repository unless explicitly considered and approved. Modifying your own Gentoo global environment is not part of normal development.
+
+## Natural survival-world transfer benchmark (2026-11-02)
+
+Use the connected **Gentoo Shell MCP** directly (`/workspace`). Git fetch,
+commit and push are available via a repository-scoped deploy SSH key: there is
+no need for a GitHub connector while the shell is connected. The `--prepare`
+phase uses a Minecraft 1.21.3 server to generate **normal noise terrain**
+with distinct fixed seeds; it verifies saved worldgen settings, and edits the
+**new benchmark source world only** to set the Minecraft `spawnRadius` gamerule
+to `0`, preventing different benchmark modes starting at scattered spawn
+positions. The temporary generator server binds to loopback 127.0.0.1;
+there is no need to expose the local offline server to LAN. It never modifies your real saves, `DemoWorld` or previously
+collected checkpoints.
+
+```bash
+cd /workspace
+.venv/bin/python experiments/natural_world_benchmark.py --run-tag n01 --world-seeds 314159266,271828183 --max-ticks 1200 --dry-run
+.venv/bin/python experiments/natural_world_benchmark.py --run-tag n01 --world-seeds 314159266,271828183 --max-ticks 1200 --prepare
+tools/run-mcio-viewer.sh .venv/bin/python -u -B experiments/natural_world_benchmark.py --run-tag n01 --world-seeds 314159266,271828183 --max-ticks 1200 --visible
+```
+
+The full run starts four successive Minecraft instances for each seed and
+may exceed the shell tool's 90-second command timeout. For short verification
+use one or two `--modes` and a smaller `--max-ticks`, with a unique run tag.
+A run tag owns its source worlds, scored copies and local JSONL results;
+**never reuse it** for reruns. Generate a new tag and new source worlds.
+Your sandbox must use `--visible` and `tools/run-mcio-viewer.sh` due to known
+headless EGL failure. Gamescope may return exit 139 after the benchmark
+child successfully closes: verify JSONL output, not just wrapper exit status.
+
+`idle`, `random` and `forward_attack` are intentionally weak baselines.
+`legacy_probe` loads existing ignored `rgb02` aim and `p02` pickup checkpoints
+but retains a fixed 100-tick mining hold and scripted handoff. It is **not**
+a trained end-to-end controller. Only normal Minecraft input acts during
+scored play; the evaluator privately scores actual natural log/wood inventory.
+Policies never receive hidden target positions or world seed. `AgentView` is
+RGB-only for now, without a player-location or inventory API. A 100-tick
+pilot on seed 314159265 confirmed the end-to-end benchmark executes but
+reported 0 logs for all four modes; that **pilot was unpaired** because the
+original world used spawnRadius 10. New runs refuse sources without the fixed
+spawn gamerule; observed start-position equality was verified on seed 271828183 for idle
+and forward+attack (both observed position 0.5,77,0.5 and yaw/pitch 0). Longer
+multi-seed comparisons remain open; an automatic mismatch guard now fails
+any paired-mode run whose observed starting position/yaw/pitch differs.
+
+Next: use this benchmark as the independent transfer gate on the path to
+full-trajectory RL and uninterrupted wood-to-crafting progression. See
+`docs/COURSE_CORRECTION.md` for explicit evaluation and compute limitations.

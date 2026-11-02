@@ -2,6 +2,38 @@
 
 **Last curated:** 2026-11-02. This is the live source of truth for project status. **All agents must read and update this file alongside substantive changes** (see [AGENTS.md](AGENTS.md)). Never mark a task done from source code alone; require actual run evidence where appropriate.
 
+## Highest priority — speedrunner course correction (2026-11-02)
+
+- [x] Audit existing learning milestones: useful instrumented prototypes,
+  **not** proven general speedrunning or a scalable final RL architecture.
+- [x] Add fair `AgentView` RGB-only and bounded Minecraft normal-input `AgentAction`
+  adapter; protect evaluators' privileged state from policy inputs.
+- [x] Generate a REAL Minecraft 1.21.3 noise world and smoke-test four frozen
+  diagnostics; pilot seed 314159265, 0/100-tick inventory logs in all modes.
+  **Not a paired benchmark:** default spawn-radius caused offset starts.
+- [x] Implement fresh-seed natural-world benchmark prep with worldgen seed and
+  noise verification, fixed spawn radius 0 and refusal to overwrite source,
+  copy or logs. Tests pass; **new fixed-spawn in-game comparison still needed**.
+- [x] Verify in **actual Minecraft** that freshly generated fixed-spawn
+  copies match: seed 271828183, idle/forward-attack both (0.5,77.0,0.5),
+  yaw=0 pitch=0, 25 ticks each, 0 logs. Local JSONL includes observed start.
+- [x] Add automatic paired-mode initial-pose mismatch failure to natural
+  benchmark (seed group). Smoke-tested matching source for two modes.
+- [ ] Run longer natural first-log comparisons across genuinely untouched
+  world seeds and all four diagnostic modes.
+- [ ] Short variable-trunk + variable-player-start study on real vanilla
+  blocks, compare trained frozen policies against fixed forward/random.
+- [ ] Collect full trajectories and comparable valid/held-out-world data,
+  then implement a small joint temporal RGB policy and a proper multi-step
+  reinforcement-learning algorithm. No claim that PPO or Dreamer is solved.
+- [ ] Make autonomous FIRST LOG acquisition reliable across distinct unseen
+  natural Minecraft seeds, then expand the *same uninterrupted episode* to
+  crafting, rather than endlessly stacking toy-only skills.
+
+See [docs/COURSE_CORRECTION.md](docs/COURSE_CORRECTION.md). All previous
+verified experiments/checkpoints stay intact. Benchmarks are diagnostic, not
+an agent that can already beat Minecraft.
+
 ## Current handoff: two learned camera/attack + pickup subskills verified; next variable tree positions
 
 - [x] Minecraft camera-relative numeric navigation: 3 independently initialized/trained policies each achieved 50/50 held-out + 50/50 extra yaw/target scenarios (2026-11-02). Privileged goal direction; not visual.

@@ -71,3 +71,18 @@ Separate active simulation throughput from end-to-end throughput and from neural
 ## Dependency baseline
 
 MCio controller `mcio_ctrl==1.5.2`, Minecraft Java 1.21.3 Fabric/MCio, Python 3.14 tested. The `cbor2<6` override is essential on the current released controller because newer CBOR decoding caused blank viewer observations. The GitHub project is its own research harness; it does not vendor Minecraft, Fabric, MCio, Mojang runtimes or user saves.
+
+## Course-corrected architecture (2026-11-02)
+
+See [COURSE_CORRECTION.md](COURSE_CORRECTION.md). The **new** common policy
+boundary is an immutable copy of rendered RGB (`AgentView`), and an explicit
+bounded normal Minecraft input (`AgentAction`) via `MCioAgentBridge`.
+`natural_world_benchmark.py` now evaluates actual natural Minecraft survival
+worlds rather than planted toy objectives. Privileged worldgen/NBT/seed/
+health/inventory fields remain evaluator-side; policies receive only `view`.
+`legacy_probe` remains a scripted two-stage *diagnostic*, not a general
+learner. Current one-step REINFORCE is insufficient for the ultimate
+long-horizon objective: next learners need trajectories, temporal processing,
+long-horizon credit assignment and periodic true-world evaluation. The old
+stage table above documents history, not a promise that stacking the stages
+will produce an Any% agent.

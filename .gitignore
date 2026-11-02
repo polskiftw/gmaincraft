@@ -47,3 +47,6 @@ build/
 *.swp
 .idea/
 .vscode/
+
+# MCio local runtime cache created by natural-world server/game launches
+/.cache/

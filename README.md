@@ -4,6 +4,18 @@
 
 **Current reality (2026-11-02):** Minecraft Java 1.21.3 + MCio and three seeded numerical-navigation runs are verified. Two random-initialized, RGB-feature mouse+ATTACK models learn to aim at a controlled oak trunk (audited 15/20 and 18/20 real Minecraft logs). Two independently trained RGB-feature W/A/S/D policies learn to approach a **dropped** oak log: in a fresh 32-case offset-item audit, the best reaches **30/32**, versus **21/32** for just holding W. Combining the learned aiming and collection policies yields **51/56 real mined-log inventory pickups** over two fresh camera-angle sets for pickup model `p02`, versus **49/56** with scripted W. This does **not** establish a meaningful advantage in the centered-tree setup, and it still uses hand-engineered pixel masks, controller-only scalar rewards, fixed 100-tick attack holds, a single flat-world template, and separate training for the two neural stages. No general tree recognition or Any% speedrunning.
 
+## Research course correction (2026-11-02)
+
+**Do not equate toy-arena successes with progress toward Any%.** We now have a
+real seeded-survival-world first-log transfer benchmark and a common pixel-only
+policy/action interface. The earlier linear policies are retained as diagnostic
+baselines, not the final learning architecture. The initial 100-game-tick
+pilot on natural seed `314159265` produced zero logs for all four controls;
+that pilot used default randomized spawn positions and is **not paired
+performance evidence**. New benchmark world preparation fixes spawn scatter.
+See [docs/COURSE_CORRECTION.md](docs/COURSE_CORRECTION.md) for the research
+plan and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for real run commands.
+
 This repository is the canonical home for code and continuity across ChatGPT conversations. Start with [AGENTS.md](AGENTS.md), [TODO.md](TODO.md), and [docs/HANDOFF.md](docs/HANDOFF.md).
 
 ## Repository layout

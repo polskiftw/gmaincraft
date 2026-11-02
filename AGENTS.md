@@ -2,6 +2,38 @@
 
 This file is the operating contract for anyone (including a future ChatGPT conversation) editing **polskiftw/gmaincraft**. Treat the GitHub repository, not the conversation transcript or an assumed local checkout, as the authoritative codebase.
 
+## 2026-11-02 priority correction and direct shell/Git
+
+**Use Gentoo Shell `run_shell` for repository work when connected.** It
+provides scoped `/workspace` access, working `.venv`, MCio, real Minecraft,
+network and ordinary `git` fetch/commit/push via a **repo-scoped** SSH deploy
+key. Run Git directly inside the shell rather than requiring the GitHub
+connector. Always inspect `git status` first, preserve local ignored worlds,
+model checkpoints, logs, private keys and user modifications. Do not display
+private keys. Push commits normally and verify `git status --short --branch`.
+If shell is disconnected, use GitHub connector only if explicitly available;
+never pretend to have tested a runtime or pushed a commit when unable to do so.
+
+**Read [docs/COURSE_CORRECTION.md](docs/COURSE_CORRECTION.md) before new
+feature work.** Current highest priority is a defensible generalization
+benchmark on independent natural survival worlds, a reusable RGB-only
+observation/action boundary, longer-horizon learning, and contiguous wood-to-
+crafting progression. Do not add narrow skill scaffolding without a clear
+route to a better held-out first-log or end-to-end survival score. Do not
+replace the user's learn-from-random-weights goal with a scripted planner.
+
+**New code:** `src/gmaincraft/agent_interface.py` (only the `AgentView`
+immutable RGB array is passed to visual policies; `AgentAction` contains only
+normal key/button/mouse input), `src/gmaincraft/natural_eval.py`, and
+`experiments/natural_world_benchmark.py`. The controller may privately inspect
+inventory to score after real gameplay. There is no admin/cheat channel in the
+policy action contract. The interface is not an untrusted-code security
+sandbox. Pilot natural-world result was 0 logs in 100 ticks for all 4 modes;
+old source spawnRadius=10 made that smoke test **unpaired**. New world
+preparation fixes spawnRadius=0, requiring another actual test. Never treat
+old linear policies as a scalable fully autonomous agent; the `legacy_probe`
+mode explicitly uses scripted mining timing and phase switching.
+
 ## Start every new task this way
 
 1. Read `README.md`, **`TODO.md`**, `docs/HANDOFF.md`, `docs/ARCHITECTURE.md`, and (for measured claims) `docs/EXPERIMENTS.md` from the current branch. Inspect relevant source files, their imports, and recent commits/PRs before proposing changes. Do not claim to have read them if the connector is unavailable.

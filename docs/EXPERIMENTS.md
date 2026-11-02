@@ -17,6 +17,44 @@ This is the **verified evidence ledger**, not a roadmap. Add measured results he
 | `log_interaction_probe.py` (2026-11-02, MCP sandbox) | Test with controller-placed oak-log column in new copied disposable world, mouse (+120,+50) input changed yaw +18.00°/pitch +7.50°, reverse mouse restored 0/0; 100 ticks left-click mining then 11 ticks forward motion yielded **one oak log in observed inventory**. Launcher-to-finish 20.15s; Gamescope exit 139 after completion. | **Scripted INPUT PROBE, not learned behavior.** Controller /setblock and /tp only for setup; during mine/collect phase no admin commands and no `/give`; real break/pickup via vanilla game mechanics. |
 | `orientation_learner.py` (2026-11-02, MCP sandbox) | **3 independent** 300-episode policy/train/eval RNG runs: before 9/50, 7/50, 7/50; after **50/50 each** and extra unseen **50/50 each**. Training 299/300 successes each; learning 30.16s, 26.67s, 25.17s. | Real Minecraft rollouts but one flat-arena world template, numeric goal direction, no vision or learned yaw action; Gamescope exit 139 after completed child |
 
+## 2026-11-02 — Natural-world transfer pilot, NOT paired evidence
+
+- Real Minecraft 1.21.3 server created **seed 314159265**, normal
+  `minecraft:noise` overworld. MCio then launched four independent fresh
+  source copies; real RGB frames and normal input/pixel-only policy bridge
+  worked. No admin Minecraft commands during scored action phases.
+- `naturalpilot01`: 100 synchronized game ticks each. Frozen diagnostic
+  results: idle **0 logs**, random **0 logs**, forward+attack **0 logs**,
+  frozen old `rgb02` camera + `p02` pickup (100-tick scripted attack and
+  handoff) **0 logs**. All four ended by tick budget, not a Python error;
+  the output lives in ignored `logs/natural_world_naturalpilot01.jsonl`.
+- **This was a short functional pilot, not a fair paired outcome comparison.**
+  Original source world had `spawnRadius=10`: in logs, modes spawned at
+  slightly different coordinates. The runner now writes `spawnRadius=0`
+  for *newly prepared* natural source worlds, checks worldgen seed and
+  biome/terrain generator, and rejects unverified source templates before
+  scored comparisons. It still needs a fixed-spawn real-game verification.
+- No learned natural-world acquisition, meaningful effect size, unseen-world
+  generalization or Any% success has been demonstrated. No model training
+  was performed. The old learned checkpoints and worlds were preserved.
+- Existing known Gamescope post-child shutdown exit 139 recurred despite
+  completed JSONL results. Do not label wrapper status 139 as a clean exit.
+
+## 2026-11-02 — Fixed-spawn actual Minecraft confirmation
+
+- A second distinct *normal noise-generated* survival seed `271828183` was
+  prepared using `WorldManager.create`, read-back worldgen seed + generator,
+  and **source-only** NBT `spawnRadius=0` (no in-game player teleport).
+- Two new copied-world MCio runs, each 25 simulation ticks:
+  `idle` initial observed `(0.5, 77.0, 0.5), yaw 0, pitch 0`, **0 logs**;
+  `forward_attack` EXACT same observed starting pose, **0 logs**.
+- Both completed by tick budget; local result
+  `logs/natural_world_fixedspawn01.jsonl` recorded source seed, mode, pose,
+  observations, outcome, elapsed time and world names. Not a meaningful
+  learning result or statistical test. Gamescope still segfaulted only after
+  completed Python benchmark and JSONL writing. First pilot's 0/100 results
+  remain unpaired and should not be used for policy comparison.
+
 ## 2026-11-02 — Learned W/A/S/D pickup and two-policy mined-log integration
 
 **Environment:** same Gentoo/OpenRC, RTX 4070 SUPER, Minecraft Java 1.21.3 Fabric MCio 1.6.1, MCio Python controller 1.5.2, nested GPU Gamescope viewer with desktop-mouse filter. Repeated synchronous Minecraft rollouts in *copied disposable worlds* based on the same `DemoWorld` template; no independent random world seeds.
