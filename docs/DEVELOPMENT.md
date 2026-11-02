@@ -75,7 +75,7 @@ gamescope --backend sdl -W 800 -H 450 -w 800 -h 450 -- \
 .venv/bin/python -B experiments/orientation_learner.py --visible
 ```
 
-Run only one MCio experiment at a time (action port 4001 and observation port 8001). Full default orientation trial: 300 episodes, 50 held-out cases, 35 decisions/case and 6 ticks/decision. **Rerunning replaces the existing orientation checkpoint, CSV, and disposable `MDL_OrientationLab_v1` world**; back up the local checkpoint first if you need to retain the trained weights.
+Run only one MCio experiment at a time (action port 4001 and observation port 8001). Full default orientation trial: 300 episodes, 50 held-out cases, 35 decisions/case and 6 ticks/decision. **Rerunning without a tag replaces the original orientation checkpoint, CSV, and disposable `MDL_OrientationLab_v1` world**. For independent seeds, add a unique `--run-tag` together with `--policy-seed`, `--train-seed`, `--eval-seed`, `--extra-seed`, and `--action-seed`; tagged runs use separate world, model and CSV paths and refuse to overwrite existing tags. Example: append `--run-tag rep_d --policy-seed 2721 --train-seed 81006 --eval-seed 60214 --extra-seed 99504 --action-seed 774` to the Python command above. Preserve the three verified checkpoints.
 
 Gamescope's GPU Vulkan initialization and nested Xwayland are functional, and Minecraft/MCio produced real observations and completed the orientation experiment. However, Gamescope still has an **exit-139 (SIGSEGV) after the child exits**; do **not** consider the overall launcher exit code 139 a successful process exit, nor treat it as proof that the Minecraft training failed. Verify printed evaluations, CSV count, and checkpoint integrity individually. Direct MCio `hide_window=True, gpu_lib="nvidia"` failed with GLFW/EGL when run without Gamescope in this sandbox; do not advertise it as working here. No system daemon, privileged host access, or Linux-wide configuration change is needed for these on-demand tests.
 
@@ -91,7 +91,7 @@ The unit tests cover numerical feature and learning math. They **do not** verify
 
 ## Retaining useful logs
 
-For an orientation run, copy the lines containing `Original (fixed camera)`, `Original (random camera)`, `New BEFORE training`, `New AFTER training`, `New extra unseen cases`, `Learning time`, and any traceback. The full verbose Fabric log is not necessary unless debugging. The local episode CSVs and `.npz` model files are ignored by Git; code commits alone cannot restore the learned weights.
+For an orientation run, copy the lines containing `Original (fixed camera)`, `Original (random camera)`, `New BEFORE training`, `New AFTER training`, `New extra unseen cases`, `Learning time`, and any traceback. The full verbose Fabric log is not necessary unless debugging. The local episode CSVs and `.npz` model files are ignored by Git; code commits alone cannot restore the learned weights. On 2026-11-02, the reference and independent `rep_b`/`rep_c` experiments each saved a distinct validated checkpoint and 300-row CSV; preserve all three locally.
 
 ## Public repository boundaries
 

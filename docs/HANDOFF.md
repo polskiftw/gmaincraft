@@ -1,43 +1,38 @@
 # Handoff for a brand-new ChatGPT conversation
 
-**Last verified: 2026-11-02.** Canonical source: [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. **The orientation experiment has now been run successfully in real Minecraft**, so do **not** ask the user to supply an orientation log again. See `docs/EXPERIMENTS.md` for the exact run evidence and caveats.
+**Last verified: 2026-11-02.** Canonical code: [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. We have **three independently initialized/trained real Minecraft camera-relative orientation policy runs** (details in `docs/EXPERIMENTS.md`). Do **not** ask the user for the old orientation run log again.
 
-## First actions in a new chat
+## First actions for the next assistant
 
-1. Read current `AGENTS.md`, `TODO.md`, `README.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, and `docs/EXPERIMENTS.md`; inspect the source of any experiment you modify.
-2. Confirm the latest verified milestone: 300 Minecraft training episodes, camera-relative movement policy **9/50 before -> 50/50 after** on 50 held-out target/yaw scenarios, **50/50** on an additional unseen target/yaw set. Original policy fixed yaw **50/50**, randomized yaw **24/50**. Training CSV: **299/300 wins**. Learner time: **30.16s**. Only one training seed/world.
-3. **NEXT:** parameterize independent RNG seeds (policy initialization, training, held-out evaluation, extra evaluation) and separate output paths **before** repeating the experiment. Do not overwrite the validated `checkpoints/orientation_policy.npz`.
-4. Replicate with several independent seeds; capture success/variance/steps/compute costs, label all same-world arena tests honestly. After replication, teach actual camera-turning action and ultimately move away from privileged numeric goal vectors.
-5. Commit code/tests/status docs together, verify real Minecraft runs when available, and give the user a `git pull --ff-only` command.
+1. Read `AGENTS.md`, `TODO.md`, `README.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, `docs/EXPERIMENTS.md`, inspect relevant code/tests and recent GitHub commits.
+2. Recognize the last verified milestone: all three camera-relative numerical policies scored **50/50 after training and 50/50 on an additional unseen target/yaw set**. Each trained for 300 real Minecraft episodes with distinct policy/train/eval/extra/action seeds. Each training CSV shows **299/300 wins**.
+3. **NEXT:** implement and measure agent-controlled **mouse/camera yaw** (and later pitch) alongside movement. Do not allow the controller to freeze the policy's camera during scored gameplay. Keep the same honest frozen held-out evaluation protocol.
+4. Later remove privileged numeric goal-direction inputs for visual/perceivable goals. Independently seeded *Minecraft worlds* remain untested.
+5. Commit code, tests and all status docs together to GitHub, then give the user safe `git pull --ff-only` commands. Preserve local ignored checkpoint and world artifacts.
 
-## Goal and scope
+## Real Minecraft orientation evidence (2026-11-02)
 
-Long-term from-scratch reinforcement-learning agent for Minecraft Java Any% on unseen random world seeds, without scripted speedrun logic or privileged hidden-world inputs. **We are not close to a general visual speedrunner.** These are controlled training curricula using known numeric goal direction, flat arena and W/A/S/D actions only. Randomized camera yaw is set by the experiment controller at spawn; policy has no mouse/camera turning action.
+| Run | Old fixed yaw | Old random yaw | Fresh before | Fresh after 300 episodes | Extra unseen target/yaw set | Learning time |
+|---|---:|---:|---:|---:|---:|---:|
+| Reference | 50/50 | 24/50 | 9/50 | **50/50** | **50/50** | 30.16s |
+| `rep_b` | 50/50 | 16/50 | 7/50 | **50/50** | **50/50** | 26.67s |
+| `rep_c` | 50/50 | 19/50 | 7/50 | **50/50** | **50/50** | 25.17s |
 
-## Verified runtime and infrastructure
+Seeds (policy/train/eval/extra/action): reference 2718/81003/60211/99501/771; `rep_b` 2719/81004/60212/99502/772; `rep_c` 2720/81005/60213/99503/773. Local-only valid outputs: `checkpoints/orientation_policy.npz`, `checkpoints/orientation_policy_rep_b.npz`, `checkpoints/orientation_policy_rep_c.npz`, three corresponding `logs/orientation_training*.csv` files (300 rows each) and three disposable `MDL_OrientationLab_v1*` worlds copied from the same `DemoWorld` template. All model weights are finite (4,3) matrices. This is **not** general Minecraft world-seed success, no end-to-end speedrun, no visual recognition, no camera-turning action.
 
-- Gentoo/OpenRC, Plasma Wayland, NVIDIA RTX 4070 SUPER (driver 595.104.02), i7-14700KF, 32GB RAM, Python 3.14.10.
-- Project root on host: `~/Documents/minecraft-discovery`, available via Gentoo Shell MCP as `/workspace`. Its Bubblewrap sandbox **hides `/home`**, keeps network namespace loopback-only and mounts selected GPU/DRM/sysfs resources plus one Wayland socket.
-- Minecraft Java **1.21.3**, Fabric MCio **1.6.1+1.21.3**, `mcio_ctrl==1.5.2`, `cbor2==5.9.0`; MCio-managed instance `mcio-data/instances/DemoInstance` and template `DemoWorld`.
-- The MCP sandbox launches accelerated game **through nested Gamescope with local Xwayland wrapper**; see `docs/DEVELOPMENT.md`. Direct NVIDIA/MCio headless EGL failed here. Nested Gamescope exits with SIGSEGV **139 after the experiment child exits**, although orientation results/checkpoint/CSV were completed and validated.
-- **Local-only, ignored assets:** `checkpoints/navigation_policy.npz`, `checkpoints/orientation_policy.npz` (validated saved model), `logs/orientation_training.csv` (300 rows), local world saves, and the custom sandbox launcher/wrapper under `mcio-data/`. They are **not on GitHub**. Do not delete these or copy personal Minecraft saves.
-- Prior verified foundations: MCio actions/observations, clean-world-copy experiments, throughput benchmarking, local soft resets (world mutations persist), controller item-novelty detection, original navigation 7/20 -> 20/20 after 120 episodes/12.8s training.
+`experiments/orientation_learner.py` now supports `--run-tag` with write-once world/log/model filenames, and `--policy-seed`, `--train-seed`, `--eval-seed`, `--extra-seed`, and `--action-seed`. Existing default run behavior remains unchanged. Five new seed/name tests supplement the five existing numerical policy tests.
 
-## Orientation evidence (2026-11-02)
+## Runtime and local environment
 
-| Evaluation | Wins | Final distance (mean) | Ticks among wins (mean) |
-|---|---:|---:|---:|
-| Original fixed yaw | 50/50 | 0.72 | 25.6 |
-| Original randomized yaw | 24/50 | 7.03 | 41.2 |
-| New random initial weights | 9/50 | 7.22 | 71.3 |
-| New AFTER 300 training episodes | 50/50 | 0.66 | 25.6 |
-| New on extra unseen target/yaw set | 50/50 | 0.65 | 26.0 |
+- Gentoo Linux/OpenRC, Plasma Wayland, i7-14700KF, RTX 4070 SUPER driver 595.104.02, 32GB RAM, Python 3.14.10.
+- Host project `~/Documents/minecraft-discovery` is exposed as `/workspace` through a custom Gentoo Shell MCP Bubblewrap sandbox. Host `/home` is **not exposed**. Network namespace is isolated except loopback. GPU/DRM devices, selected read-only sysfs and one host Wayland socket are available.
+- MCio Python controller `mcio_ctrl==1.5.2` with `cbor2==5.9.0`, Minecraft Java **1.21.3**, Fabric MCio **1.6.1+1.21.3**, Java 21 MCio runtime. Instance/template are `mcio-data/instances/DemoInstance` and `DemoWorld`. MCio ZMQ ports 4001/8001 require a working private localhost `/etc/hosts`.
+- Inside MCP, Minecraft uses nested NVIDIA Gamescope/Xwayland: `WLR_XWAYLAND=/workspace/mcio-data/xwayland-sandbox-wrapper.sh SDL_VIDEODRIVER=wayland gamescope --backend sdl -W 800 -H 450 -w 800 -h 450 -- .venv/bin/python -B experiments/orientation_learner.py --visible`. Local Xwayland wrapper has `-ac` only for its nested private X11 socket. See `docs/DEVELOPMENT.md`.
+- **Gamescope exits SIGSEGV 139 after each completed Python run**; test results/checkpoints/CSVs were written and validated first. Direct MCio NVIDIA headless without Gamescope failed with GLFW/EGL in this sandbox.
+- All checkpoints, saves, Python virtualenvs, local MCP launcher helpers, huge raw logs and model files are git-ignored; only source/docs/tests belong on public GitHub. Never access other host folders, alter global Gentoo settings or add a daemon for these experiments.
 
-Policy seed 2718; training scenarios seed 81003; evaluation scenario seed 60211; extra seed 99501; action RNG seed 771. Trial world `MDL_OrientationLab_v1`; never overwrote template `DemoWorld` or original navigation checkpoint. Full protocol and SHA-256 of artifacts are in `docs/EXPERIMENTS.md`.
+## Scientific boundaries
 
-## Safety and scientific integrity
-
-- Minecraft admin commands (`/tp`, `/fill`, `/setblock`, etc.) belong solely to the privileged experiment controller for resets/arena setup, never to scored policy actions.
-- A randomized target/yaw in the **same** saved-world arena does **not** demonstrate cross-seed survival or visual recognition. Do not conflate in-game learner time with total process start/stop time.
-- The 100% evaluations are two 50-case sets after a **single** trained model on a controlled curriculum; quantify multi-seed robustness and separate trainer from frozen evaluator before stronger claims.
-- Original host checkpoints, worlds, personal data, and local raw logs remain git-ignored; do not add them to the public repository. No host root/sudo access or system services should be required.
+- Privileged arena controller may use `/tp`, `/fill`, `/setblock`, `/effect` **only for setup/cleanup**. Learned policy is restricted to W/A/S/D so far, receives scalar reward and an exact camera-relative numeric target vector. Random starting yaw is controller-set, not action-controlled.
+- The 3 independent seed sets are different *numeric RNG seeds*, not different Minecraft world seeds. All three use a small flattened arena. These are strong curriculum checks but do not prove survival, perception, crafting, Nether/End progression or cross-world generalization.
+- A soft reset does not fully restore block/entity/RNG world state. Preserve saved checkpoints and `DemoWorld` across future experiments; avoid overwriting known-good assets.

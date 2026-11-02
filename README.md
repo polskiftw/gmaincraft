@@ -2,7 +2,7 @@
 
 **A Minecraft reinforcement-learning research playground.** The long-term ambition is an agent trained from randomly initialized weights that can complete Minecraft Java Edition Any% (defeat the Ender Dragon and reach the exit) efficiently on unseen random world seeds. It should learn from experience, rather than follow a hand-scripted speedrun or peek at forbidden game state.
 
-**Current reality (2026-11-02):** MCio, benchmarks, item-reward detection, and two simple neural navigation experiments have been verified in real Minecraft Java 1.21.3. The camera-relative policy went from **9/50 to 50/50** on controlled targets after 300 training episodes, and reached **50/50 on an additional unseen target/yaw set**. These trials use a privileged numeric goal direction in a flat arena and do **not** constitute visual navigation, learned camera turning, a general Minecraft player, or a speedrun.
+**Current reality (2026-11-02):** Minecraft Java 1.21.3, MCio, benchmarks, item-reward detection, and two numerical-policy navigation curricula are verified. The camera-relative policy learned from random weights with randomized initial yaw, and **all three independent policy/training/target-yaw RNG configurations** reached **50/50** held-out and **50/50** extra unseen scenario success after 300 real Minecraft episodes each. This is still a privileged numeric-goal toy arena, **not** visual navigation, learned camera turning, unseen Minecraft world-seed generalization or a speedrun.
 
 This repository is the canonical home for code and continuity across ChatGPT conversations. Start with [AGENTS.md](AGENTS.md), [TODO.md](TODO.md), and [docs/HANDOFF.md](docs/HANDOFF.md).
 
@@ -59,7 +59,7 @@ env -u WAYLAND_DISPLAY XDG_SESSION_TYPE=x11 .venv/bin/python experiments/navigat
 env -u WAYLAND_DISPLAY XDG_SESSION_TYPE=x11 .venv/bin/python experiments/orientation_learner.py --visible
 ```
 
-Run **one** MCio experiment at a time: they use the same local action/observation ports and disposable Minecraft worlds. The orientation experiment requires a local `checkpoints/navigation_policy.npz` from an earlier navigation run. It does **not** include that checkpoint in Git. The original host can use headless NVIDIA mode, but the isolated Gentoo Shell MCP environment was verified with **nested Gamescope + `--visible`**, not MCio direct headless mode; see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Rerunning orientation overwrites `checkpoints/orientation_policy.npz`.
+Run **one** MCio experiment at a time: they use the same local action/observation ports and disposable Minecraft worlds. The orientation experiment requires a local `checkpoints/navigation_policy.npz` from an earlier navigation run. It does **not** include that checkpoint in Git. The original host can use headless NVIDIA mode, but the isolated Gentoo Shell MCP environment was verified with **nested Gamescope + `--visible`**, not MCio direct headless mode; see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Default reruns overwrite `checkpoints/orientation_policy.npz`. New reproducibility flags `--policy-seed`, `--train-seed`, `--eval-seed`, `--extra-seed`, and `--action-seed` require a unique `--run-tag` to protect that checkpoint. Tagged runs create separate worlds, checkpoints and CSVs, and refuse existing tags.
 
 Each experiment is a direct-entry Python prototype, not a production package. Its runtime paths are relative to the repository root even though the scripts live in `experiments/`.
 
@@ -70,7 +70,7 @@ Each experiment is a direct-entry Python prototype, not a production package. It
 - Persistent-process benchmark: 284.5 active steps/sec over 5,000 steps; 123.5 steps/sec measured end-to-end; soft resets around 0.08–0.11s. **Soft resets do not restore the world.**
 - First-seen item reward detector passed all five controller-injected item tests. **Not a learned item-acquisition policy.**
 - Simple navigation learner: 7/20 successes before training, 20/20 afterwards on the same 20 held-out targets, after 120 training episodes in 12.8 seconds. Fixed yaw, privileged goal direction, no vision.
-- Camera-relative orientation learner (2026-11-02, **real Minecraft**): original policy 50/50 at fixed yaw but 24/50 at random yaw; fresh camera-relative policy 9/50 before training, 50/50 after 300 training episodes (30.16s measured learner time), 50/50 on a second unseen target/yaw set. Training CSV records 299/300 successful episodes. Still numeric goal direction and W/A/S/D only, not vision or camera control.
+- Camera-relative orientation learner (**real Minecraft**, 2026-11-02): initial 9/50, 7/50, 7/50 across three independently initialized/trained numerical policies. All three reached **50/50 held-out and 50/50 extra unseen** target/yaw scenarios after 300 training episodes each (30.16s, 26.67s, 25.17s learner time; 299/300 training wins per run). Policy never moved the camera or saw visual goal pixels; privileged numeric goal direction was supplied.
 
 All measurements are preliminary and hardware/setup specific. See [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md) for the actual scope and caveats.
 

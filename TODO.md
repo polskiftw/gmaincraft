@@ -2,14 +2,15 @@
 
 **Last curated:** 2026-11-02. This is the live source of truth for project status. **All agents must read and update this file alongside substantive changes** (see [AGENTS.md](AGENTS.md)). Never mark a task done from source code alone; require actual run evidence where appropriate.
 
-## Current handoff: multi-seed reproducibility, then camera control
+## Current handoff: learned camera turning is NEXT
 
-- [x] Author and syntax-test `experiments/orientation_learner.py` using camera-relative numeric goal vectors and randomized starting yaw.
-- [x] **Run in actual Minecraft (2026-11-02):** original fixed 50/50 vs random yaw 24/50; new random-initialized policy 9/50 before, **50/50 after** 300 training episodes, **50/50 on extra unseen cases**. Training CSV 299/300 successes; learner time 30.16s.
-- [x] Verify saved local `orientation_policy.npz` and 300-row `orientation_training.csv`; capture caveats in `docs/EXPERIMENTS.md` and handoff.
-- [ ] **NEXT: reproducibility:** parameterize policy/training/evaluation RNG seeds and use distinct output filenames to avoid overwriting the successful checkpoint. Run at least 3 independently initialized trainings on disjoint target/yaw scenarios; report variance, seeds, confidence bounds, and wall-clock costs.
-- [ ] Next after independent replication: learn camera-turning input and movement jointly, then remove privileged numerical goal-direction observations in favor of perceivable targets.
-- [ ] Investigate Gamescope exit-139 segfault only if it causes lost measurements, leftover processes, or prevents reliable experiments. Do not conflate the wrapper crash with Minecraft training failure.
+- [x] Real Minecraft reference (2026-11-02): fixed old yaw 50/50, old random yaw 24/50; new policy 9/50 -> 50/50 plus 50/50 extra unseen target/yaw cases after 300 training episodes (30.16s learning, 299/300 training wins).
+- [x] Add independently configurable seeds and write-once `--run-tag` to `experiments/orientation_learner.py`, keeping default behavior/filenames; 5 new unit tests (10 total).
+- [x] Independent numeric RNG replication: `rep_b` and `rep_c` started 7/50 each, ended **50/50** on held-out and **50/50** extra unseen target/yaw sets after 300 real Minecraft training episodes each (26.67s and 25.17s learning, 299/300 training wins each). All three use the same type of saved-world flat arena.
+- [x] Validate each independent run's 300-record CSV and finite (4,3) checkpoint; preserve local files under git-ignored `logs/` and `checkpoints/`.
+- [ ] **NEXT: learn camera turning** (mouse/yaw, later pitch) alongside movement without the controller fixing yaw during scored play. Use held-out scenarios; keep the previous learned checkpoints unchanged.
+- [ ] Afterwards replace privileged numeric target direction with visually detectable objectives and a documented human-equivalent observation contract.
+- [ ] Gamescope still returns SIGSEGV 139 after the child exits; investigate if it affects experiment stability or loses results. All three Python experiments completed and were validated.
 
 ## Verified foundations
 
@@ -24,7 +25,7 @@
 
 ## Next research/engineering work (prioritized after successful orientation test)
 
-- [ ] Validate orientation/navigation gains across multiple **independent** training RNG seeds and disjoint evaluation scenarios; report success rate, confidence intervals/variance, steps, and compute cost (see NEXT above).
+- [x] Validate camera-relative training across three independent **numerical policy/training/evaluation RNG configurations** and disjoint target/yaw draws (see `docs/EXPERIMENTS.md`). Independent Minecraft **world** seed generalization and broader variance remain untested.
 - [ ] Add a camera-turning action and teach the agent to navigate using its own control of yaw/pitch, without the controller freezing orientation. Test randomized camera yaw after spawn.
 - [ ] Replace privileged numerical target-direction observations with visually detectable objectives; log exactly what information the policy receives. Keep structured *human-equivalent* HUD/inventory signals as an optional experiment, not hidden map data.
 - [ ] Develop real object interaction: look at and break a block, acquire a dropped item naturally, switch hotbar slots, place blocks, and open/use inventory/crafting UI. Connect the existing first-seen-item reward detector to agent-caused events.

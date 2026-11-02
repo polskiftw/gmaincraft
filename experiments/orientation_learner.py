@@ -10,8 +10,9 @@ frame. It does NOT see the world through pixels or learn camera control yet.
 All Minecraft commands are experiment-controller setup; the agent only uses
 W/A/S/D during episodes. This is not an Ender Dragon speedrunner.
 
-Only overwrites the disposable MDL_OrientationLab_v1 Minecraft world.
-Creates: checkpoints/orientation_policy.npz, logs/orientation_training.csv
+Only overwrites the disposable MDL_OrientationLab_v1 Minecraft world by default.
+Use --run-tag with independent seeds to preserve other test worlds and outputs.
+Default outputs: checkpoints/orientation_policy.npz, logs/orientation_training.csv
 Leaves checkpoints/navigation_policy.npz and DemoWorld untouched.
 """
 
@@ -19,6 +20,7 @@ import argparse
 import csv
 import math
 import random
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,6 +31,16 @@ import navigation_learner as original
 
 ROOT = Path(__file__).resolve().parent.parent
 TRIAL = 'MDL_OrientationLab_v1'
+
+
+def named_run_paths(tag: str):
+    """Unique artifact paths for an independent trial; do not allow traversal."""
+    if tag and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,39}', tag) is None:
+        raise ValueError('run tag must be 1-40 letters, digits, underscores or hyphens')
+    suffix = f'_{tag}' if tag else ''
+    return (TRIAL + suffix,
+            ROOT / 'logs' / f'orientation_training{suffix}.csv',
+            ROOT / 'checkpoints' / f'orientation_policy{suffix}.npz')
 
 
 @dataclass(frozen=True)
@@ -160,9 +172,28 @@ def main():
     p.add_argument('--decisions', type=int, default=35)
     p.add_argument('--ticks', type=int, default=6)
     p.add_argument('--visible', action='store_true')
+    p.add_argument('--policy-seed', type=int, default=2718)
+    p.add_argument('--train-seed', type=int, default=81003)
+    p.add_argument('--eval-seed', type=int, default=60211)
+    p.add_argument('--extra-seed', type=int, default=99501)
+    p.add_argument('--action-seed', type=int, default=771)
+    p.add_argument('--run-tag', default='', help='unique suffix for trial world, checkpoint and CSV')
     args = p.parse_args()
     if min(args.episodes, args.eval, args.decisions, args.ticks) < 1:
         p.error('All numeric options must be positive')
+    try:
+        trial_name, output, checkpoint = named_run_paths(args.run_tag)
+    except ValueError as exc:
+        p.error(str(exc))
+    custom_seeds = (args.policy_seed, args.train_seed, args.eval_seed, args.extra_seed, args.action_seed) != (2718, 81003, 60211, 99501, 771)
+    if custom_seeds and not args.run_tag:
+        p.error('Use --run-tag with custom seeds to protect the reference checkpoint')
+    if args.eval_seed == args.extra_seed:
+        p.error('Evaluation and extra scenario seeds must differ')
+    # Named runs are intentionally write-once, not silent checkpoint replacements.
+    trial_path = ROOT / 'mcio-data' / 'instances' / 'DemoInstance' / 'saves' / trial_name
+    if args.run_tag and (trial_path.exists() or output.exists() or checkpoint.exists()):
+        p.error('Tagged run already exists: choose another --run-tag to avoid overwriting evidence')
     prior_ckpt = ROOT / 'checkpoints' / 'navigation_policy.npz'
     if not prior_ckpt.is_file():
         p.error(f'Missing original trained checkpoint: {prior_ckpt}')
@@ -175,19 +206,20 @@ def main():
         former.weights = old['weights'].copy()
     if former.weights.shape != (4,3):
         raise ValueError('Unexpected original checkpoint shape')
-    fresh = EgocentricPolicy(seed=2718, learning_rate=0.12)
+    fresh = EgocentricPolicy(seed=args.policy_seed, learning_rate=0.12)
 
-    print(f'Copying DemoWorld into ONLY disposable {TRIAL}...', flush=True)
+    print(f'Experiment: run_tag={args.run_tag or "default"} policy_seed={args.policy_seed} '
+          f'train_seed={args.train_seed} eval_seed={args.eval_seed} '
+          f'extra_seed={args.extra_seed} action_seed={args.action_seed}', flush=True)
+    print(f'Copying DemoWorld into ONLY disposable {trial_name}...', flush=True)
     world.WorldManager(mcio_dir=original.MCIO_DIR).copy(
-        'storage', original.SOURCE, original.INSTANCE, TRIAL, force=True)
+        'storage', original.SOURCE, original.INSTANCE, trial_name, force=True)
     opts = types.RunOptions(mcio_dir=original.MCIO_DIR,
-        instance_name=original.INSTANCE, world_name=TRIAL,
+        instance_name=original.INSTANCE, world_name=trial_name,
         mcio_mode=types.MCioMode.SYNC, hide_window=not args.visible,
         gpu_lib=None if args.visible else 'nvidia',
         width=640 if args.visible else 320,
         height=360 if args.visible else 180)
-    output = ROOT / 'logs' / 'orientation_training.csv'
-    checkpoint = ROOT / 'checkpoints' / 'orientation_policy.npz'
     output.parent.mkdir(parents=True, exist_ok=True)
     checkpoint.parent.mkdir(parents=True, exist_ok=True)
     launcher = instance.Launcher(opts)
@@ -202,20 +234,20 @@ def main():
             raise RuntimeError('No initial Minecraft observation')
         arena = OrientationArena(ctrl, first, mcio_env, env_util, network)
         arena.prepare()
-        cases_rng = random.Random(60211)
+        cases_rng = random.Random(args.eval_seed)
         cases = [make_scenario(arena, cases_rng) for _ in range(args.eval)]
         fixed_cases = [Scenario(c.x, c.z, 0.0, c.goal) for c in cases]
 
         print('\nPrevious checkpoint generalization test:', flush=True)
         show('Original (fixed camera)', evaluate(arena, former, fixed_cases,
-                    decisions=args.decisions, ticks=args.ticks, seed=771))
+                    decisions=args.decisions, ticks=args.ticks, seed=args.action_seed))
         show('Original (random camera)', evaluate(arena, former, cases,
-                    decisions=args.decisions, ticks=args.ticks, seed=771))
+                    decisions=args.decisions, ticks=args.ticks, seed=args.action_seed))
         print('\nNew model initialized from random weights:', flush=True)
         show('New BEFORE training', evaluate(arena, fresh, cases,
-                    decisions=args.decisions, ticks=args.ticks, seed=771))
+                    decisions=args.decisions, ticks=args.ticks, seed=args.action_seed))
 
-        train_rng = random.Random(81003)
+        train_rng = random.Random(args.train_seed)
         start = time.perf_counter()
         with output.open('w', newline='', encoding='utf-8') as f:
             writer = csv.DictWriter(f, fieldnames=[
@@ -238,11 +270,11 @@ def main():
         elapsed = time.perf_counter() - start
         print('\nFROZEN checkpoint evaluations:', flush=True)
         show('New AFTER training', evaluate(arena, fresh, cases,
-                    decisions=args.decisions, ticks=args.ticks, seed=771))
-        extra_rng = random.Random(99501)
+                    decisions=args.decisions, ticks=args.ticks, seed=args.action_seed))
+        extra_rng = random.Random(args.extra_seed)
         extra_cases = [make_scenario(arena, extra_rng) for _ in range(args.eval)]
         show('New extra unseen cases', evaluate(arena, fresh, extra_cases,
-                    decisions=args.decisions, ticks=args.ticks, seed=771))
+                    decisions=args.decisions, ticks=args.ticks, seed=args.action_seed))
         np.savez_compressed(checkpoint, weights=fresh.weights,
             baseline=np.array(fresh.baseline), updates=np.array(fresh.updates))
         print(f'Learning time: {elapsed:.2f}s')

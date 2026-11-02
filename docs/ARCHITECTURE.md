@@ -41,7 +41,7 @@ Define this contract *before* comparing curriculum scores to open-world speedrun
 ## Learning stages
 
 1. **Working interface and measurement (done):** controllable Minecraft, video/state observations, clean-world restarts, soft-reset benchmark, reward detector.
-2. **Basic learning (controlled arena, done as a prototype):** random-weights linear policy learned fixed-yaw target navigation (7/20 to 20/20); new camera-relative policy learned with randomized starting yaw (9/50 to 50/50, plus 50/50 on a second unseen target/yaw set after 300 episodes, one training seed, 2026-11-02). Validate across independent seeds before claiming robustness.
+2. **Basic learning (controlled arena, verified):** fixed-yaw learner (7/20 to 20/20); camera-relative learner with controller-randomized initial yaw and numeric target direction replicated across 3 independent policy/training/evaluation RNG configurations (before: 9/50, 7/50, 7/50; after: 50/50 each; additional unseen target/yaw sets: 50/50 each, 2026-11-02). Still one saved-world template: no world-seed generalization, learned yaw control or visual recognition.
 3. **Autonomous perception and actions:** learn camera turning, block visual targeting, mouse interaction, inventory and crafting inputs; combine event rewards without admin-command leakage.
 4. **Scale-up:** reproducible isolated episodes, offline/online experience buffers, checkpointing, held-out evaluation, graphics throughput, GPU-aware visual representation/world-model RL (DreamerV3 or a measured alternative), hierarchical skill reuse if useful.
 5. **Long-term Any%:** survival/resource economy, Nether/End progression, battle, exit detection and test-seed generalization.
