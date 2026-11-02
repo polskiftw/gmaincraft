@@ -4,6 +4,41 @@
 NVIDIA 595.104.02, Linux 6.18.57-gooned, Minecraft Java 1.21.3 with MCio
 and nested NVIDIA Gamescope/XWayland, project `.venv` Python 3.14.10.
 
+## Live CUDA update after the Gentoo Shell restart (2026-11-02)
+
+**CUDA is now fully operational INSIDE the restarted isolated shell.** The
+user loaded the host `nvidia_uvm` module, created the UVM character devices
+and restarted the bridge. The same bridge now sees:
+
+```
+/dev/nvidia-uvm       char 240:0
+/dev/nvidia-uvm-tools char 240:1
+cuInit(0) = 0
+PyTorch 2.15.0+cu132: CUDA available
+CUDA tensor allocation and reduction: PASS on RTX 4070 SUPER
+```
+
+Measured `tools/benchmark-training.py --batch-size 64 --steps 25 --threads 8`:
+CUDA **879.69 updates/s, 56,300 images/s**, CPU **128.99 updates/s,
+8,255.5 images/s**: approximately **6.82x GPU speedup** for THIS synthetic
+CNN update workload. CUDA peak allocated tensor memory was about 50.2 MiB.
+This is **not** a Minecraft environment / gameplay speedup measurement.
+
+A REAL CUDA Minecraft training and evaluation run `cuda01` confirmed model
+training on `device=cuda`: 12 training episodes, 220 game ticks each, 3
+optimizer updates on 95+63+66 real decisions, all on GPU; 4 separate
+frozen held-out scenarios, 220 ticks each. No logs acquired in either
+stage (0/12 train; 0/4 eval). The model, GPU training code and checkpoint
+system ran successfully, but the learned behavior is NOT solved. Evaluations
+took just 3 long actions each, highlighting potential overuse of fixed
+80-tick mining macros. Results and checkpoint saved only in ignored local
+`logs/joint_log_ppo_cuda01.jsonl` and `checkpoints/joint_log_ppo_cuda01.pt`.
+Gamescope still exited 139 AFTER the child Python program finished.
+
+**The CUDA failure description below is historical** (before the restart).
+The manual UVM nodes may need to be re-created after a future host reboot;
+if so, verify with `tools/gpu-preflight.py` before a new training run.
+
 ## The GPU rendering question, resolved
 
 The **nested** OpenGL rendering stack used by this Minecraft client was
@@ -37,7 +72,7 @@ child termination** can still cause the wrapper itself to exit nonzero;
 inspect the `OPENGL_*` lines instead. Do not mistake that compositor crash
 for software rendering or an OpenGL failure.
 
-## CUDA training: installed in the project, not yet accessible in the sandbox
+## CUDA installation and the previously resolved sandbox blocker
 
 The old 4x14 and 5x12 NumPy models used CPU math. New training uses a
 PyTorch 2.15.0+cu132 **888,236-parameter CNN actor-critic**, and can put
@@ -45,7 +80,7 @@ parameters, batch forward/backward passes, and Adam updates on GPU. The
 user's Python 3.14 compatible CUDA 13.2 build was installed into
 `/workspace/.venv`, NOT globally through Portage or system Python.
 
-The device-specific status at time of this document:
+Historical device status **before restarting the bridge**, retained for troubleshooting:
 
 | Check | Status |
 |---|---|

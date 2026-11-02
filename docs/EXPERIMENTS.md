@@ -77,6 +77,27 @@ This is the **verified evidence ledger**, not a roadmap. Add measured results he
   meaningful held-out worlds, full training speed, consistent first-log
   competence, crafting, Nether/End or Any%.
 
+## 2026-11-02 — First actual CUDA real Minecraft training (post-restart)
+
+- Gentoo Shell bridge restarted after host UVM device creation; inside
+  bubblewrap `/dev/nvidia-uvm` and `/dev/nvidia-uvm-tools` now bound;
+  `cuInit(0)=0` and actual PyTorch CUDA tensor compute succeeded on NVIDIA
+  GeForce RTX 4070 SUPER, driver 595.104.02.
+- Synthetic 25 CNN-update benchmark with batch 64 and 8 CPU threads:
+  CUDA 879.69 updates/s vs CPU 128.99 updates/s = ~6.82x speedup for
+  **only network training**, not Minecraft/ZMQ throughput.
+- `cuda01`: **12 x 220-tick actual Minecraft training episodes** on real
+  variable-position log fixture, PPO on CUDA with 3 successful optimizer
+  updates (95/63/66 transitions), **0/12 actual logs collected**. Frozen
+  held-out arena evaluation **0/4 logs** (220 ticks each).
+- Frozen episodes used just 3 actions per 220-tick rollout, a possible
+  learned degeneration into repeated **fixed-duration 80-tick mining**.
+  Next investigate action durations/exploration/reward before scaling up.
+- Local saved checkpoint: `checkpoints/joint_log_ppo_cuda01.pt` (ignored);
+  training ledger: `logs/joint_log_ppo_cuda01.jsonl` (ignored). Gamescope
+  still exits 139 after successful Python program termination. No claim of
+  first-log competence, transfer or Any% learning is warranted yet.
+
 ## 2026-11-02 — Atomic checkpoint / warm-start smoke
 
 - CPU `warmcheck01`: loaded pre-existing `jointsmoke01` CNN weights,

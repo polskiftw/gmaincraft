@@ -230,9 +230,9 @@ tools/run-mcio-viewer.sh .venv/bin/python -u -B experiments/joint_log_ppo.py --r
 
 Normal `--visible` Minecraft runs are already NVIDIA hardware accelerated;
 the temporary C GLX renderer probe showed OpenGL 4.6 and an RTX 4070 SUPER.
-CUDA training is separately blocked by UVM device-node passthrough until the
-user restarts the Gentoo Shell bridge after creating `/dev/nvidia-uvm` on
-the host. The isolation launcher **already** conditionally binds UVM nodes;
+Previously CUDA training was separately blocked by UVM device passthrough;
+after host UVM node creation and bridge restart, CUDA now works. The
+historical limitation is documented in the GPU guide. The isolation launcher **already** conditionally binds UVM nodes;
 no source code changes to the launcher are required. `--device cuda` is
 fail-fast; `--device auto` falls back to CPU and reports this fact. The
 new learner and natural benchmark default to 320x180 rendered frames before
@@ -253,3 +253,13 @@ state. Resume learning in a distinct new experiment with `--init-model
 OLD_TAG` and distinct policy/train seeds; this avoids overwriting good
 results. `docs/JOINT_LEARNING.md` has the exact template and clearly
 separates warm-start from an exact saved-episode resume.
+
+## Live CUDA result after user restarted the bridge
+
+Host UVM nodes now passed through and verified; `cuInit(0)=0`, actual
+PyTorch CUDA tensor compute succeeded. `tools/benchmark-training.py`
+measured CUDA **879.69** versus CPU **128.99** model-update/s at 64 images,
+25 timed steps. Real Minecraft `cuda01` ran 12 GPU training episodes / 3 PPO
+updates and 4 frozen evaluations with zero log acquisitions (not skill yet).
+The earlier CUDA-blocker descriptions refer to the pre-restart session;
+see the top of `docs/GPU_ACCELERATION.md` for live results and next steps.

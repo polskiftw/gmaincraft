@@ -50,3 +50,6 @@ build/
 
 # MCio local runtime cache created by natural-world server/game launches
 /.cache/
+
+# CUDA compute shader cache (generated inside the isolated workspace)
+/.nv/

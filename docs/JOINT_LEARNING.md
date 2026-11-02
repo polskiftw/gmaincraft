@@ -85,6 +85,25 @@ cd /workspace
 tools/run-mcio-viewer.sh .venv/bin/python -u -B experiments/joint_log_ppo.py --run-tag joint03 --init-model joint02 --policy-seed 4202 --train-seed 670102 --eval-seed 890102 --episodes 100 --eval 20 --max-ticks 320 --device cuda --visible
 ```
 
+## Live CUDA validation after bridge restart (2026-11-02)
+
+PyTorch successfully initialized CUDA and allocated a real tensor on the
+RTX 4070 SUPER. Real-game experiment `cuda01` trained the 888,236-parameter
+CNN PPO actor-critic on **CUDA**, 12 variable-tree Minecraft episodes x
+220 ticks, 3 GPU optimizer updates (95, 63 and 66 real decisions per batch),
+then froze the checkpoint for 4 evaluation episodes x 220 ticks. Results:
+**0/12** training log acquisitions and **0/4** frozen evaluation log
+acquisitions, all ended by timeout. The saved checkpoint and JSONL are local
+and ignored. Frozen evaluations each took 3 actions to exhaust 220 ticks;
+this suggests the policy repeatedly favored long macro-actions (80-tick
+mining) instead of exploring. Do not automatically allocate thousands of
+GPU episodes to the same unsuccessful macro design without diagnosing it.
+
+Synthetic *model-update-only* test: CUDA 879.69 updates/s versus CPU 128.99
+updates/s for batch 64, 25 timed optimizer iterations (about 6.82x speedup).
+**Neither this ratio nor the 12-episode smoke establishes improvements in
+Minecraft sample efficiency or wall-clock end-to-end training throughput.**
+
 ## Developer commands
 
 Inside isolated Gentoo Shell (choose fresh run tags; never reuse an existing

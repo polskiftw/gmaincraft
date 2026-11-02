@@ -2,6 +2,23 @@
 
 **Last curated:** 2026-11-02. This is the live source of truth for project status. **All agents must read and update this file alongside substantive changes** (see [AGENTS.md](AGENTS.md)). Never mark a task done from source code alone; require actual run evidence where appropriate.
 
+## CUDA confirmed and real Minecraft GPU pilot (after bridge restart)
+
+- [x] Host UVM character devices now available in the sandbox after bridge
+  restart. `cuInit(0)=0`, PyTorch GPU tensor allocation **PASS** on RTX 4070
+  SUPER; no host filesystem sandbox expansion.
+- [x] Compare CUDA and CPU CNN update microbench: batch 64, 25 steps,
+  **879.69 CUDA vs 128.99 CPU updates/s** (~6.82x GPU) on synthetic data.
+  This is not Minecraft environment speed.
+- [x] Run `cuda01`: **12 real Minecraft training episodes and 3 actual CUDA
+  PPO optimizer updates**, followed by 4 frozen held-out episodes, each
+  220 simulation ticks; **0/12 train and 0/4 eval logs**, checkpoint saved.
+- [ ] Investigate fixed 80-tick mining-action overuse (frozen cuda01 policy
+  exhausted 220 ticks in only 3 decisions for all 4 cases). Improve the
+  action-duration / temporal exploration design BEFORE large GPU training.
+- [ ] Evaluate a corrected model against always-forward and randomized
+  natural-world baselines using genuinely unseen seeded survival worlds.
+
 ## Continuity / checkpoint reliability
 
 - [x] Make joint PPO checkpoint writes atomic and include optimizer state,
@@ -22,10 +39,9 @@
   Minecraft's CPU world simulation for CPU rasterization.
 - [x] Install optional PyTorch 2.15.0+cu132 **in project `.venv` only**;
   add `requirements-gpu.txt`, CUDA preflight and CPU-vs-CUDA microbenchmark.
-- [ ] **CUDA DEVICE BLOCKER**: host `nvidia_uvm` loaded, but sandbox
-  `/dev/nvidia-uvm` missing; `cuInit(0)=999`. User must create host UVM nodes
-  and reboot bridge, then verify GPU tensor allocations. Launcher already
-  binds UVM devices when present. Do not report CUDA success yet.
+- [x] **CUDA DEVICE BLOCKER RESOLVED:** host UVM nodes present after bridge
+  restart, cuInit(0)=0 and actual GPU model training successful in `cuda01`.
+  Device nodes might require recreation after host reboot.
 - [x] Implement learned pixel-CNN actor-critic with joint movement/look/mine
   action selection, timed (semi-Markov) trajectory GAE, clipped PPO, losses,
   checkpointing, configurable CPU/CUDA and 320x180 default game rendering.

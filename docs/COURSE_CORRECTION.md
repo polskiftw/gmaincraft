@@ -68,6 +68,16 @@ verifies fixed matching spawn *for these two modes on this world*, not across
 all seeds or all game versions. More seeds / longer episodes are still needed.
 As before, Gamescope exited 139 after the Python child completed.
 
+## CUDA GPU is confirmed available after bridge restart
+
+The actual NVIDIA GPU is now usable for learning, not just OpenGL rendering.
+`cuda01` real Minecraft trained 12 episodes with 3 successful CUDA PPO
+updates and evaluated 4 frozen held-out episodes: **0/12 and 0/4** log
+acquisitions. A synthetic CNN batch benchmark shows ~6.82x faster CUDA
+model updates, but not an established end-to-end training speedup. Frozen
+cuda01 decisions appear to overuse 80-game-tick mining actions; focus on
+agent action/exploration design before scaling training compute.
+
 ## New joint PPO prototype (built after the first transfer gate)
 
 See [JOINT_LEARNING.md](JOINT_LEARNING.md) for architecture, code and exact

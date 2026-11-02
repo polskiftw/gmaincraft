@@ -4,6 +4,18 @@
 
 **Current reality (2026-11-02):** Minecraft Java 1.21.3 + MCio and three seeded numerical-navigation runs are verified. Two random-initialized, RGB-feature mouse+ATTACK models learn to aim at a controlled oak trunk (audited 15/20 and 18/20 real Minecraft logs). Two independently trained RGB-feature W/A/S/D policies learn to approach a **dropped** oak log: in a fresh 32-case offset-item audit, the best reaches **30/32**, versus **21/32** for just holding W. Combining the learned aiming and collection policies yields **51/56 real mined-log inventory pickups** over two fresh camera-angle sets for pickup model `p02`, versus **49/56** with scripted W. This does **not** establish a meaningful advantage in the centered-tree setup, and it still uses hand-engineered pixel masks, controller-only scalar rewards, fixed 100-tick attack holds, a single flat-world template, and separate training for the two neural stages. No general tree recognition or Any% speedrunning.
 
+## Live NVIDIA CUDA now operational (post-bridge restart, 2026-11-02)
+
+The isolated Gentoo Shell now has **working RTX 4070 SUPER CUDA tensor
+computation and actual GPU-backed neural-network training**. Benchmarked
+~6.82x faster network-only updates than CPU (synthetic batch-64 test).
+The real-game GPU pilot `cuda01` completed 12 training episodes/3 GPU PPO
+updates plus 4 frozen eval episodes, but scored **zero logs**; the long
+80-tick mining macro appears to dominate frozen decisions and needs an
+action-space correction before expensive large-scale training. See
+[docs/GPU_ACCELERATION.md](docs/GPU_ACCELERATION.md) for all measurements,
+and [docs/JOINT_LEARNING.md](docs/JOINT_LEARNING.md) for outcomes.
+
 ## New joint learning and RTX GPU diagnostics (2026-11-02)
 
 The experimental course correction now includes a **single RGB CNN
@@ -17,9 +29,9 @@ speedrun. Models are local and Git-ignored. See
 
 The nested NVIDIA OpenGL renderer is **confirmed hardware-accelerated** on
 the RTX 4070 SUPER (not software CPU rendering). Project-local PyTorch
-2.15.0+cu132 is installed for optional CUDA training, but this sandbox's
-CUDA access remains blocked pending `/dev/nvidia-uvm` host device creation
-and bridge restart. See
+2.15.0+cu132 was initially installed while CUDA access was blocked by
+missing UVM nodes; the user subsequently enabled those nodes and restarted
+the bridge. **CUDA is now working**, as confirmed above. See
 [docs/GPU_ACCELERATION.md](docs/GPU_ACCELERATION.md) for verification,
 strict CUDA diagnostics and measured CPU training reference. No Gentoo-wide
 package or driver changes were made by the agent.

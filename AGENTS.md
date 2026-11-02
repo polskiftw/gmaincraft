@@ -2,6 +2,22 @@
 
 This file is the operating contract for anyone (including a future ChatGPT conversation) editing **polskiftw/gmaincraft**. Treat the GitHub repository, not the conversation transcript or an assumed local checkout, as the authoritative codebase.
 
+## Latest: CUDA works after bridge restart (2026-11-02)
+
+User created host NVIDIA UVM device nodes and restarted Gentoo Shell. GPU
+preflight **passed**: `cuInit(0)=0`, CUDA tensor allocation on RTX 4070
+SUPER and local PyTorch 2.15.0+cu132. `tools/benchmark-training.py` measured
+**879.69 CUDA vs 128.99 CPU updates/s** for synthetic batch 64 (6.82x);
+this is model training only, not Minecraft environment speed.
+
+Actual CUDA real Minecraft `cuda01`: 12 training episodes x220 ticks,
+3 GPU PPO updates, 4 frozen held-out x220 ticks, **0/12** and **0/4** log
+acquisitions. All completed, local checkpoint/JSONL saved. Frozen policy
+used only three long actions per episode, suggesting action-duration collapse
+toward the fixed 80-tick mining macro; investigate before expensive long
+training. Current CUDA works but UVM devices may need recreation after
+future host boot. See `docs/GPU_ACCELERATION.md` and `docs/JOINT_LEARNING.md`.
+
 ## Freshest improvement: durable learning checkpoints
 
 `joint_log_ppo.py` now atomically writes local `.pt` checkpoints including

@@ -2,6 +2,18 @@
 
 **Last verified: 2026-11-02.** Canonical code: [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. **Newest milestone:** learn movement W/A/S/D from real RGB features (2 independently trained models; fresh fixture audit p01 **30/32**, p02 **24/32**, always-W 21/32); then **combine frozen RGB aim/ATTACK and pickup policies** on *real mined logs* (two independent camera-angle sets, trained p02 **51/56**, hardcoded W **49/56**, untrained movement 21/56). Earlier numerical-navigation and RGB log-aiming milestones remain preserved; `docs/EXPERIMENTS.md` records all results. The initial uncleaned aim 12/14 and aborted first drop-distance audits are **invalid evidence**. No general world-seed Minecraft speedrunning. Do not ask for old test logs.
 
+## Newest: CUDA training operational after bridge restart
+
+CUDA now actually WORKS: UVM devices visible, `cuInit(0)=0`, Torch CUDA
+allocation passed. A 25-step synthetic CNN batch-64 model benchmark measured
+~6.82x GPU versus CPU update throughput. Real Minecraft `cuda01`: 12 joint
+PPO training episodes / 3 GPU PPO updates, 4 frozen eval episodes, 220 ticks
+each, 0/12 train logs and 0/4 eval logs. Both local model and JSONL saved;
+Git-ignored. Frozen policy exhausted episodes in just 3 long actions,
+indicating potential fixed 80-tick attack-hold macro exploitation; **next
+investigate before large GPU experiments**. Gamescope post-child exit 139
+remains. Historical CUDA-unavailable remarks below are now superseded.
+
 ## Latest checkpoint continuity check (2026-11-02)
 
 `warmcheck01` successfully loaded the old joint model, trained one more
