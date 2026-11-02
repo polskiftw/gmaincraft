@@ -10,6 +10,8 @@
 - [x] Validate each independent run's 300-record CSV and finite (4,3) checkpoint; preserve local files under git-ignored `logs/` and `checkpoints/`.
 - [ ] **NEXT: learn camera turning** (mouse/yaw, later pitch) alongside movement without the controller fixing yaw during scored play. Use held-out scenarios; keep the previous learned checkpoints unchanged.
 - [ ] Afterwards replace privileged numeric target direction with visually detectable objectives and a documented human-equivalent observation contract.
+- [x] Add local `tools/run-mcio-viewer.sh` and SDL2 mouse-input filter: the user confirmed the original pointer lock was removed but physical hover still moved Minecraft's camera; the revised shim filters Gamescope's `SDL_WaitEvent` mouse motion, clicks and scrolling. Synthetic SDL2 regression passed and Minecraft MCio completed 10/10 exchanges with the new shim.
+- [ ] **User verification pending:** physically hover/move/click over the game preview and confirm the camera no longer responds to the desktop mouse. The shell smoke tests did not inject physical mouse motion.
 - [ ] Gamescope still returns SIGSEGV 139 after the child exits; investigate if it affects experiment stability or loses results. All three Python experiments completed and were validated.
 
 ## Verified foundations
