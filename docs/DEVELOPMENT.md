@@ -126,6 +126,26 @@ Audited seed 8815 (`MDL_LogAimAudit_clean01`): untrained 0/20, trained rgb01 15/
 
 Next work is **letting the neural policy decide movement/collection** and replacing the engineered oak-color mask with a learned, robust RGB vision encoder; do not reward camera aesthetics.
 
+## Learned W/A/S/D pickup and integrated actual mined-log audit (2026-11-02)
+
+**Milestone:** two separate random-weights RGB-feature pickup policies trained with **real Minecraft movement + actual inventory pickup**, starting from controller-summoned dropped oak logs. They see 14 hand-engineered pixel features ONLY; the trainer's geometric item position is used to compute scalar reward, never exposed to the neural policy. The fresh dropped-item audit seed 8804: untrained 2/32, random 16/32, fixed-W 21/32, trained p01 **30/32**, trained p02 **24/32**. A preliminary audit was **aborted** after item drift made an exact distance guard unreliable; fixture summons now force zero **initial** velocity (the original p01/p02 training was completed before that fixture correction), previous items are killed between cases, and suspect distant pickups are excluded. Models stay in git-ignored `checkpoints/`.
+
+The **combined** evaluator creates another disposable copied world with a controller-placed *oak-log BLOCK*, loads previously trained `rgb02` aiming, then separately loads a pickup policy. Camera/attack decisions are neural; clicking is held 100 ticks; pickup key decisions are neural (not scripted W). Actual Minecraft mined-log inventory success for two independent held-out angle seeds (24+32 cases): fixed W 49/56, untrained pickup 21/56, p01 43/56, p02 **51/56**. This does not establish superiority over W in the current centered-trunk setup. A no-attack negative control gets zero. No model training in audit.
+
+All runs below require a **new never-reused** run-tag and the sandbox's mouse-safe GPU viewer, and they preserve existing worlds/checkpoints:
+
+```bash
+cd /workspace
+# Train another distinct movement policy (controller-summoned item fixture)
+tools/run-mcio-viewer.sh .venv/bin/python -B experiments/log_pickup_learner.py --run-tag p03 --episodes 150 --eval 20 --policy-seed 4403 --train-seed 6603 --eval-seed 8805 --visible
+# Frozen independent fixture audit of known saved models
+tools/run-mcio-viewer.sh .venv/bin/python -B experiments/log_pickup_evaluator.py --run-tag dclean03 --models p01 p02 --eval-seed 8806 --eval 32 --visible
+# Score real vanilla mined-log pickups: agent controls camera+attack, then W/A/S/D
+tools/run-mcio-viewer.sh .venv/bin/python -B experiments/log_mine_and_pickup_audit.py --run-tag f03 --aim-model rgb02 --pickup-models p01 p02 --eval-seed 8818 --eval 32 --visible
+```
+
+Every scored step uses normal MCio input, no `/give` or teleports. The **controller** may summon a dropped item for pickup-only training, or place a block for integrated mining, before scoring. The source is under `experiments/` and `src/gmaincraft/`, pure tests under `tests/`; data in `logs/`, `checkpoints/` and `mcio-data/` is ignored by Git. Keep carefully labeled scientific results in `docs/EXPERIMENTS.md`. Future goal: varied real tree positions and scenes where W baseline is not nearly optimal, followed by learned visual encoding and jointly trained actions.
+
 ## Check syntax and pure-policy unit tests without Minecraft
 
 ```bash

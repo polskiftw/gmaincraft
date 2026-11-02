@@ -37,7 +37,7 @@ class Client:
             raise AssertionError('Admin commands prohibited during mining/collection')
         if commands:
             self.score_commands.extend(commands)
-        pressed = {name: int(name in keys) for name in ('W','LEFT_BUTTON')}
+        pressed = {name: int(name in keys) for name in ('W','A','S','D','LEFT_BUTTON')}
         inputs = self.manager.process_action(pressed, mcio_env.INPUT_MAP)
         pkt = network.ActionPacket(inputs=inputs, commands=list(commands), clear_input=clear)
         if look is not None:
