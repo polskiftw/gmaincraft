@@ -28,6 +28,10 @@ Experiment controller + independent scorekeeper
 
 Prototypes are each self-contained in `experiments/`. Later, extract reusable environment, observations, actions, curriculum, reward, trainer, evaluator and recorder code into `src/gmaincraft/` without silently changing the meaning of earlier benchmarks.
 
+## Camera use: effectiveness over human resemblance
+
+The agent does **not** have to keep its head level, appear human, point the camera along the travel direction, or make smooth-looking movements. It may walk sideways while facing the sky if that is useful. Camera actions are available as needed for pixel observations, raycast targeting, mining, placing, interacting or combat. **The game engine's normal crosshair/reach/survival limits still apply.** Never teleport camera orientation as a learned action, directly edit blocks for the agent, grant inventory items, or hand the agent unseen-world coordinates. During research, the privileged controller may build a simple arena and assign scalar feedback, but the policy's input and outputs must be logged explicitly.
+
 ## Fairness and leakage
 
 The existing navigation experiments pass the exact target direction to the policy as a numeric vector (absolute or camera-relative). This is a **teaching shortcut**, legitimate for learning game control, but impossible to assume for arbitrary hidden Minecraft objectives. The 2026-11-02 orientation success demonstrates handling a controller-randomized **initial** yaw, not camera turning chosen by the agent. Do not claim it learned to recognize a block or navigate from pixels.
@@ -42,7 +46,7 @@ Define this contract *before* comparing curriculum scores to open-world speedrun
 
 1. **Working interface and measurement (done):** controllable Minecraft, video/state observations, clean-world restarts, soft-reset benchmark, reward detector.
 2. **Basic learning (controlled arena, verified):** fixed-yaw learner (7/20 to 20/20); camera-relative learner with controller-randomized initial yaw and numeric target direction replicated across 3 independent policy/training/evaluation RNG configurations (before: 9/50, 7/50, 7/50; after: 50/50 each; additional unseen target/yaw sets: 50/50 each, 2026-11-02). Still one saved-world template: no world-seed generalization, learned yaw control or visual recognition.
-3. **Autonomous perception and actions:** learn camera turning, block visual targeting, mouse interaction, inventory and crafting inputs; combine event rewards without admin-command leakage.
+3. **Autonomous perception and actions:** first prove vanilla mouse-look, mining and pickup in a disposable log arena (input-path probe verified 2026-11-02), then learn visual target acquisition, attack, pickup and broader crafting. **The camera is an actuator and sensor, not a style objective.** No penalty for looking up, sideways, erratic turns, or other nonhuman aesthetics. Reward successful legal actions, useful visual information and efficiency; aim at blocks/entities only when Minecraft's interaction/raycast mechanics demand it. Controller camera teleports are for reset only, never a policy action.
 4. **Scale-up:** reproducible isolated episodes, offline/online experience buffers, checkpointing, held-out evaluation, graphics throughput, GPU-aware visual representation/world-model RL (DreamerV3 or a measured alternative), hierarchical skill reuse if useful.
 5. **Long-term Any%:** survival/resource economy, Nether/End progression, battle, exit detection and test-seed generalization.
 

@@ -23,7 +23,8 @@ gmaincraft/
 │   ├── persistent_benchmark.py  Fast soft resets in one Minecraft process
 │   ├── reward_probe.py          Per-episode first-seen item rewards
 │   ├── navigation_learner.py    First real in-game policy-gradient learning
-│   └── orientation_learner.py   Camera-yaw generalization experiment
+│   ├── orientation_learner.py   Camera-yaw generalization experiment
+│   └── log_interaction_probe.py Vanilla mouse/mine/pickup instrumentation test
 ├── src/gmaincraft/              Home for reusable code as it matures
 ├── tests/                       Minecraft-independent unit tests
 └── requirements.txt             Pinned MCio compatibility dependencies
@@ -49,6 +50,12 @@ The initial MCio demo provisions `mcio-data/` and creates the `DemoInstance` and
 
 **Already have `~/Documents/minecraft-discovery` from this project's earlier experiments?** Do **not** delete it or clone over it. Instead attach that existing directory to this repository using the safe commands in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). This preserves `mcio-data/`, `.venv/`, `checkpoints/` and `logs/`.
 
+### Next learning goal: acquire a log, not a human-looking camera
+
+Our camera rule is **functional, not cosmetic**. The agent need not look forward, keep its head level or move its view smoothly. It may face skyward while traveling; it must use legitimate mouse aiming and vanilla reach mechanics when breaking, placing, interacting or fighting. The intended curriculum is rendered-pixel observation → agent-selected camera/movement/attack → actual oak-log pickup. No hidden target coordinates as policy observations.
+
+A first **scripted mechanics probe**, `experiments/log_interaction_probe.py`, successfully used MCio cursor motion (+18° yaw, +7.5° pitch), normal left-click mining, W movement and the *observed inventory* to prove one oak log could be acquired in a disposable controlled arena. The controller placed the trunk only during setup; the probe did **not** train an AI. Read [the experiment ledger](docs/EXPERIMENTS.md). The next step is learned visual aiming/interaction.
+
 ### Run an experiment
 
 After the MCio demo has finished and you are back at a shell:
@@ -72,6 +79,7 @@ Each experiment is a direct-entry Python prototype, not a production package. It
 - Persistent-process benchmark: 284.5 active steps/sec over 5,000 steps; 123.5 steps/sec measured end-to-end; soft resets around 0.08–0.11s. **Soft resets do not restore the world.**
 - First-seen item reward detector passed all five controller-injected item tests. **Not a learned item-acquisition policy.**
 - Simple navigation learner: 7/20 successes before training, 20/20 afterwards on the same 20 held-out targets, after 120 training episodes in 12.8 seconds. Fixed yaw, privileged goal direction, no vision.
+- Vanilla log interaction probe (2026-11-02): camera deltas worked, oak log mined via held left mouse button, item entered observed inventory after moving closer; 1 log verified, no `/give`. Controller placed trunk in disposable world; scripted test, NOT learned perception.
 - Camera-relative orientation learner (**real Minecraft**, 2026-11-02): initial 9/50, 7/50, 7/50 across three independently initialized/trained numerical policies. All three reached **50/50 held-out and 50/50 extra unseen** target/yaw scenarios after 300 training episodes each (30.16s, 26.67s, 25.17s learner time; 299/300 training wins per run). Policy never moved the camera or saw visual goal pixels; privileged numeric goal direction was supplied.
 
 All measurements are preliminary and hardware/setup specific. See [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md) for the actual scope and caveats.
