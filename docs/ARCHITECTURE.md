@@ -101,3 +101,22 @@ agent: temporal context is only two frames, no crafting or inventory UI,
 fixed 80-tick mining action, and no demonstrated success on first-log
 retrieval. NVIDIA GPU/OpenGL and CUDA distinctions are in
 [GPU_ACCELERATION.md](GPU_ACCELERATION.md).
+
+## V2 factorized action head and experience capture (2026-11-02)
+
+`src/gmaincraft/vision_factorized.py` is a **separate** 888,750-parameter
+RGB CNN actor-critic with independent discrete movement (6), camera (5),
+and attack (2) logits; total joint action is realized as a normal vanilla
+`AgentAction` every 6 simulation ticks. Correct factorized joint
+log-likelihood and entropy are used for trajectory PPO. Curricula may
+temporarily mask movement/look heads with the correct masked PPO
+likelihood, but **frozen unrestricted scores enable all heads**. Existing
+V1 model/code remains independently loadable; its checkpoint is NOT weight
+compatible. `src/gmaincraft/rollout_store.py` can capture opt-in versioned
+compressed RGB history/action/reward/duration and terminal transitions;
+no privileged world-state tensors are stored.
+
+This is a functional architecture/science scaffold, NOT successful general
+visual control: repeated real Minecraft experiments reported 0/12
+unrestricted near-log successes for all three evaluated V2 checkpoints.
+See `docs/FACTOR_POLICY_REVIEW.md` before tuning or stacking extra stages.

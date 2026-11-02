@@ -2,6 +2,52 @@
 
 This file is the operating contract for anyone (including a future ChatGPT conversation) editing **polskiftw/gmaincraft**. Treat the GitHub repository, not the conversation transcript or an assumed local checkout, as the authoritative codebase.
 
+## NEWEST — factorized visual policy and real learning-efficiency audit (Nov 2, 2026)
+
+**Read `docs/FACTOR_POLICY_REVIEW.md` BEFORE any more training.** V2 is a
+new, checkpoint-INCOMPATIBLE 888,750-weight CUDA RGB PPO actor with 3
+categorical heads (movement/look/attack) controlling ordinary vanilla
+Minecraft inputs simultaneously every 6 game ticks. V1 code/checkpoints
+are preserved. The new `experiments/continuous_mine_probe.py` demonstrated
+a real log after 20 consecutive 6-tick holds; no hidden commands during
+scored play. Stale-inventory contamination at reset was found by the positive
+controls, then FIXED: `VariableLogArena.reset` waits for both correct pose
+and zero wood inventory, with 2 extra settled ticks.
+
+**Evidence:** fair/simple same near-scenarios (seed 3737) 12-case control:
+attack-then-forward **8/12**, random **0/12**, privileged geometry oracle
+**11/12** (NOT a fair policy). Frozen V2 models `factorv2pilot01`,
+`attackrl01`, `aimnear01` each **0/12** on these EXACT same cases. A
+restricted attack-only curriculum produced **3/32** training and **2/4**
+held-out logs when look/movement were disabled, but it does **not** transfer
+to unrestricted play. `aimnear01` sequential and `mixstable01` interleaved
+curriculum runs also failed fully unrestricted near tests; learned policies
+often endlessly turn or walk away. Do not claim that more PPO epochs fixes
+this or that CUDA speedup implies Minecraft skill.
+
+New `experiments/joint_log_factorized.py` supports staged or interleaved
+curriculum, privileged SCALAR shaping only in the placed-log training lab,
+and optional `--save-rollouts`. Rollout data are validated, compressed,
+versioned, and stored in **ignored local** `runs/joint_factorized_TAG/`,
+containing only agent RGB, normal actions, scalar rewards/values,
+head masks and terminal flags; **NO hidden coordinates**. Do not blindly
+reuse stale PPO rollouts as new on-policy experience. `recordpilot01` did
+real CUDA rollout, saved/read a 40-transition 135670-byte local dataset.
+
+Frozen V2 can now be evaluated with `natural_world_benchmark.py --modes
+joint_factorized --factorized-model TAG`. Actual natural seed 246813579,
+all modes start (16.5,124.0,0.5), 0/360-tick logs for random,
+forward-attack and V2 `mixstable01`. Checkpoints hashed in output. This is
+pipeline proof only, NOT world transfer or speedrunning competence.
+
+**Next scientifically justified step:** use held-out paired logs and
+recorded agent visual data to investigate perceptual features, temporal
+memory and more sample-efficient off-policy/representation learning BEFORE
+scaling new GPU training. Keep actual game success as the gate; if basic
+first-log learning fails, DO NOT proceed to piles of crafting subskills.
+Never overwrite existing ignored files; Git fetch/commit/push via isolated
+Gentoo Shell `/workspace`, no GitHub connector necessary.
+
 ## Latest: CUDA works after bridge restart (2026-11-02)
 
 User created host NVIDIA UVM device nodes and restarted Gentoo Shell. GPU

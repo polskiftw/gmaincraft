@@ -76,16 +76,23 @@ class VariableLogArena:
             'clear @s', 'effect clear @s',
             'effect give @s minecraft:instant_health 1 5 true',
             'effect give @s minecraft:saturation 1 20 true'], clear=True)
-        for _ in range(20):
+        # MCio command packets can be visible before all Minecraft inventory
+        # and teleport changes have arrived in an observation. A pose-only
+        # check could accidentally accept a previous episode's mined log.
+        # Require BOTH matching pose AND a truly empty inventory, then take
+        # two more settled game ticks before opening the scored action phase.
+        for _ in range(60):
             ob = self.client.step()
             if (math.hypot(ob.player_pos[0]-px,ob.player_pos[2]-pz) < .12 and
                 abs(yaw_error(ob.player_yaw, case.yaw)) < 1.0 and
-                abs(ob.player_pitch-case.pitch) < 1.0):
+                abs(ob.player_pitch-case.pitch) < 1.0 and
+                natural_log_count(ob)==0):
                 break
         else:
-            raise RuntimeError('Could not reset player pose to configured scenario')
+            raise RuntimeError('Reset did not settle to expected pose AND zero wood inventory')
+        ob = self.client.advance(2)
         if natural_log_count(ob):
-            raise RuntimeError('Stale logs in inventory at episode start')
+            raise RuntimeError('Old wood inventory reappeared after reset')
         self.client.scoring = True
         return ob
 

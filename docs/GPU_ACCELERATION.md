@@ -163,3 +163,15 @@ has not yet been measured in this session.
 
 See [COURSE_CORRECTION.md](COURSE_CORRECTION.md) and
 [DEVELOPMENT.md](DEVELOPMENT.md) for the research and runtime plan.
+
+## Current V2 GPU pipeline after action-space change
+
+The newer factorized CNN (888,750 weights) also performs real training on
+RTX 4070 SUPER/CUDA, and replay-data recording does not require CPU-only
+learning. Examples: `factorv2pilot01` (40 full-control train episodes),
+`attackrl01` (32 stationary masked episodes), `aimnear01` (56 warm-start
+stage episodes), `mixstable01` (48 interleaved episodes), and `recordpilot01`
+(2 episodes with verified local rollout export). CUDA execution is working;
+**unrestricted first-log success is still 0/12** on the matched benchmark.
+More GPU training loops do not fix the policy's observed continuous turning
+and drifting. See [FACTOR_POLICY_REVIEW.md](FACTOR_POLICY_REVIEW.md).

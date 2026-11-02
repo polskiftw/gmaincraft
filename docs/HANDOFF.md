@@ -2,6 +2,34 @@
 
 **Last verified: 2026-11-02.** Canonical code: [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. **Newest milestone:** learn movement W/A/S/D from real RGB features (2 independently trained models; fresh fixture audit p01 **30/32**, p02 **24/32**, always-W 21/32); then **combine frozen RGB aim/ATTACK and pickup policies** on *real mined logs* (two independent camera-angle sets, trained p02 **51/56**, hardcoded W **49/56**, untrained movement 21/56). Earlier numerical-navigation and RGB log-aiming milestones remain preserved; `docs/EXPERIMENTS.md` records all results. The initial uncleaned aim 12/14 and aborted first drop-distance audits are **invalid evidence**. No general world-seed Minecraft speedrunning. Do not ask for old test logs.
 
+## CURRENT handoff: V2 factorized policy and scientific course correction
+
+Read `docs/FACTOR_POLICY_REVIEW.md` and the top of `TODO.md` first. This
+session implemented `vision_factorized.py` (separate CUDA-capable factorized
+CNN), variable stationary/aim/near/broad head-masked curricula with
+interleaving, fixed an inventory-reset race, verified continuous short hold
+mining in Minecraft, and compared REAL 12-case baselines. Frozen models
+`factorv2pilot01`, `attackrl01`, `aimnear01` all scored **0/12** on the
+identical near seed3737 scenarios, versus scripted 8/12 and PRIVILEGED
+oracle 11/12. `attackrl01` learned attack-only in restricted aligned fixture
+(2/4 held-out) but failed when movement/looking were unlocked. Sequential
+and interleaved curriculum did not fix unrestricted learning.
+
+`natural_world_benchmark.py` now evaluates `--modes joint_factorized
+--factorized-model TAG`. Real 1.21.3 seed246813579, 3 independent same-
+spawn modes (random, forward_attack, V2) all 0/360ticks natural wood. This
+proves test wiring only. `rollout_store.py` saves ONLY policy RGB/action/
+reward/value/terminal data to Git-ignored `runs/`; `recordpilot01` real
+CUDA pilot produced and successfully read 40 actual transitions.
+
+Next: investigate image representation, action credit, memory, and
+sample-efficient algorithms rather than burning huge CUDA time on zero-win
+PPO. Run `tools/gpu-preflight.py` if CUDA disappears after user reboot.
+The bridge `run_shell` has a 90-sec hard timeout; do short experiments and
+check JSONL/checkpoint when Gamescope exits 139 or times out after child.
+Git works inside `/workspace`, commit and push there. Never alter ignored
+prior world saves/checkpoints/SSH secrets; avoid broad system mounts.
+
 ## Newest: CUDA training operational after bridge restart
 
 CUDA now actually WORKS: UVM devices visible, `cuInit(0)=0`, Torch CUDA

@@ -31,6 +31,13 @@ class NaturalEvalTests(unittest.TestCase):
                 self.assertGreaterEqual(action.ticks, 1)
                 self.assertFalse(hasattr(action, 'commands'))
 
+    def test_factorized_natural_mode_requires_compatible_checkpoint(self):
+        from gmaincraft.natural_eval import MODES
+        self.assertIn('joint_factorized',MODES)
+        self.assertEqual(plan_runs('v2', [77], ['joint_factorized'])[0].mode,'joint_factorized')
+        with self.assertRaises(ValueError):
+            make_agent('joint_factorized',5)
+
     def test_legacy_requires_frozen_checkpoints(self):
         with self.assertRaises(ValueError):
             make_agent('legacy_probe', 5)

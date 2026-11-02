@@ -17,6 +17,83 @@ This is the **verified evidence ledger**, not a roadmap. Add measured results he
 | `log_interaction_probe.py` (2026-11-02, MCP sandbox) | Test with controller-placed oak-log column in new copied disposable world, mouse (+120,+50) input changed yaw +18.00°/pitch +7.50°, reverse mouse restored 0/0; 100 ticks left-click mining then 11 ticks forward motion yielded **one oak log in observed inventory**. Launcher-to-finish 20.15s; Gamescope exit 139 after completion. | **Scripted INPUT PROBE, not learned behavior.** Controller /setblock and /tp only for setup; during mine/collect phase no admin commands and no `/give`; real break/pickup via vanilla game mechanics. |
 | `orientation_learner.py` (2026-11-02, MCP sandbox) | **3 independent** 300-episode policy/train/eval RNG runs: before 9/50, 7/50, 7/50; after **50/50 each** and extra unseen **50/50 each**. Training 299/300 successes each; learning 30.16s, 26.67s, 25.17s. | Real Minecraft rollouts but one flat-arena world template, numeric goal direction, no vision or learned yaw action; Gamescope exit 139 after completed child |
 
+## 2026-11-02 — V2 factorized action learning and matched controls
+
+**Read `FACTOR_POLICY_REVIEW.md` for complete methods and run commands.**
+This is a dated factual report. New CNN controller has **888,750 weights**
+and independent movement(6)/camera(5)/attack(2) heads every 6 game ticks.
+It is NOT checkpoint compatible with V1's 80-tick single attack macro.
+Both versions remain intact; trained from scratch unless explicit warm-start
+is noted. All scored phases use vanilla MCio input and check real inventory.
+
+- **Motor-mechanics positive control:** `continuous_mine_probe.py` held the
+  real mouse attack button for 20 separate 6-tick actions on a newly placed
+  survival oak log. Observed 1 real log in inventory, correct target geometry
+  only for fixture setup. NOT learned intelligence.
+- **Reset race discovered and fixed:** initial `controlv2a` was intentionally
+  aborted by a stale-inventory guard after a genuine positive. MCio hadn't
+  delivered `clear @s` before the pose-only reset succeeded. `reset()` now
+  requires **both** pose convergence AND empty wood inventory, settles two
+  more frames, then begins scoring; next complete run `controlv2b` is valid.
+- **Twelve-case paired CONTROL results**: same actual nearby-log cases,
+  held-out scenario seed `3737`, fresh reset for every mode. Privileged
+  geometry aiming oracle: **11/12** (instrumentation only, NOT fair agent);
+  normal scripted 120-tick attack then W: **8/12**; walking-attack then
+  stationary hold: **3/12**; random factorized controller: **0/12**.
+- **First V2 CNN pilot `factorv2pilot01`:** real CUDA 40 nearby train cases,
+  **0/40 inventory successes**. Frozen eval 0/4 near, 0/4 broad. Greedy
+  policy often moved backward and away from target, attacked ~5/360 ticks
+  in a later matched audit.
+- **Stationary restricted `attackrl01`:** 32 CUDA train episodes with
+  movement and look explicitly masked out; **3/32 logs**. Held-out frozen
+  restricted station **2/4** logs, unrestricted near **0/4**, broad **0/4**.
+  This verifies a narrow learned attack tendency, NOT usable general play.
+- **Sequential staged `aimnear01`:** warm-start from `attackrl01`, 36 camera
+  + attack with movement disabled (1/36 training logs) then 20 unrestricted
+  near cases (0/20); all four 4-case frozen slices **0/4**. With all heads
+  active, the model often selected stationary movement + endless rightward
+  looking + continuous attack. Long-term mining was not possible.
+- **Interleaved staged `mixstable01`:** 48 CUDA train episodes: 12 stationary,
+  14 camera+attack, 22 unrestricted near, **0 successes in all three**.
+  Trainer added a modest privileged sustained-alignment scalar reward
+  (NOT actual block damage). Frozen stationary-only restricted 1/4, aim-
+  restricted 0/4, unrestricted near 0/4 and broad 0/4. More mixing and
+  shaping **did not** fix this model family. Its Python run completed and
+  logged all results even though the outer Gamescope wrapper reached
+  timeout exit 124 during shutdown.
+- **Frozen three-model matched near audit `nearcompare01`:** identical
+  `3737` 12-case test and new copied world, all **0/12** for
+  `factorv2pilot01`, `attackrl01` and `aimnear01` versus scripted **8/12**.
+  Mean ending tree distances ~12.97, ~15.77, ~2.61 blocks respectively.
+  The latter stayed nearby but rotated the camera every tick window.
+  Model SHA256 fingerprints recorded in local JSONL.
+- **Natural seeded-world transfer `factortransfer01`:** new vanilla
+  Minecraft 1.21.3 noise-survival world seed **246813579** with fixed
+  spawn radius0. Three *different copied worlds* for `forward_attack`,
+  `random`, and frozen `joint_factorized` (`mixstable01`). All observed
+  identical initial position **(16.5,124.0,0.5)** and yaw/pitch 0/0,
+  **0 wood in 360 game ticks** each. Learned policy made 60 decisions.
+  This proves world loading/policy interface only; it does NOT show
+  positive natural-world transfer.
+- **Opt-in full RGB trajectory data `recordpilot01`:** two 120-tick REAL
+  CUDA training episodes, 40 actions, 1 valid PPO update, **0 logs**;
+  135,670-byte compressed `.npz` locally in ignored
+  `runs/joint_factorized_recordpilot01/rollout_00002.npz` reloaded without
+  pickle. Arrays include `(40,6,84,84)` uint8 RGB histories, triple
+  ordinary actions, scalar rewards/values/logprobs, game-tick durations,
+  terminal flags and masked-head settings. Exactly 2 terminal events.
+  **No privileged target coordinates or player poses** stored in rollout.
+
+**Conclusion:** V2 eliminates the pathological V1 80-tick action bottleneck
+but does not learn general look/move/mine from the observed sample budgets.
+A simple scripted normal-control approach remains far stronger on the same
+12 held-out near scenes (8/12 vs learned 0/12). More identical PPO training
+is not currently justified; next test more sample-efficient visual encoders,
+recurrent state and off-policy/replay-aware algorithms using the recorded
+agent-only experience while keeping fully independent Minecraft outcomes
+as the only success metric. All local saves/checkpoints/results are ignored
+by Git; system CUDA and hardware OpenGL function as previously verified.
+
 ## 2026-11-02 — Natural-world transfer pilot, NOT paired evidence
 
 - Real Minecraft 1.21.3 server created **seed 314159265**, normal

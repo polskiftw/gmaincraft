@@ -145,3 +145,25 @@ cross-resolution results without stating it.
 
 Do not mistake good reward curves, synthetic tests, GPU utilization or toy
 mined logs for Any% speedrunning ability.
+
+## Latest joint V2 development: factorized controls and unresolved skill gap
+
+A separate CNN policy in `vision_factorized.py` replaces V1's single
+80-tick mining choice with **6-tick simultaneous movement/look/attack
+factors**, with PPO likelihood masking for training curricula. The original
+V1 architecture and checkpoints remain available. A real Minecraft positive
+control proved 20 x 6-tick continuous held attack can mine and collect a log.
+
+In 12 matched, successfully reset nearby-log scenarios, a simple unlearned
+attack+forward control acquired **8/12 logs**; an oracle that knows hidden
+target geometry acquired 11/12 but is NOT a fair policy. Three separately
+trained V2 checkpoint evaluations all returned **0/12**. One aligned,
+restricted motor-control curriculum learned 2/4 held-out; broader look and
+movement skills did not transfer. The `mixstable01` interleaved curriculum
+with a persistent-aim teacher proxy also failed unrestricted benchmarks.
+A fresh seed246813579 natural-world comparison proved V2 integration but
+all three modes acquired zero wood. These are unambiguous negative results
+on *current sample budgets*, not proof that learned Minecraft is impossible.
+
+For precise run tags, controls, local rollouts and research priorities,
+read [FACTOR_POLICY_REVIEW.md](FACTOR_POLICY_REVIEW.md).

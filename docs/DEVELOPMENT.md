@@ -263,3 +263,29 @@ measured CUDA **879.69** versus CPU **128.99** model-update/s at 64 images,
 updates and 4 frozen evaluations with zero log acquisitions (not skill yet).
 The earlier CUDA-blocker descriptions refer to the pre-restart session;
 see the top of `docs/GPU_ACCELERATION.md` for live results and next steps.
+
+## V2 factorized PPO and local replay-data experiments
+
+The old V1 80-tick mine macro and model are untouched. V2 controls
+movement, mouse look and attack simultaneously every **6** Minecraft ticks;
+CUDA actually works with current bridge. An attack-only fixture proved
+that multiple consecutive short actions can mine a real vanilla oak log.
+Matched baselines and frozen policies showed the learner is **not** yet
+competent: V2 0/12 nearest-log vs scripted attack+approach 8/12. Inspect
+`docs/FACTOR_POLICY_REVIEW.md` for full evidence and commands.
+
+For a **NEW** tagged V2 trial (the same tag cannot be reused):
+
+```bash
+cd /workspace
+.venv/bin/python -m unittest discover -s tests -q
+tools/run-mcio-viewer.sh .venv/bin/python -u -B experiments/joint_log_factorized.py --run-tag NEWV2 --episodes 48 --eval 4 --max-ticks 300 --curriculum staged --schedule interleaved --device cuda --save-rollouts --visible
+```
+
+`--save-rollouts` is optional and writes compressed, versioned `.npz` files
+under ignored `runs/joint_factorized_NEWV2/`, holding only the CNN-visible
+RGB/action and scalar reward/value/duration/terminal data. `recordpilot01`
+read-back of 40 real game decisions and two episode endings passed.
+**Do not repeatedly optimize PPO on stale saved trajectories**; off-policy
+learning requires algorithms appropriate for replay. Frozen natural-world
+testing uses `--modes joint_factorized --factorized-model NEWV2`.

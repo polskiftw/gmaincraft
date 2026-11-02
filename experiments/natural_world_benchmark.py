@@ -54,6 +54,8 @@ def parse_args(argv=None):
                     help='inspect world generation and evaluation plan without writing')
     ap.add_argument('--aim-model', default='rgb02')
     ap.add_argument('--pickup-model', default='p02')
+    ap.add_argument('--factorized-model',default=None,
+                    help='local checkpoint tag joint_factorized_<tag>.pt')
     ap.add_argument('--joint-model', default=None,
                     help='local checkpoint tag joint_log_ppo_<tag>.pt')
     ap.add_argument('--device',choices=['auto','cpu','cuda'],default='auto')
@@ -72,10 +74,13 @@ def parse_args(argv=None):
     if len(args.modes) != len(set(args.modes)):
         ap.error('Duplicate benchmark modes')
     if not all(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,39}', t)
-               for t in (args.aim_model, args.pickup_model, args.joint_model or 'unset')):
+               for t in (args.aim_model, args.pickup_model, args.joint_model or 'unset',
+                         args.factorized_model or 'unset')):
         ap.error('Invalid checkpoint name')
     if 'joint_ppo' in args.modes and args.joint_model is None and not (args.dry_run or args.prepare):
         ap.error('--joint-model required for joint_ppo evaluation')
+    if 'joint_factorized' in args.modes and args.factorized_model is None and not (args.dry_run or args.prepare):
+        ap.error('--factorized-model required for joint_factorized evaluation')
     return args
 
 
@@ -144,7 +149,7 @@ def prepare(plans):
         print(f'PREPARED {name}: noise terrain, verified seed, fixed spawnRadius=0', flush=True)
 
 
-def evaluate_one(p, args, weights, joint_checkpoint=None):
+def evaluate_one(p, args, weights, joint_checkpoint=None, factorized_checkpoint=None):
     manager = world.WorldManager(mcio_dir=MCIO)
     source, dest = paths_for(p)
     if not (source / 'level.dat').is_file():
@@ -179,7 +184,8 @@ def evaluate_one(p, args, weights, joint_checkpoint=None):
         print(f'INITIAL {p.mode} seed={p.seed} pos={start_pos} yaw={start_yaw} pitch={start_pitch}', flush=True)
         policy = make_agent(p.mode, args.action_seed + p.seed,
                             aim_weights=weights[0], pickup_weights=weights[1],
-                            joint_checkpoint=joint_checkpoint, device=args.device)
+                            joint_checkpoint=joint_checkpoint,
+                            factorized_checkpoint=factorized_checkpoint,device=args.device)
         found = 0
         decisions = 0
         while game_ticks < args.max_ticks and not found:
@@ -242,12 +248,18 @@ def main(argv=None):
         joint_checkpoint = ROOT / 'checkpoints' / f'joint_log_ppo_{args.joint_model}.pt'
         if not joint_checkpoint.is_file():
             raise FileNotFoundError(f'Joint PPO checkpoint unavailable: {joint_checkpoint}')
+    factorized_checkpoint = None
+    if 'joint_factorized' in args.modes:
+        factorized_checkpoint = ROOT / 'checkpoints' / f'joint_factorized_{args.factorized_model}.pt'
+        if not factorized_checkpoint.is_file():
+            raise FileNotFoundError(f'Factorized checkpoint unavailable: {factorized_checkpoint}')
     output.parent.mkdir(parents=True, exist_ok=True)
     starting_poses = {}
     with output.open('x', encoding='utf8') as file:
         for i, p in enumerate(plans, 1):
             try:
-                result = evaluate_one(p, args, weights, joint_checkpoint=joint_checkpoint)
+                result = evaluate_one(p, args, weights, joint_checkpoint=joint_checkpoint,
+                                      factorized_checkpoint=factorized_checkpoint)
             except Exception as e:
                 result = dict(seed=p.seed, mode=p.mode, result='error',
                               error=f'{type(e).__name__}: {e}', world=p.world, source=p.source)
@@ -255,6 +267,10 @@ def main(argv=None):
                 file.flush()
                 print(f'ERROR {i}/{len(plans)}: {result}', flush=True)
                 raise
+            if p.mode in ('joint_factorized','joint_ppo'):
+                import hashlib
+                path=(factorized_checkpoint if p.mode=='joint_factorized' else joint_checkpoint)
+                result['checkpoint_sha256']=hashlib.sha256(path.read_bytes()).hexdigest()
             pose = (tuple(result['start_pos']), result['start_yaw'], result['start_pitch'])
             if p.seed in starting_poses and starting_poses[p.seed] != pose:
                 mismatch = dict(seed=p.seed, mode=p.mode, result='invalid_spawn_mismatch',

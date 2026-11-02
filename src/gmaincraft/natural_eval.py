@@ -13,7 +13,7 @@ from .agent_interface import AgentAction
 from .log_vision import VisualAimPolicy, visual_features
 from .log_pickup import PickupPolicy, PICKUP_ACTIONS, pickup_features
 
-MODES = ('idle', 'random', 'forward_attack', 'legacy_probe', 'joint_ppo')
+MODES = ('idle', 'random', 'forward_attack', 'legacy_probe', 'joint_ppo', 'joint_factorized')
 
 
 @dataclass(frozen=True)
@@ -128,8 +128,32 @@ class JointPPOAgent:
         return self.action_for_index(action, remaining)
 
 
+class FactorizedPPOAgent:
+    """Pure pixel-only frozen V2 actor in naturally generated survival worlds.
+
+    A separate CNN checkpoint from the old 11-action macro policy. It uses
+    no privileged target position, trainer mask or reward in evaluation.
+    """
+    def __init__(self, checkpoint, device='auto'):
+        from .vision_factorized import FactorizedPPOTrainer,SCHEMA,action_for_factors
+        from .vision_ppo import PixelHistory
+        self.trainer=FactorizedPPOTrainer(device=device,seed=0)
+        metadata=self.trainer.load_weights(checkpoint)
+        if metadata.get('schema')!=SCHEMA:
+            raise ValueError('Invalid factorized policy schema')
+        self.history=PixelHistory()
+        self.started=False
+        self.action_for_factors=action_for_factors
+
+    def act(self, view, remaining):
+        frame=(self.history.append(view) if self.started else self.history.reset(view))
+        self.started=True
+        choices,_,_=self.trainer.act(frame,greedy=True)
+        return self.action_for_factors(choices,remaining)
+
+
 def make_agent(mode, action_seed, *, aim_weights=None, pickup_weights=None,
-               joint_checkpoint=None, device='auto'):
+               joint_checkpoint=None, factorized_checkpoint=None, device='auto'):
     if mode == 'idle':
         return IdleAgent()
     if mode == 'forward_attack':
@@ -144,4 +168,8 @@ def make_agent(mode, action_seed, *, aim_weights=None, pickup_weights=None,
         if joint_checkpoint is None:
             raise ValueError('Joint PPO mode requires a trained local checkpoint')
         return JointPPOAgent(joint_checkpoint, device=device)
+    if mode == 'joint_factorized':
+        if factorized_checkpoint is None:
+            raise ValueError('Factorized mode requires a frozen checkpoint')
+        return FactorizedPPOAgent(factorized_checkpoint, device=device)
     raise ValueError(f'Unknown mode {mode}')

@@ -2,6 +2,49 @@
 
 **Last curated:** 2026-11-02. This is the live source of truth for project status. **All agents must read and update this file alongside substantive changes** (see [AGENTS.md](AGENTS.md)). Never mark a task done from source code alone; require actual run evidence where appropriate.
 
+## Current priority: V2 learning-efficiency gate (2026-11-02)
+
+- [x] Replace V1's dominating 80-tick attack-only macro with **3 simultaneous
+  6-tick movement/look/attack channels** in a separate 888,750-parameter CNN
+  and factorized PPO implementation; preserve old checkpoints.
+- [x] Verify actual vanilla input continuity: `continuous_mine_probe`
+  **mined and collected one real log** after 20 successive six-tick attack
+  selections. This is an instrumentation control, NOT learned success.
+- [x] Fix stale-inventory reset race after successful log acquisition:
+  wait for correct pose AND empty wood inventory plus two settled steps;
+  abort rather than contaminate positive results.
+- [x] Matched baseline audit `controlv2b`, near-seed3737 N=12:
+  **attack-then-forward 8/12**, forward-attack 3/12, random 0/12,
+  geometry-based oracle 11/12 (privileged, NOT fair learned policy).
+- [x] Frozen 12-case V2 comparison under the SAME scenarios:
+  `factorv2pilot01` 0/12, `attackrl01` 0/12, `aimnear01` 0/12.
+  Common observed failures: backtracking, continuous turning, or attacking
+  without maintaining crosshair. These models are NOT proven competent.
+- [x] Narrow real-game attack-only curriculum `attackrl01`: **3/32** train
+  and **2/4** held-out restricted stationary success. All unrestricted
+  near/broad tests 0. Labels must distinguish restricted from real play.
+- [x] Test aim+attack staged warm-start and mixed/interleaved curriculum:
+  `aimnear01` aim train 1/36, unrestricted train 0/20, frozen full 0/4;
+  `mixstable01` 0/48 train combined, frozen full 0/4 near and broad.
+  Interleaving and a sustained-attack teacher reward did not solve it.
+- [x] Plug frozen V2 into truly seeded Minecraft evaluation; seed 246813579,
+  fixed identical starting pose in three modes (random/forward/V2), all 0
+  natural logs in 360 game ticks. This is a transfer **test**, not success.
+- [x] Opt-in local agent RGB/action/GAE trajectory recording before PPO
+  update. Real CUDA pilot `recordpilot01` produced/read 40 transitions,
+  240 game ticks, compressed 135670 bytes, ignored in Git.
+- [ ] **Research pivot:** diagnose whether the two-frame CNN actually
+  extracts reusable target/action cues and learns camera stability; try
+  memory-capable and sample-efficient representation/off-policy methods
+  against identical held-out baselines. Do not continue blindly training
+  current V2 PPO for thousands of episodes without measured gains.
+- [ ] Establish REAL, unrestricted first-log learning on controlled diverse
+  target positions, then **unseen natural world seeds**, then a continuous
+  wood-to-crafting trajectory. **Speedrunning Any% remains distant.**
+
+See `docs/FACTOR_POLICY_REVIEW.md` for the exact score ledger and runnable
+commands. Local runs/checkpoints/worlds stay protected and ignored.
+
 ## CUDA confirmed and real Minecraft GPU pilot (after bridge restart)
 
 - [x] Host UVM character devices now available in the sandbox after bridge

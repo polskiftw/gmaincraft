@@ -68,6 +68,27 @@ verifies fixed matching spawn *for these two modes on this world*, not across
 all seeds or all game versions. More seeds / longer episodes are still needed.
 As before, Gamescope exited 139 after the Python child completed.
 
+## Latest hard evidence: independent controls beat the learned V2 policy
+
+V2 now has simultaneous movement/look/attack selections every 6 game ticks;
+actual vanilla 20x6 continuous mining was confirmed. Nonetheless three
+frozen V2 RGB PPO checkpoints each returned **0/12** real logs on the same
+held-out nearby trunk cases where a simple scripted attack-and-approach
+baseline scored **8/12**. An explicitly privileged geometry oracle scored
+11/12, validating fixtures. A restricted attack-only policy achieved 2/4
+held-out when look/movement were disabled, but progress **did not transfer**
+to unconstrained trials. Neither blocked staging nor interleaved staged
+training with sustained-aim scalar shaping has fixed full-control learning.
+A newly prepared survival seed 246813579 returned 0 logs for frozen V2 and
+both random/forward controls, with strictly identical spawn positions.
+
+Consequently **stop scaling this same PPO CNN on faith**. Diagnose visual
+representation and credit assignment using the opt-in versioned local
+RGB/action trajectory recording. Evaluate memory and more sample-efficient
+algorithms against the same real inventory, normal-action, held-out seed
+gates. See [FACTOR_POLICY_REVIEW.md](FACTOR_POLICY_REVIEW.md) for complete
+methods, reproducible commands, frozen SHA256 and limitations.
+
 ## CUDA GPU is confirmed available after bridge restart
 
 The actual NVIDIA GPU is now usable for learning, not just OpenGL rendering.

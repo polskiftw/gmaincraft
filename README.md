@@ -4,6 +4,27 @@
 
 **Current reality (2026-11-02):** Minecraft Java 1.21.3 + MCio and three seeded numerical-navigation runs are verified. Two random-initialized, RGB-feature mouse+ATTACK models learn to aim at a controlled oak trunk (audited 15/20 and 18/20 real Minecraft logs). Two independently trained RGB-feature W/A/S/D policies learn to approach a **dropped** oak log: in a fresh 32-case offset-item audit, the best reaches **30/32**, versus **21/32** for just holding W. Combining the learned aiming and collection policies yields **51/56 real mined-log inventory pickups** over two fresh camera-angle sets for pickup model `p02`, versus **49/56** with scripted W. This does **not** establish a meaningful advantage in the centered-tree setup, and it still uses hand-engineered pixel masks, controller-only scalar rewards, fixed 100-tick attack holds, a single flat-world template, and separate training for the two neural stages. No general tree recognition or Any% speedrunning.
 
+## Latest research gate: V2 factorized control and measured limitations
+
+The model now chooses **movement, camera, and attack simultaneously every 6
+game ticks**, rather than treating an 80-tick mining hold as one decision.
+The vanilla-game positive control confirmed that repeated 6-tick attack
+selections genuinely mine and collect a log. Three different V2 frozen CNN
+checkpoints then scored **0/12** on a matched nearby-log scenario set, while
+a simple attack-then-approach diagnostic scored **8/12**. A privileged
+geometric aiming oracle scored **11/12** but is **not** a fair learned policy.
+A stationary restricted RL warmup scored 2/4 held-out logs, but that does
+**not** transfer to free camera/movement. A newer 3-mode seed-246813579
+survival-world benchmark ran successfully with **0 wood for every mode**.
+
+We are **not** scaling the same ineffective CNN/PPO indefinitely. The next
+research step is diagnosing visual representation, credit assignment,
+exploration and longer-term memory using reproducible paired benchmarks and
+**opt-in local replay-data recording** (`--save-rollouts`). All runs use
+working CUDA; previous checkpoint files and worlds are preserved. See
+[docs/FACTOR_POLICY_REVIEW.md](docs/FACTOR_POLICY_REVIEW.md) for actual
+scores, methods, scripts and recommended next experiments.
+
 ## Live NVIDIA CUDA now operational (post-bridge restart, 2026-11-02)
 
 The isolated Gentoo Shell now has **working RTX 4070 SUPER CUDA tensor
