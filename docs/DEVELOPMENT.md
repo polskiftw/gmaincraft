@@ -103,6 +103,29 @@ The intended next experiment learns to choose camera orientation and mine from p
 
 Direct Git from the now network-enabled shell is configured: normal `git fetch` / `git pull --ff-only` over HTTPS, and `git push` through an **individual write-enabled deploy SSH key** for `polskiftw/gmaincraft` on port 443. The key is stored in ignored `mcio-data/git-auth/` and the repository has local `core.sshCommand`. Do not print, check in or reuse the private key for other repositories. This is a repository-level, not account-wide, grant.
 
+## Learned RGB log-aiming experiment (2026-11-02)
+
+This uses **normal `git` from the network-enabled shell**; models, screenshots, logs and save worlds stay ignored/local. Policy actions are Minecraft mouse look and ATTACK; its only observation is a 12-feature handcrafted oak-brown mask of RGB screenshot pixels. The privileged controller supplies angular shaping **as scalar training reward only**, never target coordinates to the policy. A fixed W approach collects the drop after the agent chooses ATTACK. **This is not a general-purpose tree detector**.
+
+Run one independent 500-episode model (choose a **new tag** and independent seeds; existing runs cannot be overwritten):
+
+```bash
+cd /workspace
+tools/run-mcio-viewer.sh .venv/bin/python -B experiments/log_visual_aim_learner.py --run-tag rgb03 --episodes 500 --eval 14 --decisions 18 --policy-seed 5503 --train-seed 7725 --eval-seed 8816 --visible
+```
+
+The checkpoint is `checkpoints/log_aim_policy_<tag>.npz`, training CSV is `logs/log_aim_training_<tag>.csv`, disposable world is `MDL_LogAim_<tag>`. Training's simple geometric success proxy does **not** demonstrate real mining; do not rely on the in-process first evaluation, which previously suffered stale dropped-item contamination.
+
+**Required independent audit:** use a **fresh new world** and separate held-out camera scenarios, and require real observed oak logs. This evaluator clears old item drops at every reset and verifies no log is collected when walking without attacking:
+
+```bash
+tools/run-mcio-viewer.sh .venv/bin/python -B experiments/log_visual_aim_evaluator.py --run-tag audit02 --models rgb01 rgb02 --eval-seed 8816 --eval 20 --visible
+```
+
+Audited seed 8815 (`MDL_LogAimAudit_clean01`): untrained 0/20, trained rgb01 15/20, trained rgb02 18/20. Evaluation CSV `logs/log_aim_audit_clean01.csv` has 60 rows. Both 5x12 policy weights/checkpoint files were loaded and finite; source and unit tests are in GitHub. **Initial uncleaned 12/14 metrics and rgb02 untrained 11/14 were contaminated; do not reuse them.** The suspected cause was dropped logs persisting after soft-reset. It is now addressed with reset-time `kill @e[type=minecraft:item]` and a no-attack negative control; still use normal Minecraft mechanics for actual acquisition.
+
+Next work is **letting the neural policy decide movement/collection** and replacing the engineered oak-color mask with a learned, robust RGB vision encoder; do not reward camera aesthetics.
+
 ## Check syntax and pure-policy unit tests without Minecraft
 
 ```bash

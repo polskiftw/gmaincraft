@@ -2,20 +2,19 @@
 
 **Last curated:** 2026-11-02. This is the live source of truth for project status. **All agents must read and update this file alongside substantive changes** (see [AGENTS.md](AGENTS.md)). Never mark a task done from source code alone; require actual run evidence where appropriate.
 
-## Current handoff: visual log acquisition (camera movement only when useful)
+## Current handoff: learned wood aiming achieved; next learn movement/pickup and robust perception
 
-- [x] Real Minecraft reference (2026-11-02): fixed old yaw 50/50, old random yaw 24/50; new policy 9/50 -> 50/50 plus 50/50 extra unseen target/yaw cases after 300 training episodes (30.16s learning, 299/300 training wins).
-- [x] Add independently configurable seeds and write-once `--run-tag` to `experiments/orientation_learner.py`, keeping default behavior/filenames; 5 new unit tests (10 total).
-- [x] Independent numeric RNG replication: `rep_b` and `rep_c` started 7/50 each, ended **50/50** on held-out and **50/50** extra unseen target/yaw sets after 300 real Minecraft training episodes each (26.67s and 25.17s learning, 299/300 training wins each). All three use the same type of saved-world flat arena.
-- [x] Validate each independent run's 300-record CSV and finite (4,3) checkpoint; preserve local files under git-ignored `logs/` and `checkpoints/`.
-- [x] **Verify normal Minecraft camera/mouse, mining and item pickup (2026-11-02):** in a fresh copied disposable world, MCio mouse deltas (+120,+50 pixels) rotated yaw +18.00 and pitch +7.50 degrees, reverse deltas restored both; vanilla left-click mining followed by W movement yielded 1 observed oak log (20.15s elapsed for launch/probe); no /give during the run. The actions were scripted *diagnostic* inputs; the log was controller-placed before gameplay, so NOT learned visual acquisition.
-- [x] Record camera policy: **no reward for human-looking head position or motion**. Turning/looking is just an available input for observation and necessary raycast interactions. Efficiency and legal Minecraft constraints determine success.
-- [ ] **NEXT: a learned visual wood-log curriculum**, starting from camera-targeting using rendered RGB frames, player-controlled yaw/pitch and ordinary attack/pickup. Begin with an isolated wood block; score true breaks/inventory acquisitions without exposing target coordinates to the policy. Report any engineered image preprocessing, privileged scalar training reward and failure modes.
-- [ ] Extend from the log curriculum to traversal, real trees, general visual perception, resource collection and independent Minecraft world seeds. Keep previous successful movement models safe.
-- [ ] Afterwards replace privileged numeric target direction with visually detectable objectives and a documented human-equivalent observation contract.
-- [x] Add local `tools/run-mcio-viewer.sh` and SDL2 mouse-input filter: the user confirmed the original pointer lock was removed but physical hover still moved Minecraft's camera; the revised shim filters Gamescope's `SDL_WaitEvent` mouse motion, clicks and scrolling. Synthetic SDL2 regression passed and Minecraft MCio completed 10/10 exchanges with the new shim.
-- [ ] **User verification pending:** physically hover/move/click over the game preview and confirm the camera no longer responds to the desktop mouse. The shell smoke tests did not inject physical mouse motion.
-- [ ] Gamescope still returns SIGSEGV 139 after the child exits; investigate if it affects experiment stability or loses results. All three Python experiments completed and were validated.
+- [x] Three independent camera-relative **numerical-goal navigation** models achieved 50/50 held-out + 50/50 extra targets each in a controlled arena (2026-11-02).
+- [x] User camera policy: **do not reward human-like head placement or movement**. Camera direction is an input/sensor; legal Minecraft line-of-sight/raycast/reach still applies for interaction.
+- [x] Scripted vanilla log-input probe: +120/+50 cursor pixels produced +18.00° yaw/+7.50° pitch; 100 ticks holding attack + 11 W ticks placed a genuinely mined oak log in observed inventory (no `/give`). Controller placed trunk during setup; NOT a learned experiment.
+- [x] Build RGB-only feature encoder (12 engineered oak-brown spatial features), random-initialized five-action linear REINFORCE policy (look left/right/up/down/ATTACK), a 500-episode real Minecraft trainer, and a separate frozen evaluator. Trainer receives controller-side scalar angular-progress rewards; **no player pose or target coordinates in policy features**.
+- [x] **Audited real-game evaluation** in fresh `MDL_LogAimAudit_clean01` copied world, novel camera seed 8815, 20 cases per model: no-attack control **0**, untrained policy **0/20**, trained `rgb01` **15/20**, independently initialized/trained `rgb02` **18/20**. These are real observed inventory pickups after agent-chosen camera/attack; moving toward dropped items still scripted. Each trained 500 episodes.
+- [x] Detect and correct **stale item-drop contamination** in initial soft-reset tests: kill all item entities during controller reset, validate no-attack negative control, reject implausibly distant successful attack angles. Earlier 12/14 and untrained 11/14 numbers are **not valid evidence**. Audit file: ignored `logs/log_aim_audit_clean01.csv` (60 rows).
+- [ ] **NEXT: choose movement and collection actions with the policy**, instead of fixed post-attack W steps; report successful inventory acquisitions and failure cases. Keep world reset contamination guards.
+- [ ] Replace oak-color handcrafted mask with a learned visual encoder, vary trunk position/biome/light and camera ranges; remove the privileged angular-progress reward and advance to real trees without hidden target coordinates.
+- [ ] Validate whole policy across independent **Minecraft world seeds** later; current model learns one 3-block target in the same flat arena and cannot speedrun.
+- [ ] Investigate Gamescope shutdown SIGSEGV 139 only as needed; Python experiments and checkpoints completed first.
+- [ ] User physical-hover check of host mouse suppression remains pending; SDL2 synthetic and real MCio control tests passed.
 
 ## Verified foundations
 
@@ -31,9 +30,9 @@
 ## Next research/engineering work (prioritized after successful orientation test)
 
 - [x] Validate camera-relative training across three independent **numerical policy/training/evaluation RNG configurations** and disjoint target/yaw draws (see `docs/EXPERIMENTS.md`). Independent Minecraft **world** seed generalization and broader variance remain untested.
-- [ ] Learn camera yaw/pitch, break/collect via normal inputs and visual target selection; no human-like camera-motion objective. The real MCio camera and vanilla mining controls are independently verified, but the learned visual policy is not yet. Test randomized yaw after spawn.
+- [x] Learn camera yaw/pitch aiming and choose ATTACK from RGB-only engineered visual features in a fixed log arena (15/20,18/20 audited pickups; two independent trainings). Keep learning camera as a functional input, not a human-likeness objective. [ ] Extend to moving targets, agent-controlled pickup and less-engineered visual perception.
 - [ ] Replace privileged numerical target-direction observations with visually detectable objectives; log exactly what information the policy receives. Keep structured *human-equivalent* HUD/inventory signals as an optional experiment, not hidden map data.
-- [ ] Progress from **verified scripted vanilla log break/pickup** to **learned visual targeting and log acquisition**, then place blocks, change hotbar, use inventory/crafting UI. Connect the existing first-seen-item reward detector to agent-caused events. Do not count controller `/give` or `/setblock` as a learned acquisition.
+- [ ] **Learn movement and pickup decisions** to complement already-verified learned visual aiming/ATTACK. Then generalize to naturally generated trees, block placement, hotbar, inventory/crafting UI, with actual agent-caused inventory event rewards. Controller `/setblock` is permitted ONLY for training arena setup, never policy action.
 - [ ] Separate environment adapter, observation encoder, action mapper, reward tracker, trainer, evaluator and experiment recorder into tested reusable modules under `src/gmaincraft/`. Keep the existing experiments runnable while refactoring.
 - [ ] Implement reliable **full-world snapshot/restore** or equivalent independent episode creation without repeated full JVM startup. Audit mobs, inventory, time, weather, terrain, RNG, entities, player, and achievements.
 - [ ] Capture experiment configuration, version metadata, train/validation/test seeds, event counts, rewards, failure modes, throughput, checkpoints, and optional video snapshots. Never accidentally commit private/local world artifacts.
