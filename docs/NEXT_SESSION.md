@@ -1,6 +1,23 @@
 # START HERE — next ChatGPT/Gentoo Shell session
 
-## NEWEST handoff: robust visible-block calibration and three natural seeds
+## NEWEST: mined progress from Minecraft memory and trained attack motor
+
+See [`MINING_FEEDBACK_AND_ATTACK_LEARNING.md`](MINING_FEEDBACK_AND_ATTACK_LEARNING.md)
+for complete steps, source hashes and real-game results. A separate
+opt-in Java packet now reports **own visible crack stage**, attack active,
+and vanilla targeting without hidden world data. Nine lab checks passed;
+holding attack moves stage1..9 to true mined+1; release resets stage.
+From random weights a narrow CUDA learned attack motor trained 28 genuine
+six-tick Minecraft rollouts. Frozen held-out pre-aimed oak cases12/12
+mined vs untrained0/12 and always-attack12/12. The learned motor is real,
+but simple always-hold is equally good and **0 logs entered inventory**.
+Future agent MUST solve independent discovery, approach/aim and actual
+pickup. Next compare composed learned attack and existing learned pickup
+against explicit controls on REAL mined items; then derive player-visible
+item entities from game memory and integrate into joint policy. Keep
+all prior worlds/weights, no controller admin commands during gameplay.
+
+## Earlier handoff: robust visible-block calibration and three natural seeds
 
 Read `VISIBLE_SURFACE_CALIBRATION_2026_11_03.md` and
 `SURFACE_REQUEST_V1.md`. The first visibility experiment without a

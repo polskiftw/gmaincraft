@@ -1,6 +1,40 @@
 # TODO — gmaincraft
 
-## NEWEST: camera visibility experiment and natural-scene performance
+## NEWEST: actual vanilla mining progress + learned attack skill
+
+- [x] Inspect Minecraft 1.21.3 client and add opt-in read-only
+  `gmaincraft_mining_feedback_v1`: client's own `isDestroying` and visible
+  `getDestroyStage` crack stage, plus vanilla crosshair-hit boolean. No
+  hidden block data or world seed; fail-closed Python CBOR adapter.
+- [x] Real disposable-world mining lab: stage 1->4, release reset, resumed
+  1->9, actual mined-oak stat+1, later mouse-away inactive; 9/9 live checks.
+  The item was NOT picked up. Full evidence:
+  `docs/MINING_FEEDBACK_AND_ATTACK_LEARNING.md`.
+- [x] Train a from-scratch **narrow attack-only motor** (no pretrained
+  weights, no hidden target features) using real crack progress and real
+  mined events; 3/14 training episodes broke a log in first half, 10/14
+  in second. Save versioned checkpoint locally, never in Git.
+- [x] Separate independent frozen 12-case actual Minecraft evaluation:
+  learned 12/12, untrained 0/12, random 0/12, always-hold 12/12,
+  no-attack 0/12. Learned motor matches rather than beats always-attack;
+  fixture aims at reachable wood, pickup remains 0. Real game only.
+- [x] Preserve earlier V5 status-only compatibility on the new patched
+  mod: real Minecraft `miningcompat_nov03a` passed 4/4 with mining OFF.
+- [x] Same-JAR no-Torch performance control with real 320x180 NVIDIA RGB:
+  status only 0.7440s vs status+per-tick mining feedback 0.8109s for 300
+  warmed game ticks. Zero frame gaps; one-run cost signal, not proof.
+- [ ] Optimize mining sensor emission to an explicit fresh 6-tick decision
+  request and rerun flat/natural performance and train/frozen parity.
+- [ ] **NEXT:** composed learned attack + frozen learned item pickup on
+  naturally mined drops, versus always-attack and always-forward controls;
+  never summon an item to fake this integration result.
+- [ ] Add **bounded** player-perceivable item-entity observation (camera
+  FOV, render range, occlusion and screen-size audits); feed the SAME
+  schema to any new from-scratch train and frozen test, no hidden loot/map.
+- [ ] Eventually learn to find/approach/aim/mine/collect wood on unseen
+  survival noise seeds with normal actions; then crafting and full Any%.
+
+## Earlier: camera visibility experiment and natural-scene performance
 
 - [x] Correct invalid lab synchronization: controller `/setblock`
   completion lags fast MCio action observations. Retire invalid first

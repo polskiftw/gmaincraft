@@ -20,6 +20,10 @@ ondemand_hash="7e89d4d7475e255ba48df70ba688ad7205dab3e96c5bbf2008c35ea4116e618b"
 ondemand_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.ondemand-v1.jar"
 fine_before_vertical_hash="887cbc6efcd0813d5c321006fa053c18f7fa00a4c78dfefb0ab2b02d16a19d37"
 fine_before_vertical_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.fine-pre-vertical.jar"
+visible_calibration_hash="8cc58f899e7e824d0d67de7b74517b5390dbc3175375ec8c6b7560a2406135b7"
+visible_calibration_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.visible-calibration.jar"
+mining_feedback_hash="7c41137b8789b0661700a322a90e4e7891752711b27786ac3fb5f750529d82c2"
+mining_feedback_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.mining-feedback-v1.jar"
 if [[ "$mode" == '--restore' ]]; then
   [[ -f "$backup" ]] || { echo "No backed-up original mod at $backup" >&2; exit 1; }
   tmp="${mod}.gmaincraft.$$.tmp"
@@ -85,6 +89,10 @@ if [[ "$mode" == '--install' ]]; then
         previous_backup="$ondemand_backup"
       elif [[ "$actual_hash" == "$fine_before_vertical_hash" ]]; then
         previous_backup="$fine_before_vertical_backup"
+      elif [[ "$actual_hash" == "$visible_calibration_hash" ]]; then
+        previous_backup="$visible_calibration_backup"
+      elif [[ "$actual_hash" == "$mining_feedback_hash" ]]; then
+        previous_backup="$mining_feedback_backup"
       else
         echo 'Unknown mod jar differs from all verified previous builds; aborting' >&2
         exit 1
@@ -105,5 +113,5 @@ if [[ "$mode" == '--install' ]]; then
   mv -f -- "$tmp" "$mod"
   echo 'INSTALLED ONLY in disposable DemoInstance. Original backed up at:'
   echo "$backup"
-  echo 'GMAINCRAFT_STATUS_V1=1: status; GMAINCRAFT_SURFACE_GRID_V0=1: rays; GMAINCRAFT_SURFACE_OBJECTS_V1=1: grouped rays; GMAINCRAFT_SURFACE_ON_DEMAND_V1=1: explicit requests.'
+  echo 'GMAINCRAFT_STATUS_V1=1: status; GMAINCRAFT_SURFACE_GRID_V0=1: rays; GMAINCRAFT_SURFACE_OBJECTS_V1=1: grouped rays; GMAINCRAFT_SURFACE_ON_DEMAND_V1=1: requests; GMAINCRAFT_MINING_FEEDBACK_V1=1: own crack progress.'
 fi

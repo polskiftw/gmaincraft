@@ -1,6 +1,28 @@
 # AGENTS.md — project instructions for coding assistants
 
-## NEWEST verified milestone: independent rendered-image surface calibration
+## NEWEST verified milestone: real crack-stage feedback and learned attack motor
+
+**Start with [`docs/MINING_FEEDBACK_AND_ATTACK_LEARNING.md`](docs/MINING_FEEDBACK_AND_ATTACK_LEARNING.md).**
+An opt-in direct game-memory observation now exposes THIS player's visible
+vanilla mining crack stage and whether attack is active, with no hidden
+block position or world oracle. Real Minecraft staged oak was seen to
+progress 1..9, reset to inactive on release, and subsequently increase
+actual mined stats. 9/9 live checks passed. Existing V5/Fabric flags and
+legacy models were not changed. A narrow CUDA actor-critic attack-only
+model learned from scratch on 28 actual Minecraft stationary oak cases,
+with real mined blocks in 3/14 early vs 10/14 late cases. A separate
+12-case frozen test gave learned **12/12 mined**, untrained **0/12**, random
+**0/12**, never-attack **0/12**, and the always-attack baseline **12/12**.
+This is a learned attack motor skill, NOT a learned general tree finder,
+item pickup or Any% result. The player inventory stayed 0 after mined logs.
+Next: test composed learned attack + independently learned pickup on real
+mined items, then add read-only player-perceivable **item-entity** memory,
+not an unseen world map, for future train/frozen parity and navigation.
+Keep all worlds/weights/checkpoints Git-ignored; update TODO, experiment
+ledger and handoff on any substantive work. Previous research on 13x9
+versus 25x17 rays remains valid, no default silently changed.
+
+## Earlier verified milestone: independent rendered-image surface calibration
 
 Read **`docs/VISIBLE_SURFACE_CALIBRATION_2026_11_03.md`** and
 `docs/OBSERVATION_POLICY.md` FIRST. A real Minecraft evaluator-only

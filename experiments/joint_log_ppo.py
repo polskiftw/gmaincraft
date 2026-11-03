@@ -170,8 +170,11 @@ def launch_world(world_name, args, evaluator):
                             mcio_mode=types.MCioMode.SYNC,hide_window=not args.visible,
                             gpu_lib=None if args.visible else 'nvidia',
                             width=args.frame_width, height=args.frame_height,
-                            env_extra={'GMAINCRAFT_STATUS_V1':'1'} if
-                                getattr(args,'with_status',False) else {})
+                            env_extra={**({'GMAINCRAFT_STATUS_V1':'1'} if
+                                getattr(args,'with_status',False) or getattr(args,'with_mining_feedback',False)
+                                else {}),
+                                **({'GMAINCRAFT_MINING_FEEDBACK_V1':'1'} if
+                                getattr(args,'with_mining_feedback',False) else {})})
     ensure_clean_visual_options(MCIO/'instances'/'DemoInstance')
     launcher = instance.Launcher(opts)
     ctrl = None

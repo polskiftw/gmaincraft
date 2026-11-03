@@ -1,5 +1,20 @@
 # What the Minecraft speedrunner is allowed to know
 
+## Latest own-action feedback (not hidden world knowledge)
+
+`gmaincraft_mining_feedback_v1` adds opt-in **current player's actual
+vanilla block-breaking crack stage**, destroy-active boolean and whether
+its crosshair currently hits a block. It reads public Minecraft client
+state; the visible crack is ordinary information a skilled player has.
+It does not reveal hidden XYZ targets or offer a world oracle. A narrow
+from-scratch neural attack motor was trained with this player-own signal,
+with identical input encoding in train/frozen and successful stationary
+mining in held-out cases. See `MINING_FEEDBACK_AND_ATTACK_LEARNING.md`.
+This is **NOT yet the entire V6 player-visible world representation** and
+not proof of natural wood inventory pickup. Prior V5 observation remains
+unchanged. Next derive perceivable dropped item entities and joint action
+credit, with full train/frozen parity.
+
 ## Current visibility research evidence (NOT trained policy inputs)
 
 Independent real-game screenshot/memory comparisons, a valid multi-seed

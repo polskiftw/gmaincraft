@@ -133,6 +133,11 @@ class MCioAgentBridge:
         from gmaincraft.mcio_surface_objects import SurfaceObjectsV1
         return SurfaceObjectsV1.from_packet(self.packet)
 
+    def mining_feedback(self):
+        """Opt-in current vanilla break-animation stage, NOT hidden world data."""
+        from gmaincraft.mcio_mining_feedback import MiningFeedbackV1
+        return MiningFeedbackV1.from_packet(self.packet)
+
     def player_status(self):
         """Opt-in patched-MCio own status + game crosshair target, not X-ray."""
         from gmaincraft.mcio_status import PlayerStatusV1

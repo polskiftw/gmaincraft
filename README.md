@@ -1,5 +1,14 @@
 # gmaincraft
 
+**New actual learned Minecraft behavior:** see
+[`docs/MINING_FEEDBACK_AND_ATTACK_LEARNING.md`](docs/MINING_FEEDBACK_AND_ATTACK_LEARNING.md).
+An opt-in real engine-memory mining feedback sensor now exposes the current
+player's visible breaking stage. A separately trained, from-scratch
+six-tick vanilla attack motor matched an always-hold baseline (**12/12**
+held-out real Minecraft pre-aimed oak blocks mined), while untrained and
+random controls broke none. This is NOT tree finding, log pickup or Any%.
+Original V5 trained checkpoints and research modes remain intact.
+
 **Latest research update:** [Real Minecraft visibility calibration](docs/VISIBLE_SURFACE_CALIBRATION_2026_11_03.md)
 compares memory-derived block-surface candidates with independent actual
 rendered RGB across 23 lab fixtures, three natural survival seeds and

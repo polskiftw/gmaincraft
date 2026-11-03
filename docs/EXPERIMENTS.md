@@ -1,5 +1,29 @@
 # Experiment record
 
+## Latest: read-only mining progress and first learned attack motor (Nov 2–3, 2026)
+
+**See [`MINING_FEEDBACK_AND_ATTACK_LEARNING.md`](MINING_FEEDBACK_AND_ATTACK_LEARNING.md).**
+Real Minecraft Java Fabric observation `gmaincraft_mining_feedback_v1`
+reports the player's ordinary visible crack animation stage, without
+world coordinates or privileged targets. In new copied game fixture
+`miningfeedback_nov03a`, 9/9 controls confirmed 1->4 stage growth,
+release->inactive, later 1->9, mined-oak stat+1 and looking-away cleanup.
+No inventory pickup in that validation. A CUDA actor-critic attack-only
+policy from scratch trained with normal 6-tick actions in 28 actual oak
+rollouts, mined 3/14 early and 10/14 late. Independent **frozen** 12-case
+same-observation test `motoreval_nov03a`: trained 12/12, untrained 0/12,
+random 0/12, no attack 0/12, **always hold** 12/12. This is a meaningful
+motor skill but not an improvement over always-hold, and the controlled
+fixture was pre-aimed; no natural-tree or item-pickup performance is shown.
+Status-only legacy crosshair 4/4 passed with mining option disabled.
+Single matched fixed-scene warm idle performance runs: status-only
+0.7440s, status+per-tick mining stage 0.8109s per 300 synced ticks, both
+zero missing frames. This does not establish overhead confidence; optimize
+on-demand sensor sampling.
+Training checkpoint and immutable reports stay local under ignored paths,
+verified SHA256 in the dedicated document. New code and pure tests are
+tracked; pre-existing V5 weights and worlds were preserved.
+
 ## Verified rendered-screen / direct-memory sensor calibration (Nov 2–3, 2026)
 
 See **[`VISIBLE_SURFACE_CALIBRATION_2026_11_03.md`](VISIBLE_SURFACE_CALIBRATION_2026_11_03.md)**
@@ -430,7 +454,7 @@ Local-only ignored checkpoint SHA-256:
 - Training/world seeds; test seeds; policy starting state:
 - Observation contract; available actions; reward function; reset mechanism:
 - Episodes/steps/time; baseline and frozen eval:
-- Actual raw summary, not inferred: 
+- Actual raw summary, not inferred:
 - Limitations and failures:
 - Checkpoints/logs location (local, ignored by Git):
 - Follow-up TODO and corresponding code commit:

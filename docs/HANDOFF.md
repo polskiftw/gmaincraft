@@ -1,6 +1,27 @@
 # Handoff for a brand-new ChatGPT conversation
 
-## NEWEST handoff: 23-scene RGB/memory calibration plus natural tests
+## NEWEST: learned vanilla mining motor, no pickup yet
+
+Read [`MINING_FEEDBACK_AND_ATTACK_LEARNING.md`](MINING_FEEDBACK_AND_ATTACK_LEARNING.md)
+FIRST. The pinned, reversible Fabric patch now exposes read-only THIS
+player's `gmaincraft_mining_feedback_v1` break animation stage, opt-in
+via `GMAINCRAFT_MINING_FEEDBACK_V1=1`; no hidden-world positions. Real lab
+9/9 confirmed stage1..9, reset and actual mined stat+1. A separate
+**from-scratch CUDA attack motor** over six own-memory features, choosing
+ordinary `LEFT_BUTTON` hold/release every six game ticks, was trained on
+28 real Minecraft cases, with 3/14 first-half vs 10/14 second-half true
+break events. Frozen 12-case evaluation: learned12, untrained0, random0,
+no-attack0, always-hold12. **This only matches the simple always-hold
+baseline and is pre-aimed. 0 learned inventory pickups; no natural Any%.**
+Checkpoint `checkpoints/mcio_attack_motor_motorlearn_nov03a.pt` is LOCAL
+Git-ignored, SHA256 in the detailed document. Prior V5 models, previous
+mod JAR versions and all disposable worlds kept. Main next work: compose
+this learned attack with the existing scratch-trained RGB pickup for a
+real mined-drop **inventory** audit, then transition pickup to a calibrated
+memory-derived visible item sensor. Longer-term build versioned V6 joint
+world navigation/aim/action/pickup with same train/frozen observation schema.
+
+## Earlier handoff: 23-scene RGB/memory calibration plus natural tests
 
 Read **`VISIBLE_SURFACE_CALIBRATION_2026_11_03.md`** FIRST. The previous
 on-demand sensor is still opt-in and read-only, never injected into V5.
