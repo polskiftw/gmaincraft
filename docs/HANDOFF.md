@@ -1,5 +1,10 @@
 # Handoff for a brand-new ChatGPT conversation
 
+## CURRENT: completed V4 long run, matched holdout and sandbox GPU blocker
+
+Read [`docs/V4_24000_TRAINING_AND_HELDOUT_AUDIT.md`](V4_24000_TRAINING_AND_HELDOUT_AUDIT.md) first. The user finished `persistpilot1103` to **24,000 game-time units**, 40 genuine natural seeds and 138 updates: **3 real natural wood inventory pickups** during training (episodes 0,34,37), 419 ordinary blocks mined; no proven wood generalization. New same-game-time frozen eval on heldout indices4,5: **grown V4 74 blocks/0 wood/0 deaths, original 600-unit V4 16 blocks/0 wood/3 deaths, uniform random 40 blocks/1 wood/2 deaths**. Policy is concentrating on 72-tick holds but not consistently attacking visible wood. Sandbox CUDA cannot currently initialize (`/dev/nvidia-uvm` missing after 6.18.60 host reboot); optional `GMAINCRAFT_EVAL_DEVICE=cpu` completed all three frozen evaluations correctly. Original checkpoints retained, no new training started. NEXT: tackle player-visible wood targeting/persistent no-look mining in a fresh versioned run; never silently change V4 checkpoint metadata. See new audit for raw journal names.
+
+
 ## Latest milestone: autonomous natural-world wood acquisition with learned action duration
 
 Read [`docs/NATURAL_WOOD_FIRST_LOG_PERSISTENCE_V4.md`](docs/NATURAL_WOOD_FIRST_LOG_PERSISTENCE_V4.md)

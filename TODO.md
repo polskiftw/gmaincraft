@@ -1,3 +1,12 @@
+## Current November 3 priorities after completed V4 24k run
+
+- [x] Inspect `persistpilot1103` complete journal: 40 worlds, 3 true wood inventory pickups, no broad generalization claim.
+- [x] Audit two fresh unseen seeds 4/5 against frozen pilot and random controls (grown 0 wood, pilot 0, random 1).
+- [x] Provide optional CPU frozen-evaluation device for isolated CUDA unavailability without touching training defaults.
+- [ ] Fix/diagnose isolated CUDA access before another full GPU train; `/dev/nvidia-uvm` absent; do not alter host modules from sandbox.
+- [ ] Investigate and improve visible-wood attack alignment + uninterrupted no-look crack accumulation; version any reward/motor change as a NEW experiment.
+- [ ] Compare next model against matched unseen random and frozen V4 on enough seeds; inventory wood is success, visibility and ordinary mined are diagnostics.
+
 # TODO — gmaincraft
 
 ## LATEST: verified first genuine autonomous natural wood mined + picked

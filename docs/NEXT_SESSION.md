@@ -1,3 +1,7 @@
+## Current continuation: completed V4 long-run audit (November 3)
+
+Read `docs/V4_24000_TRAINING_AND_HELDOUT_AUDIT.md` **first**. The old recommendation to resume `persistpilot1103` to 24,000 is now COMPLETE; do not rerun it. Forty train seeds produced 3 natural wood inventory pickups, but two further heldout seeds show grown frozen V4 0 wood vs uniform random 1. Long-action saturation is a concern. Current sandbox CUDA unavailable, though CPU frozen evaluation works with `GMAINCRAFT_EVAL_DEVICE=cpu`; avoid host GPU changes. Next improve wood targeting and stationary attack persistence under a new exact versioned train/frozen contract; preserve original checkpoints and data.
+
 # START HERE — next ChatGPT/Gentoo Shell session
 
 ## Latest milestone: autonomous natural-world wood acquisition with learned action duration
