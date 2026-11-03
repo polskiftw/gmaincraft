@@ -32,11 +32,32 @@ if [[ ! -f "$lib" || "$src" -nt "$lib" ]]; then
   mv -f -- "$tmp" "$lib"
   trap - EXIT
 fi
+# Optional test-only virtual refresh for the isolated nested compositor.
+# When unfocused, Gamescope may throttle to a separate refresh; set BOTH.
+# No host monitor, Wayland, system service or user graphics setting is changed.
+backend="${GMAINCRAFT_GAMESCOPE_BACKEND:-sdl}"
+if [[ "$backend" != 'sdl' && "$backend" != 'headless' ]]; then
+  echo "Invalid GMAINCRAFT_GAMESCOPE_BACKEND: use sdl or headless" >&2
+  exit 2
+fi
+if [[ "$backend" == 'headless' ]]; then
+  echo 'Nested Gamescope backend: headless (game still renders RGB in Xwayland)' >&2
+fi
+refresh_args=()
+if [[ -n "${GMAINCRAFT_GAMESCOPE_REFRESH_HZ:-}" ]]; then
+  hz="$GMAINCRAFT_GAMESCOPE_REFRESH_HZ"
+  if [[ ! "$hz" =~ ^[0-9]+$ ]] || (( hz < 30 || hz > 600 )); then
+    echo "Invalid GMAINCRAFT_GAMESCOPE_REFRESH_HZ: expected integer 30..600" >&2
+    exit 2
+  fi
+  refresh_args=(-r "$hz" -o "$hz")
+  echo "Nested Gamescope refresh and unfocused refresh: $hz Hz" >&2
+fi
 # No --grab or --force-grab-cursor. The SDL2 shim also prevents automatic
 # relative-pointer locking requested when Minecraft hides its cursor.
 exec env SDL_VIDEODRIVER=wayland \
     WLR_XWAYLAND="$root/mcio-data/xwayland-sandbox-wrapper.sh" \
     ALSOFT_DRIVERS=null \
     LD_PRELOAD="$lib" \
-    gamescope --backend sdl -W 800 -H 450 -w 800 -h 450 -- \
+    gamescope --backend "$backend" -W 800 -H 450 -w 800 -h 450 "${refresh_args[@]}" -- \
     env -u LD_PRELOAD "$@"

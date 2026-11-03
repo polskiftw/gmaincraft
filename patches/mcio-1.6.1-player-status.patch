@@ -1,0 +1,102 @@
+diff --git a/src/client/java/net/twoturtles/MCioNetworkPacket.java b/src/client/java/net/twoturtles/MCioNetworkPacket.java
+index 92d6661..bc9fb43 100644
+--- a/src/client/java/net/twoturtles/MCioNetworkPacket.java
++++ b/src/client/java/net/twoturtles/MCioNetworkPacket.java
+@@ -91,6 +91,22 @@ record StatsUpdateOption(ArrayList<StatCategory> categories) implements Option {
+ @JsonTypeInfo(use = Id.MINIMAL_CLASS, include = As.PROPERTY, property = MCioConfig.MCIO_TYPE)
+ record StatsFullOption(ArrayList<StatCategory> categories) implements Option {}
+ 
++/* Opt-in read-only player/actual crosshair knowledge. No chunk map, no seed.
++ * Gated by GMAINCRAFT_STATUS_V1=1 for old MCio clients. The type name must
++ * match the Python @MCioType registration when the feature is enabled. */
++record PlayerStatusOption(
++    String schema,
++    int hunger,
++    float saturation,
++    int armor_points,
++    int air_supply,
++    int selected_hotbar_slot,
++    String dimension,
++    String targeted_block_id,
++    int[] targeted_block_pos,
++    String targeted_block_face,
++    float targeted_hit_distance) implements Option {}
++
+ /* Serialize ObservationPacket */
+ class ObservationPacketPacker {
+   private static final Logger LOGGER = LogUtils.getLogger();
+diff --git a/src/client/java/net/twoturtles/MCioObservationHandler.java b/src/client/java/net/twoturtles/MCioObservationHandler.java
+index 1e0d5f2..dc3fb59 100644
+--- a/src/client/java/net/twoturtles/MCioObservationHandler.java
++++ b/src/client/java/net/twoturtles/MCioObservationHandler.java
+@@ -10,10 +10,13 @@ import java.util.Map;
+ import java.util.Optional;
+ import net.minecraft.client.Minecraft;
+ import net.minecraft.client.player.LocalPlayer;
++import net.minecraft.core.BlockPos;
+ import net.minecraft.core.registries.BuiltInRegistries;
+ import net.minecraft.world.entity.player.Inventory;
+ import net.minecraft.world.item.ItemStack;
+ import net.minecraft.world.phys.Vec3;
++import net.minecraft.world.phys.BlockHitResult;
++import net.minecraft.world.phys.HitResult;
+ import org.lwjgl.glfw.GLFW;
+ import org.slf4j.Logger;
+ 
+@@ -26,6 +29,8 @@ public class MCioObservationHandler {
+   private final Logger LOGGER = LogUtils.getLogger();
+   private static final TrackPerSecond sendFPS = new TrackPerSecond("ObservationsSent");
+   private int observationSequence = 0;
++  private final boolean emitGmaincraftStatus =
++      "1".equals(System.getenv("GMAINCRAFT_STATUS_V1"));
+ 
+   public MCioObservationHandler(Minecraft client, MCioConfig config) {
+     this.client = client;
+@@ -53,6 +58,9 @@ public class MCioObservationHandler {
+     // XXX For now just manually add the stats update.
+     // This will be based on the action packet in the future.
+     options.add(getStatsUpdate());
++    if (emitGmaincraftStatus) {
++      options.add(getGmaincraftPlayerStatus(player));
++    }
+     //        options.add(getStatsFull());
+ 
+     getCursorPosRV cursorPosRV = getCursorPos(client);
+@@ -126,6 +134,37 @@ public class MCioObservationHandler {
+     return new StatsFullOption(updates);
+   }
+ 
++  /** Actual client-side crosshair selection (not an inferred X-ray scan).
++   *  Vanilla client.hitResult is updated by the game renderer before MCio
++   *  captures its current frame. Target position is returned ONLY on a real
++   *  block hit. A non-block/crosshair miss reports null target fields.
++   */
++  PlayerStatusOption getGmaincraftPlayerStatus(LocalPlayer player) {
++    String blockId = null;
++    int[] blockPos = null;
++    String blockFace = null;
++    float hitDistance = -1f;
++    HitResult hit = client.hitResult;
++    if (client.level != null && hit instanceof BlockHitResult blockHit &&
++        hit.getType() == HitResult.Type.BLOCK) {
++      BlockPos p = blockHit.getBlockPos();
++      blockId = BuiltInRegistries.BLOCK.getKey(
++          client.level.getBlockState(p).getBlock()).toString();
++      blockPos = new int[] {p.getX(), p.getY(), p.getZ()};
++      blockFace = blockHit.getDirection().getName();
++      hitDistance = (float) player.getEyePosition().distanceTo(hit.getLocation());
++    }
++    return new PlayerStatusOption(
++        "gmaincraft_status_v1",
++        player.getFoodData().getFoodLevel(),
++        player.getFoodData().getSaturationLevel(),
++        player.getArmorValue(),
++        player.getAirSupply(),
++        player.getInventory().selected,
++        player.level().dimension().location().toString(),
++        blockId, blockPos, blockFace, hitDistance);
++  }
++
+   float getYaw(LocalPlayer player) {
+     float yaw = player.getYRot();
+     // Normalize yaw -180 to 180. Minecraft already normalizes pitch -90 to 90.

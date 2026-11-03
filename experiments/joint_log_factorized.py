@@ -31,6 +31,8 @@ from gmaincraft.inverse_dynamics import load_encoder_checkpoint
 from gmaincraft.reward_events import mined_event_reward
 from gmaincraft.memory_factorized import (MemoryFactorizedPPOTrainer,
     MemoryFactorTransition, encode_player_knowledge)
+from gmaincraft.status_factorized import (StatusFactorizedPPOTrainer,
+    StatusFactorTransition,encode_status_knowledge)
 from gmaincraft.vision_factorized import (FactorizedPPOTrainer,FactorTransition,
                                            ACTION_TICKS,SCHEMA,action_schema,action_for_factors)
 from joint_log_ppo import launch_world
@@ -78,11 +80,17 @@ def run_episode(arena,agent,case,*,max_ticks,training,active_heads=(True,True,Tr
                 decision_ticks=ACTION_TICKS,mine_event_bonus=0.):
     ob=arena.reset(case)
     bridge=MCioAgentBridge(arena.client.ctrl,ob)
+    status_mode=isinstance(agent,StatusFactorizedPPOTrainer)
     memory_mode=isinstance(agent,MemoryFactorizedPPOTrainer)
     history=PixelHistory()
-    initial=bridge.multimodal_view() if memory_mode else bridge.view()
+    initial=(bridge.multimodal_status_view() if status_mode else
+             bridge.multimodal_view() if memory_mode else bridge.view())
     image=history.reset(initial)
-    features=encode_player_knowledge(initial.player) if memory_mode else None
+    if status_mode:
+        features,block_tokens=encode_status_knowledge(initial.player,initial.status)
+    else:
+        features=encode_player_knowledge(initial.player) if memory_mode else None
+        block_tokens=None
     event_tracker=arena.mined_events
     event_tracker.begin_episode(bridge.stat_total('minecraft:mined','minecraft:oak_log'))
     total_event_mined=0
@@ -95,13 +103,28 @@ def run_episode(arena,agent,case,*,max_ticks,training,active_heads=(True,True,Tr
     longest_stable_ticks=0
     ticks=0;decisions=0;total=0.;streak=0;max_streak=0
     counter=Counter()
+    observation_counter=Counter()
+    current_view=initial
     trajectory=[]
     started=time.perf_counter()
     time_inference=time_game=time_resize=0.
     success=False;dead=False
     while ticks<max_ticks:
+        if status_mode:
+            # Track ONLY what the frozen/playing agent itself observes.
+            # Does not inspect the trainer-only placed-log geometry.
+            target=current_view.status.crosshair_block
+            observation_counter['policy_decisions']+=1
+            if target is None:
+                observation_counter['miss']+=1
+            else:
+                observation_counter['hit']+=1
+                observation_counter['hit_'+target.block_id]+=1
         clock=time.perf_counter()
-        if memory_mode:
+        if status_mode:
+            factors,logp,value=agent.act(image,features,block_tokens,
+                                         greedy=not training,active_heads=active_heads)
+        elif memory_mode:
             factors,logp,value=agent.act(image,features,greedy=not training,
                                          active_heads=active_heads)
         else:
@@ -110,9 +133,10 @@ def run_episode(arena,agent,case,*,max_ticks,training,active_heads=(True,True,Tr
         action=action_for_factors(factors,max_ticks-ticks,decision_ticks=decision_ticks)
         clock=time.perf_counter()
         next_view=bridge.apply(action)
-        if memory_mode:
-            # The bridge's same read-only opt-in view is used during real-game
-            # training and frozen scored evaluation (including natural seeds).
+        if status_mode:
+            # Exact same read-only V5 sensor in training and frozen survival.
+            next_view=bridge.multimodal_status_view()
+        elif memory_mode:
             next_view=bridge.multimodal_view()
         time_game+=time.perf_counter()-clock
         ticks+=action.ticks;decisions+=1
@@ -140,7 +164,11 @@ def run_episode(arena,agent,case,*,max_ticks,training,active_heads=(True,True,Tr
                 reward+=mined_event_reward(0,new_blocks,reward_per_block=mine_event_bonus)
         done=success or dead or ticks>=max_ticks
         if training:
-            if memory_mode:
+            if status_mode:
+                trajectory.append(StatusFactorTransition(image.copy(),features.copy(),
+                    block_tokens.copy(),factors,float(reward),value,logp,
+                    action.ticks,done,active_heads))
+            elif memory_mode:
                 trajectory.append(MemoryFactorTransition(image.copy(),features.copy(),
                     factors,float(reward),value,logp,action.ticks,done,active_heads))
             else:
@@ -160,7 +188,10 @@ def run_episode(arena,agent,case,*,max_ticks,training,active_heads=(True,True,Tr
         before=after
         clock=time.perf_counter()
         image=history.append(next_view)
-        if memory_mode:
+        current_view=next_view
+        if status_mode:
+            features,block_tokens=encode_status_knowledge(next_view.player,next_view.status)
+        elif memory_mode:
             features=encode_player_knowledge(next_view.player)
         time_resize+=time.perf_counter()-clock
         if done:break
@@ -182,6 +213,8 @@ def run_episode(arena,agent,case,*,max_ticks,training,active_heads=(True,True,Tr
                 policy_inference_wall_s=round(time_inference,4),
                 game_io_wall_s=round(time_game,4),
                 rgb_processing_wall_s=round(time_resize,4))
+    if status_mode:
+        result['crosshair_observation_counts']=dict(sorted(observation_counter.items()))
     if memory_mode:
         result['observation_schema']=agent.observation_schema
     return result,trajectory

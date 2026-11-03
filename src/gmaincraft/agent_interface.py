@@ -73,6 +73,14 @@ class MultimodalView:
     player: object  # PlayerKnowledgeV1 (late-bound to avoid MCio import)
 
 
+@dataclass(frozen=True)
+class MultimodalStatusView:
+    """New V5-only input contract; legacy V4 MultimodalView is unchanged."""
+    pixels: np.ndarray
+    player: object  # PlayerKnowledgeV1
+    status: object  # PlayerStatusV1
+
+
 class MCioAgentBridge:
     """Turn AgentAction into synchronized MCio input, NEVER admin commands.
 
@@ -102,6 +110,15 @@ class MCioAgentBridge:
         """Identical opt-in RGB + memory interface for train and gameplay."""
         return MultimodalView(self.view().pixels,self.player_knowledge())
 
+    def multimodal_status_view(self):
+        """V5: RGB + own state + exact visible crosshair from patched MCio.
+
+        This opt-in method fails closed if the mod/status flag is unavailable.
+        It does NOT return raw world/chunk data or a server command channel.
+        """
+        return MultimodalStatusView(self.view().pixels,self.player_knowledge(),
+                                    self.player_status())
+
     def player_knowledge(self):
         """Opt-in v1 memory observations, identical for training and eval.
 
@@ -110,6 +127,11 @@ class MCioAgentBridge:
         """
         from gmaincraft.player_knowledge import PlayerKnowledgeV1
         return PlayerKnowledgeV1.from_packet(self.packet, stats=self._stats)
+
+    def player_status(self):
+        """Opt-in patched-MCio own status + game crosshair target, not X-ray."""
+        from gmaincraft.mcio_status import PlayerStatusV1
+        return PlayerStatusV1.from_packet(self.packet)
 
     def stat_total(self, category, item):
         """Privileged Minecraft statistics; evaluator only, NOT policy input."""

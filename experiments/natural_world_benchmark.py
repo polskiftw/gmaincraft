@@ -46,7 +46,7 @@ def parse_args(argv=None):
     ap.add_argument('--world-seeds', type=parse_seeds, required=True,
                     help='comma-separated REAL Minecraft world seeds')
     ap.add_argument('--modes', nargs='+', choices=MODES,
-                    default=[mode for mode in MODES if mode != 'memory_factorized'])
+                    default=[mode for mode in MODES if mode not in ('memory_factorized','status_factorized')])
     ap.add_argument('--max-ticks', type=int, default=1200)
     ap.add_argument('--visible', action='store_true', help='use nested Gamescope on sandbox')
     ap.add_argument('--frame-width', type=int, default=320)
@@ -59,6 +59,8 @@ def parse_args(argv=None):
     ap.add_argument('--pickup-model', default='p02')
     ap.add_argument('--memory-model',default=None,
                     help='local checkpoint tag joint_memory_<tag>.pt (V4)')
+    ap.add_argument('--status-model',default=None,
+                    help='opt-in patched-MCio checkpoint joint_status_<tag>.pt (V5)')
     ap.add_argument('--factorized-model',default=None,
                     help='local checkpoint tag joint_factorized_<tag>.pt')
     ap.add_argument('--joint-model', default=None,
@@ -92,7 +94,7 @@ def parse_args(argv=None):
         ap.error('Duplicate benchmark modes')
     if not all(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,39}', t)
                for t in (args.aim_model, args.pickup_model, args.joint_model or 'unset',
-                         args.factorized_model or 'unset', args.memory_model or 'unset')):
+                         args.factorized_model or 'unset', args.memory_model or 'unset', args.status_model or 'unset')):
         ap.error('Invalid checkpoint name')
     if 'joint_ppo' in args.modes and args.joint_model is None and not (args.dry_run or args.prepare):
         ap.error('--joint-model required for joint_ppo evaluation')
@@ -100,6 +102,8 @@ def parse_args(argv=None):
         ap.error('--factorized-model required for joint_factorized evaluation')
     if 'memory_factorized' in args.modes and args.memory_model is None and not (args.dry_run or args.prepare):
         ap.error('--memory-model required for memory_factorized evaluation')
+    if 'status_factorized' in args.modes and args.status_model is None and not (args.dry_run or args.prepare):
+        ap.error('--status-model required for V5 status_factorized evaluation')
     return args
 
 
@@ -169,19 +173,25 @@ def prepare(plans):
 
 
 def evaluate_one(p, args, weights, joint_checkpoint=None, factorized_checkpoint=None,
-                 memory_checkpoint=None):
+                 memory_checkpoint=None, status_checkpoint=None):
     manager = world.WorldManager(mcio_dir=MCIO)
     source, dest = paths_for(p)
     if not (source / 'level.dat').is_file():
         raise FileNotFoundError(f'Natural seed world missing {source}; run --prepare first')
     if dest.exists():
         raise FileExistsError(f'Evaluation world exists, refusing overwrite: {dest}')
+    if p.mode == 'status_factorized':
+        # Register the patched-mod CBOR option BEFORE the FIRST observation,
+        # otherwise the decoder has no registered PlayerStatusOption subtype.
+        from gmaincraft.mcio_status import PlayerStatusOption  # noqa: F401
     # Snapshot copied BEFORE running Minecraft, never changes the source save.
     manager.copy('storage', p.source, INSTANCE, p.world, force=False)
     opts = types.RunOptions(mcio_dir=MCIO, instance_name=INSTANCE, world_name=p.world,
                             mcio_mode=types.MCioMode.SYNC,
                             hide_window=not args.visible, gpu_lib=None if args.visible else 'nvidia',
-                            width=args.frame_width, height=args.frame_height)
+                            width=args.frame_width, height=args.frame_height,
+                            env_extra={'GMAINCRAFT_STATUS_V1':'1'} if
+                                p.mode=='status_factorized' else {})
     ensure_clean_visual_options(MCIO/'instances'/INSTANCE)
     launch = instance.Launcher(opts)
     ctrl = None
@@ -207,14 +217,16 @@ def evaluate_one(p, args, weights, joint_checkpoint=None, factorized_checkpoint=
                             aim_weights=weights[0], pickup_weights=weights[1],
                             joint_checkpoint=joint_checkpoint,
                             factorized_checkpoint=factorized_checkpoint,
-                            memory_checkpoint=memory_checkpoint,device=args.device)
+                            memory_checkpoint=memory_checkpoint,
+                            status_checkpoint=status_checkpoint,device=args.device)
         found = 0
         decisions = 0
         policy_wall = game_io_wall = observations_wall = 0.
         action_io_ms=[]
         while game_ticks < args.max_ticks and not found:
             clock = time.perf_counter()
-            view = bridge.multimodal_view() if p.mode=='memory_factorized' else bridge.view()
+            view=(bridge.multimodal_status_view() if p.mode=='status_factorized' else
+                  bridge.multimodal_view() if p.mode=='memory_factorized' else bridge.view())
             observations_wall += time.perf_counter()-clock
             clock = time.perf_counter()
             action = policy.act(view, args.max_ticks - game_ticks)
@@ -286,6 +298,11 @@ def main(argv=None):
         joint_checkpoint = ROOT / 'checkpoints' / f'joint_log_ppo_{args.joint_model}.pt'
         if not joint_checkpoint.is_file():
             raise FileNotFoundError(f'Joint PPO checkpoint unavailable: {joint_checkpoint}')
+    status_checkpoint = None
+    if 'status_factorized' in args.modes:
+        status_checkpoint = ROOT / 'checkpoints' / f'joint_status_{args.status_model}.pt'
+        if not status_checkpoint.is_file():
+            raise FileNotFoundError(f'V5 status checkpoint unavailable: {status_checkpoint}')
     memory_checkpoint = None
     if 'memory_factorized' in args.modes:
         memory_checkpoint = ROOT / 'checkpoints' / f'joint_memory_{args.memory_model}.pt'
@@ -311,7 +328,8 @@ def main(argv=None):
                 try:
                     result = evaluate_one(p, args, weights, joint_checkpoint=joint_checkpoint,
                                           factorized_checkpoint=factorized_checkpoint,
-                                          memory_checkpoint=memory_checkpoint)
+                                          memory_checkpoint=memory_checkpoint,
+                                          status_checkpoint=status_checkpoint)
                 except Exception as e:
                     result = dict(seed=p.seed, mode=p.mode, result='error',
                                   error=f'{type(e).__name__}: {e}', world=p.world, source=p.source)
@@ -320,10 +338,11 @@ def main(argv=None):
                     print(f'ERROR {i}/{len(plans)}: {result}', flush=True)
                     raise
                 result['game_options']=dict(overrides)
-                if p.mode in ('joint_factorized','joint_ppo','memory_factorized'):
+                if p.mode in ('joint_factorized','joint_ppo','memory_factorized','status_factorized'):
                     import hashlib
                     path={'joint_factorized':factorized_checkpoint,'joint_ppo':joint_checkpoint,
-                          'memory_factorized':memory_checkpoint}[p.mode]
+                          'memory_factorized':memory_checkpoint,
+                          'status_factorized':status_checkpoint}[p.mode]
                     result['checkpoint_sha256']=hashlib.sha256(path.read_bytes()).hexdigest()
                 pose = (tuple(result['start_pos']), result['start_yaw'], result['start_pitch'])
                 if p.seed in starting_poses and starting_poses[p.seed] != pose:

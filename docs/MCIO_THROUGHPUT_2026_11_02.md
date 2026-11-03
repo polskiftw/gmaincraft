@@ -2,6 +2,21 @@
 
 **Status:** Fast MCio throughput is reproducible **in the current environment**. The historical 4-second slowdown was not reproduced. This is a recovery/triage finding, **not** a proven root-cause fix. Do not attribute the earlier slowdown to VSync, graphics driver, PyTorch, system CPU governor, Gamescope, or a Minecraft mod without evidence.
 
+## Later performance diagnosis: SDL backend can hit a true 60-tick cap
+
+The earlier warmed 0.62–0.72s/300 results were real, but other new SDL
+runs on the exact ORIGINAL unpatched MCio instance showed nearly **5s/300
+at exactly 60 ticks/s**, including with nested Gamescope virtual refresh
+set to 300. Moving the same original MCio to
+`GMAINCRAFT_GAMESCOPE_BACKEND=headless` restored **0.770s/300 warmed**
+without losing real rendered Minecraft RGB. A patched MCio opt-in
+read-only status option was tested ON/OFF in headless mode and added only
+a small ~0.009s/300 warmed run difference. This is a second measured
+performance factor **in addition to** natural-world render distance and
+cold-chunk warmup. See [MCIO_PLAYER_SENSOR.md](MCIO_PLAYER_SENSOR.md) and
+[MINECRAFT_RENDER_PERF.md](MINECRAFT_RENDER_PERF.md). Avoid claiming a
+single permanent system root cause from isolated runs.
+
 ## Subsequent natural-world measurement: rendering strongly matters
 
 **Newer evidence:** `MINECRAFT_RENDER_PERF.md` reproduced ~12–13ms/tick

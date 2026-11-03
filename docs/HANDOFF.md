@@ -2,6 +2,68 @@
 
 **Last verified: 2026-11-02.** Canonical code: [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. **Historical early milestone (superseded by the sections below):** learn movement W/A/S/D from real RGB features (2 independently trained models; fresh fixture audit p01 **30/32**, p02 **24/32**, always-W 21/32); then **combine frozen RGB aim/ATTACK and pickup policies** on *real mined logs* (two independent camera-angle sets, trained p02 **51/56**, hardcoded W **49/56**, untrained movement 21/56). Earlier numerical-navigation and RGB log-aiming milestones remain preserved; `docs/EXPERIMENTS.md` records all results. The initial uncleaned aim 12/14 and aborted first drop-distance audits are **invalid evidence**. No general world-seed Minecraft speedrunning. Do not ask for old test logs.
 
+## NEWEST handoff: patched MCio real block status, V5 parity, headless speed
+
+Read `MCIO_PLAYER_SENSOR.md` FIRST for source patch/build/install/revert,
+exact tests, performance A/B and V5 train/eval commands. Exact upstream MCio
+1.6.1+1.21.3 Fabric checkout is under ignored `mcio-data/mcio-upstream-inspect`;
+tracked patch `patches/mcio-1.6.1-player-status.patch` adds a READ-ONLY
+opt-in `PlayerStatusOption`. `tools/build-mcio-player-status.sh --install`
+backed up original JAR under ignored `mcio-data/mod_backups/` and installed
+new patched jar **only** in disposable `DemoInstance`; `--restore` reverts.
+Patched jar SHA256 `fff86beea0da5c66dc1e78ee8ae450260dace9d5f112120f9c6088388e77ffbb`,
+original `21368effcb3b579954deef345c4a8d965ebb667d82bab25723626da406224ab3`.
+Extra fields emitted ONLY with Minecraft env `GMAINCRAFT_STATUS_V1=1`.
+Register Python CBOR type BEFORE receiving packet. The actual vanilla
+`Minecraft.client.hitResult` supplies targeted block ID/pos/face/distance,
+not any hidden/chunk list. `PlayerStatusV1` adds hunger/armor/saturation/air,
+hotbar slot and dimension. Reversible installation, no host settings changed.
+
+Real-scene sensor controls (two independent smoke worlds) oak/turn away/
+restore/stone occlude **4/4 each**. Additional reach-calibration test:
+front faces 1.5/2.5/3.5 blocks all target oak; 4.5/5.5/6.5/7.5 all miss.
+Glass intercepts vanilla crosshair ray even though transparent. These are
+**not calibrated visual FOV/size/range thresholds for a visible-object list**.
+
+Actual V5 schema `factorized_v5_status_v1_player_v1_rgb2_6tick`: 40
+numeric own+crosshair fields, full128 UTF-8 byte IDs with trainable char
+CNN, 2×84×84 RGB, 994,686 random initialized model weights. Same
+`MCioAgentBridge.multimodal_status_view()` during real CUDA training and
+normal frozen scoring; controller-only geometry stays scalar reward, never
+policy input. `statuspilot_1103a`: 4 train 180-tick episodes,1 CUDA update,
+**0/4** logs, checkpoint SHA256
+`77b24ce058fda616eb143432a9ae1c52782e8bd7dfdda0ce0afc353dba59d190`.
+`statusfrozen_1103a`: 8 scored held-out cases **0/8** pickups.
+`statuscounts_1103b`: 4 further held-out cases (0/4), stationary agent saw
+actual oak ID on all30 decisions but **attacked0 ticks**. Aim oak3/30,
+near oak1/30 + bedrock29/30, broad miss30/30. Natural seed31415927:
+random 0 logs/180 ticks and frozen V5 0/180 with identical spawn
+`(-15.5,76.0,16.5)`; normal game actions, no admin edits during play.
+Original V4 checkpoint retested with new mod feature disabled: 4/4
+independent frozen cases completed, **0 logs** as expected. NO first-log
+skill, no Any% win, no pretrained/human policy.
+
+Critical performance insight from matched NO-TORCH original mod runs:
+Gamescope **SDL visible backend conditional ~60-tick/s cap** despite
+MCIO_UNLIMITED_FPS and advertised virtual refresh300: ~5.0s/300. SAME
+unpatched jar via `GMAINCRAFT_GAMESCOPE_BACKEND=headless` recovered
+**0.770s/300 warm**. Patched jar opt-in status OFF vs ON had
+**0.714s vs0.723s warm**, tiny extra overhead. Minecraft still renders RGB
+through NVIDIA inside nested offscreen Gamescope. Omitting backend var keeps
+visible SDL for user's watching but sometimes caps throughput. Separate
+4-chunk natural-world render distance lever remains ~2.68x over original
+defaults in earlier measured idle natural seed. Keep exact profile/viewport
+identical for comparisons, monitor each run and warmup, don't change host
+settings. Gamescope wrapper139 AFTER child success remains; use separate
+viewer sessions for train/eval, preserve original ignored worlds/weights.
+
+Next: derive bounded *camera perceivable* block/entity candidate set with
+empirical FOV/occlusion/light/projection and false-X-ray tests, then solve
+sample-efficient continuous vanilla targeting/attack/pickup with reproducible
+new/held-out seeds and negative controls. More PPO episodes without success
+evidence are NOT an acceptable shortcut. Commit source/docs only; normal Git
+push via Gentoo Shell available.
+
 ## CURRENT handoff (Nov 2, 2026): V4 actually trains on memory + RGB
 
 Read `MEMORY_POLICY_V4.md` and `MINECRAFT_RENDER_PERF.md` before further

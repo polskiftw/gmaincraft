@@ -2,6 +2,56 @@
 
 This file is the operating contract for anyone (including a future ChatGPT conversation) editing **polskiftw/gmaincraft**. Treat the GitHub repository, not the conversation transcript or an assumed local checkout, as the authoritative codebase.
 
+## NEWEST verified milestone: V5 patched MCio, true crosshair/player status and headless speed
+
+**Read `docs/MCIO_PLAYER_SENSOR.md` and `docs/NEXT_SESSION.md` FIRST.**
+The user explicitly permitted changing the isolated, disposable MCio game
+instance and asked that we monitor performance continuously. V5 now uses a
+**real, opt-in, read-only Fabric MCio patch**: hunger/saturation/armor/air,
+selected slot/dimension, and ONLY the vanilla Minecraft crosshair's actual
+block ID/position/face/distance. This is not a loaded-chunk/X-ray map. The
+tracked patch `patches/mcio-1.6.1-player-status.patch` is built from pinned
+upstream `twoturtles/MCio` tag 1.6.1+1.21.3 using
+`tools/build-mcio-player-status.sh`; original mod is backed up and restorable.
+The binary itself, vanilla world saves, private credentials and checkpoints
+remain Git-ignored. Do not remove old models or blindly overwrite the mod.
+
+**Training/inference parity is REAL:** new schema
+`factorized_v5_status_v1_player_v1_rgb2_6tick` trains from randomized
+weights with player+status memory and optional RGB; frozen controlled and
+natural-survival modes consume precisely the SAME status view in normal
+Minecraft. Real 4-episode CUDA training/one PPO update produced 0/4 logs;
+8-case independent frozen score was 0/8; natural seed31415927 paired random
+vs V5 was 0/180-tick logs each. In a follow-up four-case frozen audit,
+stationary model saw oak on 30/30 policy decisions but chose **zero attack**;
+it is not a learned log-mining agent. Current priority is calibrated
+perceivable (not only targetable) object state and sample-efficient action
+credit/duration, before another expensive PPO scaling attempt. All earlier
+V1-V4 checkpoint families are preserved and the V4 frozen compatibility
+smoke passed with the patched mod installed but status flag OFF.
+
+**New performance root cause identified:** SDL Gamescope can impose ~60
+Minecraft ticks/s EVEN when MCio/FPS/VSync are uncapped; setting its virtual
+refresh to300 did not help. On the SAME unmodified MCio jar a 300-tick
+benchmark changed from ~5.00s under SDL to **0.77s warmed** under
+`GMAINCRAFT_GAMESCOPE_BACKEND=headless`, with real RGB still rendered on the
+NVIDIA GPU via nested Xwayland. The patched sensor ON vs OFF warm runs
+were **0.723s vs0.714s** /300 ticks, a small observed overhead. For
+high-throughput training, set `GMAINCRAFT_GAMESCOPE_BACKEND=headless` on
+`tools/run-mcio-viewer.sh`; for watching gameplay, omit to retain visible SDL
+with protected host mouse. The separately measured render-distance benefit
+(4 chunks vs defaults) also remains relevant on natural worlds. Continue
+logging startup vs active I/O, per tick, scene complexity and profile;
+never claim all prior slowdowns have only one cause.
+
+**Safety:** only edit/test inside `/workspace` and the user's disposable
+DemoInstance. Original MCio jar available through
+`tools/build-mcio-player-status.sh --restore`; do not alter host packages,
+filesystem mounts, drivers, user game worlds or other service processes.
+Before using the opt-in packet, register `gmaincraft.mcio_status` with CBOR
+BEFORE first observation, and set game process env `GMAINCRAFT_STATUS_V1=1`.
+Never let admin reset geometry or global chunk data reach the playing policy.
+
 ## Canonical design: direct Minecraft state, bounded by skilled-player knowledge
 
 **Read [`docs/OBSERVATION_POLICY.md`](docs/OBSERVATION_POLICY.md) before making
@@ -83,7 +133,7 @@ inventory, known stats directly from MCio. Legacy RGB `AgentView` is
 untouched; **new memory view has NOT yet been wired into training/eval**.
 Calibrating block visibility and identical train/eval policy inputs are next.
 
-## MANDATORY FIRST TASK FOR A NEW CHAT: MCio speed regression (highest priority)
+## Historical MCio speed-regression runbook (now measured/narrowed)
 
 **Start with [`docs/NEXT_SESSION.md`](docs/NEXT_SESSION.md), not a new PPO
 run.** The user explicitly requires **diagnosis and remediation of the

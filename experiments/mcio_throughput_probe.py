@@ -20,6 +20,7 @@ from mcio_ctrl.envs import env_util, mcio_env
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from gmaincraft.player_knowledge import PlayerKnowledgeV1
+from gmaincraft.mcio_status import PlayerStatusV1, ENV_NAME
 
 ROOT = Path(__file__).resolve().parents[1]
 MCIO = ROOT / 'mcio-data'
@@ -90,12 +91,13 @@ def reset(ctrl, xyz):
     return manager
 
 
-def do_run(ctrl, xyz, ticks, label):
+def do_run(ctrl, xyz, ticks, label, *, status_v1=False):
     manager = reset(ctrl, xyz)
     stats = env_util.StatsCache()
     sends, receives, frames, stat_times, frame_times = [], [], [], [], []
     last_frame = -1
     frame_delta_mismatch = 0
+    status_validations = 0
     start = time.perf_counter()
     for tick in range(ticks):
         keys = ('LEFT_BUTTON',) if tick < 110 else ('W',) if tick < 145 else ()
@@ -110,6 +112,11 @@ def do_run(ctrl, xyz, ticks, label):
         knowledge = PlayerKnowledgeV1.from_packet(ob,stats=stats)
         if knowledge.player_xyz != tuple(ob.player_pos) or knowledge.health != ob.health:
             raise AssertionError('Player memory observation drift')
+        if status_v1:
+            status=PlayerStatusV1.from_packet(ob)
+            if not 0<=status.hunger<=20:
+                raise AssertionError('Invalid hunger status')
+            status_validations+=1
         stat_times.append((time.perf_counter_ns()-t0)/1e6)
         if tick % 6 == 0:
             t0 = time.perf_counter_ns()
@@ -132,7 +139,8 @@ def do_run(ctrl, xyz, ticks, label):
                   frame_sequence_gaps=frame_delta_mismatch, final_inventory_oak_logs=logs,
                   final_pos=[round(float(v),3) for v in ob.player_pos],
                   last_action_sequence=int(ob.last_action_sequence),
-                  knowledge_schema=knowledge.schema, inventory_logs_v1=sum(
+                  knowledge_schema=knowledge.schema, status_v1_checks=status_validations,
+                  inventory_logs_v1=sum(
                       slot.count for slot in knowledge.main_inventory if slot.item_id=='minecraft:oak_log'))
     print('THROUGHPUT '+json.dumps(result,sort_keys=True),flush=True)
     return result
@@ -176,6 +184,8 @@ def main():
     ap.add_argument('--vsync', choices=('keep','on','off'), default='keep')
     ap.add_argument('--max-fps', type=int, default=None)
     ap.add_argument('--visible', action='store_true')
+    ap.add_argument('--status-v1',action='store_true',
+                    help='require gmaincraft-patched MCio status option every tick (no Torch)')
     args = ap.parse_args()
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,31}',args.run_tag):
         ap.error('Invalid run tag')
@@ -194,7 +204,8 @@ def main():
     opts = types.RunOptions(mcio_dir=MCIO,instance_name='DemoInstance',world_name=world_name,
                             mcio_mode=types.MCioMode.SYNC,hide_window=not args.visible,
                             gpu_lib=None if args.visible else 'nvidia',
-                            width=args.frame_width,height=args.frame_height)
+                            width=args.frame_width,height=args.frame_height,
+                            env_extra={ENV_NAME:'1'} if args.status_v1 else {})
     with temporary_options(args.vsync,args.max_fps,args.run_tag):
         launcher=instance.Launcher(opts)
         ctrl=None
@@ -206,7 +217,8 @@ def main():
             xyz=setup(ctrl)
             print('READY seconds',round(time.perf_counter()-started,3),
                   'position',xyz,'vsync',args.vsync,'max_fps',args.max_fps,flush=True)
-            results=[do_run(ctrl,xyz,args.ticks,f'repeat{i+1}') for i in range(args.repeats)]
+            results=[do_run(ctrl,xyz,args.ticks,f'repeat{i+1}',status_v1=args.status_v1)
+                     for i in range(args.repeats)]
             path.parent.mkdir(parents=True,exist_ok=True)
             with path.open('x',encoding='utf-8') as f:
                 json.dump(dict(config=dict(vars(args)),results=results),f,indent=2)

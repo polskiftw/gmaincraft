@@ -17,6 +17,9 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
 from gmaincraft.instance_options import temporary_game_options
 from gmaincraft.memory_factorized import SCHEMA,FEATURE_NAMES,MemoryFactorizedPPOTrainer
+from gmaincraft.status_factorized import (StatusFactorizedPPOTrainer,
+    SCHEMA as STATUS_SCHEMA,FEATURE_NAMES as STATUS_FEATURES,
+    BLOCK_TOKEN_LENGTH,BLOCK_TOKENIZER)
 from gmaincraft.joint_curriculum import sample_cases,sample_near_cases,sample_stationary_cases
 from joint_log_factorized import run_episode
 from joint_log_ppo import launch_world
@@ -35,6 +38,8 @@ def parse_args(argv=None):
     ap.add_argument('--frame-width',type=int,default=320)
     ap.add_argument('--frame-height',type=int,default=180)
     ap.add_argument('--visible',action='store_true')
+    ap.add_argument('--with-status',action='store_true',
+                    help='evaluate opt-in V5 patched-MCio crosshair/hunger checkpoint')
     args=ap.parse_args(argv)
     for tag in (args.run_tag,args.model_tag):
         if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,31}',tag):
@@ -48,16 +53,24 @@ def parse_args(argv=None):
 
 def main(argv=None):
     args=parse_args(argv)
-    cp=ROOT/'checkpoints'/f'joint_memory_{args.model_tag}.pt'
-    log=ROOT/'logs'/f'memory_frozen_{args.run_tag}.jsonl'
-    world_name='MDL_MemoryFrozen_'+args.run_tag
+    family='status' if args.with_status else 'memory'
+    cp=ROOT/'checkpoints'/f'joint_{family}_{args.model_tag}.pt'
+    log=ROOT/'logs'/f'{family}_frozen_{args.run_tag}.jsonl'
+    world_name=('MDL_StatusFrozen_' if args.with_status else 'MDL_MemoryFrozen_')+args.run_tag
     dest=MCIO/'instances'/'DemoInstance'/'saves'/world_name
     if log.exists() or dest.exists(): raise FileExistsError('Choose unused tag; output already exists')
     if not cp.is_file(): raise FileNotFoundError(f'Model checkpoint missing {cp}')
-    agent=MemoryFactorizedPPOTrainer(device=args.device,seed=0)
+    agent=(StatusFactorizedPPOTrainer if args.with_status else
+           MemoryFactorizedPPOTrainer)(device=args.device,seed=0)
     metadata=agent.load_weights(cp)
-    if metadata.get('schema')!=SCHEMA or tuple(metadata.get('feature_names',()))!=FEATURE_NAMES:
+    schema=STATUS_SCHEMA if args.with_status else SCHEMA
+    feature_names=STATUS_FEATURES if args.with_status else FEATURE_NAMES
+    if metadata.get('schema')!=schema or tuple(metadata.get('feature_names',()))!=feature_names:
         raise ValueError('Refusing incompatible memory feature / model schema')
+    if args.with_status and (metadata.get('status_schema')!='gmaincraft_status_v1' or
+                             metadata.get('block_tokenizer')!=BLOCK_TOKENIZER or
+                             int(metadata.get('block_token_length',-1))!=BLOCK_TOKEN_LENGTH):
+        raise ValueError('Refusing incompatible V5 block tokenization and sensor schema')
     if int(metadata.get('decision_ticks',-1))!=6:
         raise ValueError('Incompatible Minecraft action duration')
     opts=dict(metadata.get('game_options') or {})
@@ -66,8 +79,9 @@ def main(argv=None):
                ('aim_restricted',sample_near_cases(args.eval_seed+3,args.eval),(False,True,True)),
                ('near_unrestricted',sample_near_cases(args.eval_seed,args.eval),(True,True,True)),
                ('broad_unrestricted',sample_cases(args.eval_seed+1,args.eval),(True,True,True)))
-    print(f'FROZEN V4 MODEL tag={args.model_tag} sha256={digest} '
-          f'observation={SCHEMA} game_options={opts}',flush=True)
+    label='FROZEN V5' if args.with_status else 'FROZEN V4'
+    print(f'{label} MODEL tag={args.model_tag} sha256={digest} '
+          f'observation={schema} game_options={opts}',flush=True)
     log.parent.mkdir(parents=True,exist_ok=True)
     with temporary_game_options(MCIO/'instances'/'DemoInstance',opts,run_tag=args.run_tag), \
             log.open('x',encoding='utf-8') as output:
@@ -95,7 +109,7 @@ def main(argv=None):
         print('SCORED START',flush=True)
         started=time.perf_counter()
         outcome=launch_world(world_name,args,scored)
-        print('FROZEN V4 RESULTS',outcome,'total_seconds',round(time.perf_counter()-started,2),flush=True)
-    print('FROZEN V4 LOG',log,flush=True)
+        print(label+' RESULTS',outcome,'total_seconds',round(time.perf_counter()-started,2),flush=True)
+    print(label+' LOG',log,flush=True)
 
 if __name__=='__main__': main()

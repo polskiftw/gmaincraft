@@ -2,6 +2,28 @@
 
 The earlier ~4s/300-tick slowdown is **reproducible on some natural-scene workloads**, but not in the warmed flat-world control. Hardware OpenGL on NVIDIA RTX 4070 SUPER and CUDA inference are functioning; model inference does not explain this difference. The MCio `SYNC` mod captures a rendered frame after each game tick; work needed to render loaded natural chunks affects `recv_observation` wall time. The observed cause is strongly associated with **displayed chunk/render distance plus first-scene warmup**. This is not a source-code-level proof that there are no other causes.
 
+## Later discovery: another independent SDL Gamescope 60-tick/s cap
+
+New, matched **original/unpatched MCio** no-Torch flat-fixture A/B tests
+identified a **distinct intermittent presentation bottleneck**: the same
+300-tick Minecraft run under the regular SDL Gamescope window took
+**4.95/5.00 seconds** first/warm; setting the nested virtual refresh to
+300Hz still took **4.98/5.00 seconds**, almost exactly 60 ticks/s. With
+`GMAINCRAFT_GAMESCOPE_BACKEND=headless` but the SAME original JAR and still
+real NVIDIA OpenGL RGB, the same workload took **1.20/0.77 seconds**
+first/warm. A custom opt-in status patch made no significant speed change
+in a small warm matched pair: status OFF 0.714s vs status ON 0.723s per300.
+See [MCIO_PLAYER_SENSOR.md](MCIO_PLAYER_SENSOR.md) for full details.
+
+The subsequent headless finding **does not invalidate** the independently
+measured natural-scene 4/6/8 chunk render-distance benefit below. There
+are at least TWO distinct measured effects: display backend can impose a
+near-60-tick/s cap, while natural terrain/chunk count and cold render
+warm-up affect game I/O even when not frame-capped. Use headless for high-
+throughput tests, SDL visible for watching, and explicitly record whether
+scored evaluations shared the same rendering profile. The original user's
+system/global graphics settings were never touched.
+
 ## Paired render-distance experiment: actual natural Minecraft, no neural inference
 
 Real Minecraft Java 1.21.3/Fabric MCio 1.6.1, seed **246813579**, identical confirmed spawn `(16.5,124.0,0.5)`, idle **600 synchronized game ticks**, 320×180 raw RGB every tick, same simulation input and comparable fresh generated source worlds. `natural_world_benchmark.py --modes idle` measured six 100-tick action holds and recorded true game I/O time **excluding process launch**. No admin commands during scoring. Each row is one complete launch; no claims of statistical replication.

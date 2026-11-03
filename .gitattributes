@@ -1,0 +1,3 @@
+# Unified diff context contains literal space-only lines by design.
+# Suppress false trailing-whitespace warnings only for source patch artifacts.
+patches/*.patch whitespace=-blank-at-eol

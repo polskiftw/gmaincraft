@@ -1,5 +1,13 @@
 # V4 from-scratch player-memory + RGB policy (November 2, 2026)
 
+**Historical V4 experiment (still valid):** The successor V5 now also
+exposes own hunger/status and the exact vanilla Minecraft crosshair block
+via an opt-in, reversible Fabric MCio patch. It has a **distinct** schema,
+model and evaluation, and does not retroactively alter the V4 checkpoint.
+See [MCIO_PLAYER_SENSOR.md](MCIO_PLAYER_SENSOR.md) and current
+[NEXT_SESSION.md](NEXT_SESSION.md). The V4 original sensor limitations
+below remain true **for V4 only**.
+
 **State: implemented and tested in real Minecraft; DOES NOT YET LEARN unrestricted first-log acquisition.** No existing RGB-only V1/V2/V3 checkpoint was modified or reused. The V4 network is initialized from random weights, trains by acting in Minecraft, and receives **the same player-knowledge observations in training and frozen play**.
 
 ## Exact observation/action design

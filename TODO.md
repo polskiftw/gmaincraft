@@ -2,6 +2,55 @@
 
 **Last curated:** 2026-11-02. This is the live source of truth for project status. **All agents must read and update this file alongside substantive changes** (see [AGENTS.md](AGENTS.md)). Never mark a task done from source code alone; require actual run evidence where appropriate.
 
+## ACTIVE NEXT: perceptible world objects + sustained learned action control
+
+Latest live evidence: `docs/MCIO_PLAYER_SENSOR.md` (80 passing pure tests,
+real MCio/Fabric source build and actual Java survival scene tests). User
+approved all isolated disposable game setting experiments. More work than the
+historical V4/RGB tasks below is complete:
+
+- [x] Pin/build the exact upstream MCio 1.6.1 Fabric source and apply the
+  tracked reversible **opt-in status/crosshair patch**, preserving original
+  mod backup and only editing isolated DemoInstance. Real game positive
+  oak hit, mouse-turn negative, stone occlusion, glass occlusion **all
+  passed**. Controller fixture commands only outside scored gameplay.
+- [x] Empirically measure one valid vanilla **crosshair actionability**
+  boundary: oak block front faces at1.5/2.5/3.5 blocks detected, at
+  4.5/5.5/6.5/7.5 not detected in this particular controlled raycast.
+  Transparent glass targeted before oak. Do NOT declare these thresholds
+  a general player-visible FOV/range detector.
+- [x] Implement opt-in **V5 memory+status+RGB from-scratch learner** with
+  stable full-string block-ID byte encoding, 40 numeric features, identical
+  V5 observation in Minecraft train/frozen gameplay and schema-checked
+  checkpoint; 4 train CUDA episodes +one update, 8 frozen cases, plus
+  paired natural seed31415927 real run completed. All 0 log pickups;
+  **this verifies integration, NOT learning competence**. Legacy V4 frozen
+  evaluation remains compatible and was rerun with patched mod installed.
+- [x] Isolate **separate conditional 60-ticks/s SDL Gamescope limit** by
+  restoring the original mod for matched no-Torch tests: SDL ~5s/300 ticks,
+  changing virtual Hz300 still ~5s; **headless Gamescope ~0.77s/300
+  warmed**, same vanilla RGB/input correctness. Patched mod status ON vs
+  OFF headless warmed 0.723/0.714s per 300 ticks. Keep visible SDL option
+  for watching while using headless for high-throughput training. Earlier
+  independently measured 4-chunk render-distance benefit still matters.
+- [x] Instrument V5 playing-policy **crosshair hit distributions**. Frozen
+  stationary case looked directly at oak 30/30 decisions but attacked 0
+  ticks; near case saw oak 1/30 vs bedrock29; broad case missed 30/30.
+  These are actual sensor readings, NOT hidden trainer target labels.
+- [ ] Derive and test bounded **camera-perceivable** block/entity candidates
+  (distinct from single actionable crosshair), calibrating FOV, projected
+  size, line of sight, light, transparency, partial occlusion and distance
+  on diverse real scenes/held-out natural seeds; measure false X-ray leaks,
+  missing visible blocks and throughput. Do not bulk dump loaded chunks.
+- [ ] Diagnose/experiment on **sustained vanilla ATTACK and camera control**
+  from learned actions. Test different action durations/temporal memory and
+  player-visible block-breaking feedback with actual held-out same-case
+  negative controls before increasing training budgets. 0/8 frozen V5
+  pickups and 0/4 V5 training successes are not good enough to scale.
+- [ ] Demonstrate genuine **unrestricted find, mine AND collect** on unseen
+  natural survival worlds (verified inventory), compare against fair random,
+  prior RGB-only and matched V4/V5 ablations. No Any% achievement yet.
+
 ## Current design decision — structured Minecraft state, not RGB-only
 
 - [x] Record the user's requested **direct game-engine/memory reads during
@@ -22,11 +71,12 @@
   Ten tuned real CUDA train episodes/two PPO updates and 12 frozen cases
   completed; **0/10** and **0/12** wood acquisitions. Old RGB V2/V3 intact.
   See `docs/MEMORY_POLICY_V4.md`.
-- [ ] Instrument MCio/Fabric read-only **targeted/visible block and entity**
-  IDs and own missing status (e.g., hunger), with calibrated frustum/LOS/
-  occlusion/reach and bounded world knowledge; current schema has NO
-  world-object data. Ensure policy visibility parity and explicit schema
-  version before comparing learned cases.
+- [x] Implement **opt-in direct read-only targeted crosshair block** and
+  own missing status in MCio/Fabric; V5 explicitly has only an actionable
+  crosshair hit, not a general visible-block/entity candidate list.
+- [ ] Add empirically filtered wider **player-visible** block/entity list
+  with calibrated FOV/LOS/occlusion/lighting/projected area/reach and a
+  bounded, versioned knowledge schema for both training and gameplay.
 
 ## Historical Priority 0 — MCio slowdown narrowed, render-distance mitigation measured
 
@@ -72,11 +122,11 @@ performance monitoring and matched display settings.
 - [x] Document, test, commit and push V4/performance work through isolated
   Gentoo Shell (this task is complete when the accompanying commit is
   confirmed on `origin/main`).
-- [ ] **NEXT milestone after V4 parity and render performance:** implement
-  empirical player-perceivable target/block/entity sensor, then compare
-  memory+RGB vs legacy RGB and memory-ablated new models under EXACT paired
-  held-out cases. Develop real unrestricted log mining AND inventory pickup,
-  not a scripted speedrun. Keep contaminated `v3event01` excluded.
+- [ ] **NEXT beyond V5 raycast + status:** investigate calibrated lists of
+  genuinely perceptible block/entity objects and first-log learning with
+  action history. Compare memory+RGB vs legacy RGB and memory-ablated new
+  models under EXACT held-out cases, with true game inventory. Contaminated
+  `v3event01` remains excluded. No manual speedrun/macros as the solution.
 
 ## Historical November 2 research snapshot — RGB perception and mining events
 

@@ -120,6 +120,36 @@ observations with server commands or changes to the game's mechanics.
   historical pixel-only evaluations as **separate baselines** rather than
   pretending they used the newer structured inputs.
 
+## NEWEST tested memory interface: V5 own status + vanilla crosshair hit
+
+This user-authorized, reversible, isolated MCio/Fabric 1.6.1 patch now
+provides an actual `gmaincraft_status_v1` **read-only** memory option:
+player hunger/saturation/armor/air, selected hotbar slot, dimension, plus
+ONLY the real vanilla client **crosshair-targeted BLOCK** ID, BlockPos,
+face and distance from `Minecraft.client.hitResult`. A crosshair miss
+reports no target or coordinates; it does not scan loaded/unseen chunks.
+No seed, unvisited structure, hidden ore, closed container or admin action
+is available to the playing policy. [Sensor implementation, reversible
+build, reach/occlusion tests](MCIO_PLAYER_SENSOR.md).
+
+V5 `factorized_v5_status_v1_player_v1_rgb2_6tick` receives this option
+through `MCioAgentBridge.multimodal_status_view()` BOTH in actual CUDA
+training and frozen normal survival gameplay, combined with the existing
+immutable own-state `player_knowledge_v1` and RGB. Exact block IDs are
+encoded by a trainable byte-sequence CNN initialized from scratch; no
+hand-coded oak-only world vocabulary and no outside model weights. V5
+scored **0/4** actual training log pickups and **0/8** held-out frozen
+pickups; no general autonomous play claimed. All historical RGB/V4
+architectures and weights remain isolated and unchanged.
+
+**Empirical distinction:** oak targeted at 1.5/2.5/3.5-block front-face
+distances and not 4.5–7.5 in tested straight-line fixtures; glass intercepts
+the targeted ray, though a person can see through transparent glass. A
+crosshair-only hit is **not** the full population of blocks visible on
+screen. Real FOV/occlusion/lighting/projected-size range calibration for
+a bounded multi-object detector is STILL a future task; do not expand the
+memory budget using an arbitrary radius or leak all loaded chunks.
+
 ## V4 milestone: memory as actual policy input in train AND frozen play
 
 `player_knowledge_v1` is no longer merely a staged Python adapter: the
@@ -134,9 +164,11 @@ schema is `factorized_v4_memory_v1_rgb2_6tick`; old RGB-only experiments are
 still separate. First V4 real games were 0 successful inventory pickups;
 implementation ≠ learning competence. See `MEMORY_POLICY_V4.md`.
 
-**World-object sensor is still absent.** Current MCio/Fabric 1.6.1 doesn't
-include targeted block/entity hit or hunger in the base observation packet.
-Do not substitute a raw loaded-chunk map or uncalibrated distance cutoff.
+**Historical V4 limitation:** the original unmodified MCio/Fabric base
+packet omitted hunger and targeted block/entity hits. The new V5 opt-in
+patch fixes own hunger and vanilla targeted BLOCK, **not** full
+player-perceivable blocks/entities, and older V4 still omits these fields.
+Never substitute a raw loaded-chunk map or uncalibrated distance cutoff.
 The empirical visible/actionable filter remains a future milestone.
 Temporary V4 display distance of **4 chunks** is a graphics/performance
 choice, NOT an empirically calibrated memory-visible block cutoff; see
@@ -154,7 +186,7 @@ schema yet**, and no visibility-filtered blocks, entities, hunger or biome
 observations are currently exported. The historical RGB interface remains
 unchanged. See `MCIO_THROUGHPUT_2026_11_02.md` for live measurements.
 
-## What the existing code really does (as of this design note)
+## Historical initial code state (BEFORE the V4/V5 milestones above)
 
 `mcio_ctrl.network.ObservationPacket` **already exposes** `player_pos`,
 `player_yaw`, `player_pitch`, `health`, `inventory_main`, `inventory_armor`,
@@ -164,11 +196,13 @@ but the **current** `src/gmaincraft/agent_interface.py` converts the packet
 into an `AgentView` containing **only RGB pixels**. That restriction was the
 assistant's original prototype decision, **not what the user requested**.
 
-No engine-derived visibility-filtered block list, player-knowable state
-schema or paired structured-state vs pixel-only trained comparison has been
-implemented yet. The old CNN/PPO and self-supervised pixel experiments are
-valid historical research records but **must not drive the whole project
-back into a vision-only design**.
+At the time of the initial design note no player-knowable observation
+schema or engine-derived block hit was yet implemented. V4 and V5 now add
+those opt-in player state / actionable-target interfaces, but a broader
+visibility-filtered world-object list and decisive controlled V5-versus-
+RGB learning improvement remain **unproven**. Historical CNN/PPO and
+self-supervised pixel diagnostics are preserved but must not turn the
+project back into a screenshot-only design.
 
 ## Project order remains deliberate
 

@@ -169,7 +169,9 @@ def launch_world(world_name, args, evaluator):
     opts = types.RunOptions(mcio_dir=MCIO, instance_name='DemoInstance',world_name=world_name,
                             mcio_mode=types.MCioMode.SYNC,hide_window=not args.visible,
                             gpu_lib=None if args.visible else 'nvidia',
-                            width=args.frame_width, height=args.frame_height)
+                            width=args.frame_width, height=args.frame_height,
+                            env_extra={'GMAINCRAFT_STATUS_V1':'1'} if
+                                getattr(args,'with_status',False) else {})
     ensure_clean_visual_options(MCIO/'instances'/'DemoInstance')
     launcher = instance.Launcher(opts)
     ctrl = None

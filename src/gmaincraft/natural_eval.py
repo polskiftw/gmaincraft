@@ -13,7 +13,7 @@ from .agent_interface import AgentAction
 from .log_vision import VisualAimPolicy, visual_features
 from .log_pickup import PickupPolicy, PICKUP_ACTIONS, pickup_features
 
-MODES = ('idle', 'random', 'forward_attack', 'legacy_probe', 'joint_ppo', 'joint_factorized', 'memory_factorized')
+MODES = ('idle', 'random', 'forward_attack', 'legacy_probe', 'joint_ppo', 'joint_factorized', 'memory_factorized', 'status_factorized')
 
 
 @dataclass(frozen=True)
@@ -188,9 +188,45 @@ class MemoryFactorizedAgent:
         return self.action_for_factors(choices,remaining,decision_ticks=self.decision_ticks)
 
 
+class StatusFactorizedAgent:
+    """Frozen V5: same opt-in Minecraft crosshair+status, owned memory, RGB.
+
+    The only world object is what the player's actual vanilla crosshair hit;
+    trainer geometry, hidden seed, nearby unobserved blocks and any controller
+    commands are NEVER policy observations.
+    """
+    def __init__(self,checkpoint,device='auto'):
+        import torch
+        from .status_factorized import (StatusFactorizedPPOTrainer,SCHEMA,
+            FEATURE_NAMES,BLOCK_TOKEN_LENGTH,BLOCK_TOKENIZER,encode_status_knowledge)
+        from .vision_factorized import action_for_factors
+        from .vision_ppo import PixelHistory
+        cp=torch.load(checkpoint,map_location='cpu',weights_only=True)
+        metadata=cp.get('metadata',{})
+        if metadata.get('schema')!=SCHEMA or tuple(metadata.get('feature_names',()))!=FEATURE_NAMES or                 metadata.get('status_schema')!='gmaincraft_status_v1' or                 metadata.get('block_tokenizer')!=BLOCK_TOKENIZER or                 int(metadata.get('block_token_length',-1))!=BLOCK_TOKEN_LENGTH:
+            raise ValueError('Incompatible V5 status/feature/tokenizer checkpoint schema')
+        self.trainer=StatusFactorizedPPOTrainer(device=device,seed=0)
+        self.trainer.load_weights(checkpoint)
+        self.history=PixelHistory()
+        self.started=False
+        self.encode_status_knowledge=encode_status_knowledge
+        self.action_for_factors=action_for_factors
+        self.decision_ticks=6
+
+    def act(self,view,remaining):
+        from .agent_interface import MultimodalStatusView
+        if not isinstance(view,MultimodalStatusView):
+            raise ValueError('V5 gameplay requires its own opt-in status+RGB observation')
+        image=self.history.append(view) if self.started else self.history.reset(view)
+        self.started=True
+        numeric,tokens=self.encode_status_knowledge(view.player,view.status)
+        choices,_,_=self.trainer.act(image,numeric,tokens,greedy=True)
+        return self.action_for_factors(choices,remaining,decision_ticks=self.decision_ticks)
+
+
 def make_agent(mode, action_seed, *, aim_weights=None, pickup_weights=None,
                joint_checkpoint=None, factorized_checkpoint=None,
-               memory_checkpoint=None, device='auto'):
+               memory_checkpoint=None, status_checkpoint=None, device='auto'):
     if mode == 'idle':
         return IdleAgent()
     if mode == 'forward_attack':
@@ -205,6 +241,10 @@ def make_agent(mode, action_seed, *, aim_weights=None, pickup_weights=None,
         if joint_checkpoint is None:
             raise ValueError('Joint PPO mode requires a trained local checkpoint')
         return JointPPOAgent(joint_checkpoint, device=device)
+    if mode == 'status_factorized':
+        if status_checkpoint is None:
+            raise ValueError('Status factorized mode requires a trained V5 checkpoint')
+        return StatusFactorizedAgent(status_checkpoint,device=device)
     if mode == 'memory_factorized':
         if memory_checkpoint is None:
             raise ValueError('Memory factorized mode requires a trained local checkpoint')

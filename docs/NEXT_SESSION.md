@@ -6,6 +6,69 @@ memory-derived structured game state**, not a permanently screenshot-only
 agent; read [OBSERVATION_POLICY.md](OBSERVATION_POLICY.md). The memory-state
 work follows **after** the performance regression investigation.
 
+## NEWEST continuation point — V5 real crosshair status and independent performance causes
+
+**This is the active priority for the next chat; older V4 and pre-V4 FIRST
+sections below are historical.** The user wants a from-scratch Minecraft
+Java Any% agent on unseen survival seeds, with direct **skilled-player-
+knowable game-engine/memory observations** in BOTH training and gameplay.
+We have now tested the new opt-in `gmaincraft_status_v1` Fabric MCio patch
+for hunger/saturation/armor/air, dimension/slot and ONLY the vanilla
+crosshair's real targeted block ID/pos/face/distance. Track source changes
+as `patches/mcio-1.6.1-player-status.patch`, rebuilt from pinned upstream
+by `tools/build-mcio-player-status.sh`; the original MCio game JAR is backed
+up under ignored `mcio-data/mod_backups/` and can be restored. **Read
+[`MCIO_PLAYER_SENSOR.md`](MCIO_PLAYER_SENSOR.md) BEFORE editing sensors.**
+
+Four independent scene controls (oak, mouse turned away, restored aim,
+stone occlusion) passed, plus glass and distance calibration: at measured
+block-face 1.5/2.5/3.5 blocks the vanilla crosshair hit oak, at4.5–7.5 it
+missed in this controlled scene. **Crosshair actionability != broader visual
+perceptibility**. There is NO loaded-chunk world oracle or generalized
+calibrated visible list. The larger FOV/occlusion/light/projected-size test
+still needs implementation, with held-out mixed scenes and false-X-ray
+negative controls. Keep a versioned bounded, train/eval-parity schema.
+
+**V5 `factorized_v5_status_v1_player_v1_rgb2_6tick` is already integrated**
+using 40 numerics, real full block-ID byte tokens, optional RGB84×2 and
+994,686 random-initialized actor-critic weights. `joint_log_memory.py
+--with-status --skip-eval` trained 4 actual CUDA Minecraft episodes /one
+PPO update and saved a valid 12MB local checkpoint; **0/4 real pickups**.
+`memory_frozen_eval.py --with-status` ran 8 actual independent frozen
+cases, **0/8**. `natural_world_benchmark.py --modes status_factorized`
+compared frozen V5 against random with identical spawn in seed31415927;
+**0/180-tick inventory logs for each**. Later V5 frozen policy telemetry
+showed oak under the crosshair on all30 decisions in stationary lab yet
+attack_ticks=0; a near case saw bedrock29/30 and oak1/30. **Core next
+learning problem is action persistence/camera strategy, not OCR for already
+available own game state**. Do NOT blindly scale PPO from zero-success
+smokes. Old V4 frozen checkpoint was rerun successfully with mod patched
+but extension OFF; preserve all previous weights/worlds.
+
+**Performance watchdog:** the independent natural-world 4-chunk display
+profile has measured 2.68x benefit (see `MINECRAFT_RENDER_PERF.md`), AND
+there is a **separate fluctuating 60-tick/s SDL Gamescope cap** (old original
+MCio jar ~5s/300 ticks even with virtual Gamescope refresh300). Setting
+`GMAINCRAFT_GAMESCOPE_BACKEND=headless` on `tools/run-mcio-viewer.sh`
+restores ~0.77s/300 warm, with NVIDIA still rendering real game RGB offscreen.
+Opt-in status ON vs OFF in patched mod measured ~0.723 vs0.714s/300
+warm; no material regression seen in this small pair. If user wants to
+WATCH the game window, omit backend variable for visible SDL but expect
+conditional cap; never widen host sandbox. Log every experiment's tick I/O,
+render profile and cold-start. `GMAINCRAFT_GAMESCOPE_REFRESH_HZ=300` is a
+research control and did NOT fix SDL cap. Launcher wrapper exit139 usually
+occurs AFTER Python child success; check durable checkpoint/JSONL, and keep
+training and frozen eval in separate Gamescope sessions.
+
+**Next substantial work:** investigate/calibrate player-*visible* blocks and
+entities beyond the one crosshair hit, and test sample-efficient neural
+memory/action-duration/persistence methods on paired held-out Minecraft
+cases. Real unrestricted first-log mining+pickup remains unsolved; long-
+horizon wood/crafting/Nether/End/Any% must wait. Always run pure tests, fresh-
+tagged real-game short pilots and held-out controls, update `TODO.md` and
+ledger, commit/push Git directly in `/workspace`. Do not ask the user to
+recap or overwrite ignored saved worlds/weights.
+
 ## Current continuation point — V4 policy, measured render-distance lever
 
 **This paragraph supersedes the historical FIRST/SECOND instructions below.**
@@ -138,21 +201,25 @@ After the throughput issue has been diagnosed and fixed or clearly quantified wi
 
 ## Fresh chat starter (copy-paste into a new conversation)
 
-> Connect to Gentoo Shell `/workspace` and continue `polskiftw/gmaincraft`.
+> Continue `polskiftw/gmaincraft` in my connected Gentoo Shell `/workspace`.
 > Read `AGENTS.md`, `TODO.md`, `docs/NEXT_SESSION.md`,
-> `docs/OBSERVATION_POLICY.md`, `docs/MEMORY_POLICY_V4.md`,
-> `docs/MINECRAFT_RENDER_PERF.md`, and `docs/HANDOFF.md`. V4 memory+RGB
-> from-scratch training/frozen natural-world evaluation now works but all
-> completed V4 learning tests have 0 log pickups; do not blindly retrain.
-> Natural-world MCio throughput improves ~2.68x with the temporary 4-chunk
-> display profile; keep watching game I/O vs warmup. Preserve existing local
-> checkpoints/worlds and restore any pending options backup. Next implement
-> bounded, read-only **player-visible targeted-block**/player-status memory
-> instrumentation within MCio/Fabric and experimentally derive a reliable
-> visible/actionable world-object eligibility filter without hidden map
-> cheating. Run small actual Minecraft tests and controls, update docs,
-> commit/push source changes via Git in the isolated shell. Never use an
-> already-used run tag or mix training and frozen evaluation in the same
-> Gamescope session if possible.
+> `docs/OBSERVATION_POLICY.md`, `docs/MCIO_PLAYER_SENSOR.md`,
+> `docs/MEMORY_POLICY_V4.md`, and `docs/HANDOFF.md`. The new, reversible
+> opt-in MCio/Fabric patch delivers hunger/player status and exact VANILLA
+> crosshair-targeted block ID/pos/face/distance. V5 consumes it with the
+> same bounded schema in actual CUDA training and normal frozen Minecraft,
+> but early V5 tests (4 training,8 frozen and paired natural survival)
+> got ZERO real log pickups. Don't blindly scale PPO. Work NEXT on
+> empirical *visible* block/entity eligibility beyond the one raycast hit,
+> player-knowable block-breaking progress, and better action history/credit
+> for continuous real vanilla mining+pickup. Keep player X-ray/hidden seed
+> prohibited, real inventory scoreboard, held-out matched seeds.
+> Performance: use `GMAINCRAFT_GAMESCOPE_BACKEND=headless` for accelerated
+> NVIDIA+RGB MCio; visible SDL sometimes caps at60 ticks/s despite 300Hz
+> virtual refresh. The reversible 4-chunk game profile also improves real
+> natural-world FPS. Watch actual I/O and clean game launch/exit separately.
+> Preserve every ignored world/checkpoint/model, use fresh run tags,
+> update AGENTS/TODO/experiment ledger/docs, run real tests and commit/push
+> through direct Git in the isolated shell. No confirmation needed.
 
 **Bridge availability is per conversation:** a new chat does not automatically inherit tool authorization or the old chat's detailed working context. The repository records the project decisions; give the new chat the starter text and enable Gentoo Shell when needed.

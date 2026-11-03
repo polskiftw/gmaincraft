@@ -5,16 +5,21 @@
 Create a from-scratch reinforcement-learning agent that eventually completes Minecraft Java Any% (Ender Dragon defeated and exit achieved) on **unseen random seeds**. This is a long-term research target, not a promised deliverable or a claim of present capability.
 
 **Current design authority:** [OBSERVATION_POLICY.md](OBSERVATION_POLICY.md).
-The project **intends to use direct read access to Minecraft state in both
-training and scored gameplay** for player-knowable facts. RGB-only was
-an earlier prototype convenience. Visibility-filtered block/entity IDs,
-player stats/counters, coordinates and inventory are intended inputs; do
-not make pixel reconstruction a mandatory bottleneck. **The opt-in V4 now implements player-own structured state** and consumes
-it in real from-scratch training and frozen gameplay, while legacy
-`AgentView` remains RGB-only for old baselines. Block/entity visibility
-and remaining status fields still require engine instrumentation. A
-reversible 4-chunk vanilla rendering profile improves natural-world MCio
-performance; see `MEMORY_POLICY_V4.md` and `MINECRAFT_RENDER_PERF.md`.
+Direct skilled-player-knowable Minecraft memory reads are expressly allowed
+in BOTH training and normal gameplay, with a strict distinction from
+unseen chunk maps, target oracles and admin commands. Legacy RGB-only
+`AgentView` remains for baseline comparability. V4 adds own-state numeric
+inputs; **V5 adds a pinned opt-in read-only Fabric MCio patch** and a new
+994,686-weight factorized random-initialized neural model consuming own
+hunger/status and the actual vanilla crosshair-targeted block ID/coords/
+face/distance in addition to own XYZ/inventory/stats and RGB. Both training
+and scored evaluation consume the same V5 schema. The targeted raycast
+reports **one actionable hit, not all blocks visible on screen**; extended
+frustum, lighting, transparency, occlusion and entity perception still
+needs empirical, bounded research. Real early V5 tests obtained zero
+inventoried logs; learned general first-log and Any% remain unsolved.
+See [MCIO_PLAYER_SENSOR.md](MCIO_PLAYER_SENSOR.md) and
+[MINECRAFT_RENDER_PERF.md](MINECRAFT_RENDER_PERF.md).
 
 There are two separate roles:
 
@@ -27,7 +32,18 @@ There are two separate roles:
   know. This is distinct from giving it unobserved world seeds, hidden ore
   locations or oracle goals. No admin commands as scored gameplay actions.
 
-## Current prototype data flow
+## Current MCio+V5 data flow
+
+Minecraft 1.21.3 Fabric MCio emits standard RGB/own-state and, with its
+opt-in read-only gmaincraft patch, own hunger/armor/air and the actual
+vanilla crosshair hit. The Python bridge exposes only bounded immutable
+player-knowledge and currently targeted block to the V5 neural learner;
+controller-only target geometry is converted into scalar reward in
+controlled labs and never becomes a policy input. Frozen natural-world
+scoring uses the same observation method with ordinary inputs and real
+inventory. Historical numerical/RGB models below remain separate baselines.
+
+## Historical prototype data flow
 
 ```text
 Minecraft 1.21.3 + Fabric MCio mod

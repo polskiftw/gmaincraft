@@ -21,6 +21,9 @@ sys.path.insert(0,str(ROOT/'src'))
 from gmaincraft.instance_options import temporary_game_options
 from gmaincraft.memory_factorized import (MemoryFactorizedPPOTrainer,SCHEMA,
     FEATURE_NAMES,FEATURE_SIZE)
+from gmaincraft.status_factorized import (StatusFactorizedPPOTrainer,
+    SCHEMA as STATUS_SCHEMA,FEATURE_NAMES as STATUS_FEATURES,
+    FEATURE_SIZE as STATUS_FEATURE_SIZE,BLOCK_TOKEN_LENGTH,BLOCK_TOKENIZER)
 from gmaincraft.joint_curriculum import sample_near_cases,sample_cases,sample_stationary_cases
 from joint_log_factorized import run_episode,training_plan
 from joint_log_ppo import launch_world
@@ -43,6 +46,8 @@ def parse_args(argv=None):
     parser.add_argument('--frame-width',type=int,default=320)
     parser.add_argument('--frame-height',type=int,default=180)
     parser.add_argument('--visible',action='store_true')
+    parser.add_argument('--with-status',action='store_true',
+                        help='V5 opt-in patched-MCio hunger, targeted-block ID + RGB, from scratch')
     parser.add_argument('--render-distance',type=int,default=4,
                         help='dedicated MCio instance only; 4 chunks is measured fast profile')
     parser.add_argument('--game-fps',type=int,default=260)
@@ -85,21 +90,26 @@ def check_speed(record,args):
 
 def main(argv=None):
     args=parse_args(argv)
-    train_world='MDL_MemoryTrain_'+args.run_tag
-    eval_world='MDL_MemoryEval_'+args.run_tag
+    family='status' if args.with_status else 'memory'
+    train_world=('MDL_StatusTrain_' if args.with_status else 'MDL_MemoryTrain_')+args.run_tag
+    eval_world=('MDL_StatusEval_' if args.with_status else 'MDL_MemoryEval_')+args.run_tag
     saves=MCIO/'instances'/'DemoInstance'/'saves'
-    log=ROOT/'logs'/f'memory_ppo_{args.run_tag}.jsonl'
-    checkpoint=ROOT/'checkpoints'/f'joint_memory_{args.run_tag}.pt'
+    log=ROOT/'logs'/f'{family}_ppo_{args.run_tag}.jsonl'
+    checkpoint=ROOT/'checkpoints'/f'joint_{family}_{args.run_tag}.pt'
     if any(p.exists() for p in (saves/train_world,saves/eval_world,log,checkpoint)):
         raise FileExistsError('Would overwrite an existing local run: choose a new tag')
     overrides={'renderDistance':str(args.render_distance),'maxFps':str(args.game_fps)}
     if args.game_vsync!='keep': overrides['enableVsync']='true' if args.game_vsync=='on' else 'false'
-    model=MemoryFactorizedPPOTrainer(device=args.device,seed=args.policy_seed)
+    model=(StatusFactorizedPPOTrainer if args.with_status else
+           MemoryFactorizedPPOTrainer)(device=args.device,seed=args.policy_seed)
+    schema=STATUS_SCHEMA if args.with_status else SCHEMA
+    features=STATUS_FEATURES if args.with_status else FEATURE_NAMES
+    feature_size=STATUS_FEATURE_SIZE if args.with_status else FEATURE_SIZE
     cases=training_plan(args)
     eval_sets=(('stationary_restricted',sample_stationary_cases(args.eval_seed+2,args.eval),(False,False,True)),
                ('near_unrestricted',sample_near_cases(args.eval_seed,args.eval),(True,True,True)),
                ('broad_unrestricted',sample_cases(args.eval_seed+1,args.eval),(True,True,True)))
-    metadata=dict(schema=SCHEMA,feature_names=FEATURE_NAMES,feature_size=FEATURE_SIZE,
+    metadata=dict(schema=schema,feature_names=features,feature_size=feature_size,
                   policy_seed=args.policy_seed,train_seed=args.train_seed,
                   eval_seed=args.eval_seed,curriculum=args.curriculum,
                   decision_ticks=6,reward_schema='v4_player_memory_rgb_teacher_scalar',
@@ -107,7 +117,12 @@ def main(argv=None):
                   observations='MCioAgentBridge.multimodal_view',
                   state_schema='player_knowledge_v1',initialized_from='scratch',
                   game_options=overrides)
-    print('V4 MEMORY+RGB PPO',json.dumps(dict(args=vars(args),metadata=metadata),default=list),flush=True)
+    if args.with_status:
+        metadata.update(status_schema='gmaincraft_status_v1',
+                        block_tokenizer=BLOCK_TOKENIZER,block_token_length=BLOCK_TOKEN_LENGTH,
+                        status_source='Minecraft.client.hitResult (read-only vanilla raycast)')
+    label='V5 STATUS+MEMORY+RGB' if args.with_status else 'V4 MEMORY+RGB'
+    print(label+' PPO',json.dumps(dict(args=vars(args),metadata=metadata),default=list),flush=True)
     log.parent.mkdir(parents=True,exist_ok=True)
     with temporary_game_options(MCIO/'instances'/'DemoInstance',overrides,run_tag=args.run_tag), \
             log.open('x',encoding='utf-8') as file:
@@ -136,7 +151,7 @@ def main(argv=None):
             return dict(totals)
         started=time.perf_counter()
         results=launch_world(train_world,args,train)
-        print('V4 TRAIN',results,'wall_s',round(time.perf_counter()-started,2),flush=True)
+        print(label+' TRAIN',results,'wall_s',round(time.perf_counter()-started,2),flush=True)
         if not args.skip_eval:
             def evaluate(arena):
                 totals=Counter()
@@ -155,8 +170,8 @@ def main(argv=None):
                               f'mined={record["mined_oak_events"]} io_ms/tick={ms}',flush=True)
                 return dict(totals)
             eval_result=launch_world(eval_world,args,evaluate)
-            print('V4 FROZEN EVAL',eval_result,flush=True)
-    print('V4 SAVED',checkpoint,'SHA256',hashlib.sha256(checkpoint.read_bytes()).hexdigest(),flush=True)
-    print('V4 LOG',log,flush=True)
+            print(label+' FROZEN EVAL',eval_result,flush=True)
+    print(label+' SAVED',checkpoint,'SHA256',hashlib.sha256(checkpoint.read_bytes()).hexdigest(),flush=True)
+    print(label+' LOG',log,flush=True)
 
 if __name__=='__main__':main()
