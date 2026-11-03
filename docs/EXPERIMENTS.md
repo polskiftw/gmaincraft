@@ -1,5 +1,42 @@
 # Experiment record
 
+## LATEST: non-repeating real Minecraft seed-stream and restart safety
+
+Primary complete study [`FRESH_SEED_TREADMILL.md`](FRESH_SEED_TREADMILL.md).
+The user requested a true unbounded treadmill of new random Minecraft
+levels, replacing the old eight-world recycling. `SeedSchedule` v2 is
+an invertible 64-bit keyed mixing of alternating INTERNAL train/eval
+indices; full signed long distribution, no repeats within 2^63 seeds
+per population and provably disjoint evaluation for same root. No seed
+entered `NaturalPPO`. Vanilla Minecraft server generates real new noise
+terrain; verified normal survival NBT and seed on all launches.
+
+Real smoke tests: four unique early v1 seed worlds, 48 trained decisions
+across start/resume; three v2-format train worlds, 36 decisions and
+continued checkpoint; real in-game stop file at8 decisions, checkpoint
+saved with model/optimizer and next seed consumed on resume; simulated
+aborted world quarantined and same seed regenerated from previous
+committed checkpoint, without fabricating reward. Old initial v2 policy
+and random holdout seeds matched BUT spawn scatter was still vanilla
+radius10, producing different start XYZ, so these are NOT strict paired
+controls. This was corrected by setting source `spawnRadius=0` before
+copy/launch, preserving seed/biomes/structures. New real controlled eval
+(policy and uniform-random) on heldout seed -6248071613379014257 each
+started `(48.5,64.0,32.5)`; in12 decisions frozen policy mined one
+nonwood block, random zero, both inventory wood zero. No statistical
+performance claim. Full 118 tests pass. Nested Gamescope still tears
+down with known 139 after child journal/checkpoint validated; wrappers
+verify actual saved artifacts before success.
+
+**Performance:** game world generation6.6-7.4 seconds plus client
+startup9.4-14.3 seconds per new world; current MCio sync client/server
+barrier prevents simply invoking an untested QuickPlay hot-swap.
+Default safe per-seed duration 2,400 game action decisions; future
+persistent-client world switching requires separate proof of correctness.
+No user Minecraft save, host configuration, prior model or original mod
+was overwritten. New primary start/stop/resume and frozen evaluation
+scripts tracked, binary worlds/logs/checkpoints ignored.
+
 ## LATEST: real unscripted survival online learning (Nov 3, 2026)
 
 Full verifiable evidence + commands: [`NATURAL_SURVIVAL_ONLINE_TRAINING.md`](NATURAL_SURVIVAL_ONLINE_TRAINING.md). From scratch neural PPO with only read-only Minecraft player/crosshair/memory first-hit camera objects now chooses six-tick MOVE+LOOK+ATTACK jointly and trains in independently seeded normal noise survival worlds with no placed tree, admin action, scripted phase switch or pretraining. Multiple real MCio and CUDA runs verified world rotation, checkpointed optimizer, per-world explored map and cumulative stats, append-only heartbeat, clean stop marker, resumed model/world, legitimate independently seeded frozen evaluation. User's new direction supersedes excessive staged case research.

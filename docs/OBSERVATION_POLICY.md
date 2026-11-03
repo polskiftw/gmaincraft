@@ -1,5 +1,23 @@
 # What the Minecraft speedrunner is allowed to know
 
+## Seed-stream evaluation and observed-world boundaries
+
+Newest automatic full64 disjoint seed-stream runner is described in
+[`FRESH_SEED_TREADMILL.md`](FRESH_SEED_TREADMILL.md). The seed, keyed
+permutation, world name and new seed cursor are **NEVER a policy
+observation or reward**; they exist only in the trainer's recovery and
+experimental audit. New seed means a real vanilla noise-generated
+survival world with fresh inventory and environment memory, not NBT
+relabeling an old chunk map. The same memory-first player/camera first-
+hit surface observation and normal six-tick move/look/attack motor are
+used in train/frozen. Training and eval counters are provably disjoint
+under the same seed schedule root. New-world source `spawnRadius=0`
+fixes prior same-seed but different-start baseline confusion while
+preserving biome/structure/terrain generator. Real inventory and mined
+stats remain the success source of truth; novel visible wood alone is
+NOT log pickup or a speedrun. The geometric camera ray eligibility
+limitations and missing visible dropped-item entities remain unresolved.
+
 ## Active unscripted memory-only Minecraft learner
 
 The actual user-prioritized normal survival trainer is documented at [`NATURAL_SURVIVAL_ONLINE_TRAINING.md`](NATURAL_SURVIVAL_ONLINE_TRAINING.md). Its **same train and frozen evaluation** typed observation combines: own Minecraft XYZ, own status and inventory; real vanilla crosshair targeted block+distance; Minecraft client `isDestroying` and crack stage (including transient stage `-1` meaning no animation available); a **bounded top24 first-collision camera 13x9 sample** with block ID, relative position, projected ray coverage, lighting, face/screen information. No world seed, unseen map, hidden items/chunks, scripted location or privileged trainer geometry can reach the actor. The actor selects normal movement/look/attack every six game ticks with *no* scripted phase handoff. It learns from fresh on-demand samples, not bulk memory scans and not a required RGB decoder.

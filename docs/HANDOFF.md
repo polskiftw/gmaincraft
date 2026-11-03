@@ -1,5 +1,38 @@
 # Handoff for a brand-new ChatGPT conversation
 
+## LATEST: automatic fresh survival worlds (not eight-world repetition)
+
+**FIRST READ [`FRESH_SEED_TREADMILL.md`](FRESH_SEED_TREADMILL.md).** The
+project now has a tested FOREGROUND endless fresh-seed training treadmill:
+`tools/run-fresh-treadmill.sh start TAG forever`, `status TAG`, `stop TAG`,
+`resume TAG forever`. One scratch CUDA actor learns on never-repeated
+signed-long seeds (full-width invertible keyed mixing, 2^63 train and 2^63
+disjoint heldout eval seeds per root). Newly generated vanilla survival
+worlds are **not just copies with an altered NBT seed**; Minecraft's real
+server generates all terrain. The runner automatically removes old
+completed owned worlds after checkpoint, keeping last2 and quarantining
+aborted ones. All player-owned memory reward/obs remain identical per
+train/frozen seed, and per-world novelty resets as expected. No model
+weights or world seed are supplied to policy except its own observations.
+
+Fresh program `experiments/fresh_seed_treadmill.py` and source/world
+helpers have pure tests and REAL game smoke tests: 4 old pilot worlds
+and 3 new seed-format worlds, in-game clean stop, model+optimizer resume
+on next seed, deliberate interrupted world quarantine/rollback, real
+held-out frozen test versus a uniform-random policy. Old matched-seed
+control with default `spawnRadius10` had different starting coordinates,
+so it is INVALID as a strict matched-start test. Current generator sets
+vanilla spawn radius0 without changing noise terrain. Actual v2 fixed
+spawn heldout same seed and start `(48.5,64.0,32.5)`: frozen1 ordinary
+block mined, random0, both0 wood (12 steps, too few for performance claim).
+**118 pure tests passed**. Current Minecraft mod JAR and historical
+checkpoints untouched. Runtime proof: fresh worldgen6.6-7.4 seconds plus
+client load9.4-14.3 seconds per seed; no safe in-process world reset in
+MCio's current global sync design. 2,400 steps/seed default to amortize.
+Next improve actual natural wood acquisition and heldout long-run
+learning curves, develop item-visible memory, separately explore hot
+world reload, and DON'T return to repeated preaimed tree fixtures.
+
 ## LATEST verified: ready-to-run natural survival training
 
 Start with [`NATURAL_SURVIVAL_ONLINE_TRAINING.md`](NATURAL_SURVIVAL_ONLINE_TRAINING.md), not preaimed experiment notebooks. User now prioritizes **leaving a from-scratch agent training in real survival worlds** instead of more scripted controlled scenes. The new **memory-only 50,913-param** PyTorch actor controls normal movement, camera and attack simultaneously at six-game-tick cadence, learns from own-player state, crosshair/visible crack stage and 24 bounded first-hit camera block surfaces with registry-ID byte embeddings; no whole-world X-ray, admin commands, fixed tree, directed phase handoff or pretrained model. Each natural-world save evolves uninterrupted across training segments. Independent source seed cohort generator, verified live train/resume/clean-stop helper, periodic after-world-save checkpoint of network+optimizer+RNG+per-world exploration/event memory, append-only journal, frozen evaluation and random/untrained controls all exist. No daemon was started. User commands and details in new doc.

@@ -1,5 +1,44 @@
 # START HERE — next ChatGPT/Gentoo Shell session
 
+## START HERE: fresh-seed treadmill delivered, hot client switching NOT yet
+
+Read **[`FRESH_SEED_TREADMILL.md`](FRESH_SEED_TREADMILL.md)** FIRST (then
+AGENTS/TODO/OBSERVATION_POLICY). The user corrected our fixed-cohort
+approach: train a single scratch Minecraft policy on a nonrepeating stream
+of new survival seeds, not eight recycled worlds. The NEW verified
+primary launcher is `tools/run-fresh-treadmill.sh start fresh01 forever`,
+`stop fresh01`, `resume fresh01 forever`, `status fresh01`; no seed-source
+prep or daemon. Default 2,400 six-tick decisions/seed. Frozen test:
+`tools/run-fresh-evaluation.sh fresh01 eval01 9600 policy_sampled`, then
+`tools/run-fresh-evaluation.sh - random01 9600 uniform_random` (identical
+held-out seeds and spawn). Train/eval use different internal interleaved
+counters of a keyed bijection, full-width signed seeds, same root required.
+The seed NEVER reaches the policy. Old fixed-cohort launcher is legacy.
+
+**Actually exercised:** multiple new vanilla worlds, seed-and-noise NBT,
+versioned mixed-parity nonrepeating seed schedules, resumable CUDA weights,
+atomic checkpoint after Minecraft exit, bounded world retention, real
+in-action stop at8 decisions followed by next unique seed on resume,
+recovery/quarantine of an incomplete disposable world with rollback to
+prior committed model, frozen heldout eval and independent random
+control. **118 unit tests pass**. A first policy-vs-random eval using
+default vanilla spawnRadius10 had different starts, so NOT strict
+case-matched data; fixed sources now use `spawnRadius=0`, and the real
+post-fix held-out policy and random each started EXACTLY at
+`(48.5,64.0,32.5)` on the same seed. Frozen test was only12 decisions,
+learned1 nonwood break, random0, both wood0: not evidence of superior
+skill. User goal of arbitrary-seed natural first-log and Any% UNSOLVED.
+
+**Client lifecycle:** MCio 1.6.1 sync uses a global client/server
+semaphore/barrier, no validated hot-world switch. Current default
+relaunches Minecraft for each new seed, measured ~7s vanilla generation
++9-14s client load/first observation. Use robust 2,400-decision horizon
+until separately measuring/validating true in-process game world reload.
+Keep old checked out mod, pristine backups, all historic ignored models,
+worlds and logs. Next actionable work: longer multi-seed learning and
+real inventory scoring vs matched controls; then hot switching and
+visible dropped items under independent tests, not scripted trees.
+
 ## START HERE: natural survival training is NOW the main project
 
 READ [`NATURAL_SURVIVAL_ONLINE_TRAINING.md`](NATURAL_SURVIVAL_ONLINE_TRAINING.md), `OBSERVATION_POLICY.md`, `AGENTS.md`, `TODO.md` first. The user explicitly said scripted/pre-aimed fixtures have diminishing returns and wants the AI ready for sustained autonomous **normal survival training**. That capability is now implemented and exercised end-to-end in live Minecraft. The trainable `natural_memory_online_v1_first_hit_objects_ppo6` neural policy starts random, chooses vanilla move/look/attack together using own memory and a 24-record bounded first-hit camera surface sampling, with no privileged world map, cheats, preaimed blocks, fixed routes or scripted phase handoff. A direct source-world seed generator and actual start/resume/clean-stop foreground shell helper exist; no daemon installed.

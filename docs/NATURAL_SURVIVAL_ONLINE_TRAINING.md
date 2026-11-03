@@ -1,5 +1,13 @@
 # Natural survival learning is now the primary roadmap
 
+**Superseded long-run setup:** For the current preferred **new random seed
+EVERY episode** treadmill with bounded disk retention, controlled
+train/eval separation, matched-spawn evaluation and crash recovery, use
+[`FRESH_SEED_TREADMILL.md`](FRESH_SEED_TREADMILL.md) and
+`tools/run-fresh-treadmill.sh`. The eight-world commands below are retained
+ONLY for historical fixed-cohort experiment reproduction and do not meet
+the new generalization goal as well.
+
 **November 3, 2026 — from-scratch, unscripted Minecraft Java survival PPO.**
 This supersedes earlier instructions to spend most development time on
 pre-aimed oak trunks and scripted collection arenas. Those experiments

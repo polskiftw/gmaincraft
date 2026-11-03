@@ -1,5 +1,21 @@
 # gmaincraft
 
+**NEW PRIMARY TRAINING KIT: [endless nonrepeating random-seed survival treadmill](docs/FRESH_SEED_TREADMILL.md).**
+`tools/run-fresh-treadmill.sh start mytrain01 forever` now automatically
+generates a NEW real vanilla noise Minecraft seed per episode, trains ONE
+random-initialized memory-first actor continuously, saves safe checkpoints,
+prunes old owned disposable world saves and supports `stop`/`status`/`resume`.
+Unlike the old eight-world loop, it never deliberately revisits a consumed
+training seed. Frozen neural and uniform random baselines use provably
+disjoint held-out seeds and the **same initial spawn location** per seed.
+Real tests covered independent new-world generation, training resume,
+in-game stop, aborted-world quarantine and independent frozen evaluation.
+**118 pure tests passed.** Current MCio still restarts the Minecraft
+client per seed (~7s world generation plus9-14s client startup); hot world
+switching is a future independently tested optimization, not promised.
+The neural policy has **NOT learned real unscripted wood pickup yet**.
+See the linked guide for the exact foreground training commands.
+
 **Primary development track: [real natural survival online learning](docs/NATURAL_SURVIVAL_ONLINE_TRAINING.md).** The project now has a working, resumable **from-scratch memory-first Minecraft PPO trainer**, running in actual vanilla-noise survival worlds. Movement, camera and attack are all learned actions; no player teleport, preaimed log, world cheat command or scripted mining/pickup handoff occurs during training. The run includes world rotation, local model/optimizer/exploration checkpoints, clean stop/resume and independent frozen/random controls. The first v2 pilot completed 720 normal-world decisions across three seeds and encountered 366 genuinely first-hit visible wood surfaces, but **has not yet mined or collected natural wood**. A held-out random policy still beats the immature learner on short exploration benchmarks; don't conflate a successful training pipeline with a successful speedrunner. To actually train unattended, see the linked guide for `tools/run-long-natural.sh` start/resume/stop commands.
 
 **Newest verified resource-acquisition milestone:** [Frozen learned mining + pickup on genuine Minecraft drops](docs/COMPOSED_MINE_PICKUP_AUDIT.md).

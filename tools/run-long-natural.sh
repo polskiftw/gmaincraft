@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # Simple, bounded, resumable real-world Minecraft RL command.
+# LEGACY fixed-cohort runner retained for reproducing old checkpoints.
+# Primary fresh-random-seed runner: tools/run-fresh-treadmill.sh
 # This is a FOREGROUND job you can let run in a terminal; it does NOT install
 # a daemon/system service or edit personal Minecraft/Gentoo settings.
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
+printf 'NOTE: legacy fixed-cohort launcher. For a NEW random Minecraft seed every episode, use tools/run-fresh-treadmill.sh.\n' >&2
 if (( $# != 4 )); then
   echo 'Usage: tools/run-long-natural.sh start|resume RUN_TAG SOURCE_COHORT TOTAL_DECISIONS' >&2
   echo 'Generate SOURCE_COHORT first: .venv/bin/python tools/prepare-natural-training-worlds.py --tag myworlds --count 8' >&2

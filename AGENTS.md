@@ -1,5 +1,52 @@
 # AGENTS.md — project instructions for coding assistants
 
+## ACTIVE PRIMARY: endless fresh-seed survival training (verified)
+
+Read **[`docs/FRESH_SEED_TREADMILL.md`](docs/FRESH_SEED_TREADMILL.md)**
+FIRST; then `docs/OBSERVATION_POLICY.md`, `TODO.md`, `docs/NEXT_SESSION.md`,
+`docs/HANDOFF.md`. The user's goal is a from-scratch Minecraft agent that
+can speedrun ANY randomly supplied seed. An **eight fixed-world rotation
+was NOT adequate**. The new `tools/run-fresh-treadmill.sh start TAG forever`
+automatically creates a never-before-consumed full-width 64-bit **vanilla
+noise survival world every episode**, trains one shared random-initialized
+memory-first actor (move/look/attack together), checkpoints its optimizer
+and RNG, quarantines uncommitted post-crash worlds, and retains only two
+finished owned worlds by default. `stop TAG`, `status TAG`, and `resume TAG
+forever` are real tested foreground workflows; no daemon is installed.
+
+Seed streams use a versioned keyed invertible SplitMix64 permutation on
+alternating INTERNAL train/eval counters, providing **2^63 nonrepeating
+signed-long seeds each** and disjoint heldouts with the SAME root, without
+restricting either output to even or odd seeds. Seed/root/cursor NEVER
+enter model observation. Each new seed resets environment-specific visited
+surface/cell memory, not neural weights. Actual match-controlled evaluation
+also forces vanilla `spawnRadius=0` on newly generated disposable worlds;
+first exploratory same-seed baseline with spawnRadius=10 was NOT a valid
+matched-start comparison. New held-out learned-versus-random live run
+started at the exact same XYZ `(48.5,64.0,32.5)`; 12 decisions each,
+learned1 ordinary nonwood block, random0, both0 inventory logs. This is
+only a kit validation, NOT evidence of general speedrunning ability.
+
+**Real verification:** new generator and four-seed training/resume proof;
+new v2 start/resume/signed seed checks; graceful stop during gameplay at
+8 decisions, then next never-consumed seed; artificially incomplete owned
+world automatically quarantined/retried from last committed checkpoint;
+real fresh frozen evaluation on heldout seeds; 118 pure tests pass. **Actual
+world creation averages ~7s and client startup ~9-14s PER SEED**. MCio
+client/server sync currently lacks a proven in-process world reload, so
+use safe restart and 2,400-decision horizon until a dedicated hot-switch
+experiment validates no deadlock or stale observations. Do NOT claim zero
+client restarts or an autonomous log pickup; those are NOT solved.
+
+The original `tools/run-long-natural.sh` fixed-cohort option remains for
+historical checkpoints only. Keep ALL previous worlds, old model weights,
+tracked Java patch and experimental results; the new treadmill cleans up
+ONLY its own disposable `MDL_FreshStream_*` completed worlds after committing.
+Do not spend another session optimizing a pre-aimed log arena when the
+current major goal is fresh natural seed generalization and true inventory
+wood. Update handoff/TODO, unit tests, actual game benchmarks and push to
+GitHub after validated changes.
+
 ## ACTIVE PRIORITY: unattended natural survival learning, NOT more fixed fixtures
 
 **Start with [`docs/NATURAL_SURVIVAL_ONLINE_TRAINING.md`](docs/NATURAL_SURVIVAL_ONLINE_TRAINING.md), then read `docs/OBSERVATION_POLICY.md`, `TODO.md`, `docs/NEXT_SESSION.md` and `docs/HANDOFF.md`.** The user wants a FROM-SCRATCH Minecraft AI that can spend extended periods learning in normal noise-generated survival worlds; the repeatedly controller-placed and pre-aimed oak arenas have diminishing returns and should be relegated to quick **diagnostic** tests.
