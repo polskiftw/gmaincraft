@@ -91,6 +91,15 @@ class MCioAgentBridge:
     def view(self):
         return AgentView.from_packet(self.packet)
 
+    def player_knowledge(self):
+        """Opt-in v1 memory observations, identical for training and eval.
+
+        Not yet consumed by historical RGB CNNs. World objects need separate
+        calibrated visibility research; no raw packet is exposed.
+        """
+        from gmaincraft.player_knowledge import PlayerKnowledgeV1
+        return PlayerKnowledgeV1.from_packet(self.packet, stats=self._stats)
+
     def stat_total(self, category, item):
         """Privileged Minecraft statistics; evaluator only, NOT policy input."""
         return int(self._stats[category][item])

@@ -6,6 +6,31 @@ memory-derived structured game state**, not a permanently screenshot-only
 agent; read [OBSERVATION_POLICY.md](OBSERVATION_POLICY.md). The memory-state
 work follows **after** the performance regression investigation.
 
+## November 2 update: current runtime recovered, cause not yet proven
+
+Fresh independent Minecraft launches using `experiments/mcio_throughput_probe.py`
+now show **0.62–0.72 s/300 synchronized vanilla game ticks after the first
+300-tick repeat**, with real oak-log inventory, no missing frames and no
+PyTorch. First repeats take ~1.17–1.24 s. 3 launches tested original
+options and temporarily uncapped graphics; the uncapped option provided no
+consistent material improvement, and options were restored. A fourth launch
+with the new opt-in `player_knowledge_v1` memory state passed live Minecraft
+checks and took 0.72 s after warm-up. See
+[`MCIO_THROUGHPUT_2026_11_02.md`](MCIO_THROUGHPUT_2026_11_02.md) for exact
+values, limitations and reproduction. **This is repeatable current speed,
+NOT a proven explanation of the older ~4-second runs.** The MCio pacing
+TODO remains open for reproducibility under the older workload, though
+recovering the historical throughput range permits short follow-on sensor
+research without committing to prolonged training.
+
+**Current next implementation:** `src/gmaincraft/player_knowledge.py` is a
+versioned opt-in, immutable adapter for player numeric state/inventory/known
+stats; pure tests and the first live packet/inventory smoke pass. Existing
+legacy RGB-only agents are untouched. The new structured input must next be
+integrated **identically** into train and held-out inference, with explicit
+schema versioning, and visible block/entity eligibility research is still
+pending. Do not claim a learned general log-finding agent yet.
+
 ## FIRST: diagnose and restore MCio simulation throughput
 
 **Do this before further reinforcement-learning architecture work, extended GPU training, or crafting/speedrun subtasks.** The present bottleneck is a ~5x-6x regression in real Minecraft game-step throughput, making research expensive. It is **not yet explained or fixed**.

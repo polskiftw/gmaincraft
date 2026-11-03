@@ -120,6 +120,17 @@ observations with server commands or changes to the game's mechanics.
   historical pixel-only evaluations as **separate baselines** rather than
   pretending they used the newer structured inputs.
 
+## Implementation note (November 2, 2026): first versioned adapter
+
+`src/gmaincraft/player_knowledge.py` now implements an opt-in,
+`player_knowledge_v1` snapshot via `MCioAgentBridge.player_knowledge()`:
+position, yaw/pitch, health, owned inventory and known stats derived from
+MCio packets; protected as bounded immutable values. This has unit and live
+Minecraft inventory-parity tests. **No policy/trainer has adopted the new
+schema yet**, and no visibility-filtered blocks, entities, hunger or biome
+observations are currently exported. The historical RGB interface remains
+unchanged. See `MCIO_THROUGHPUT_2026_11_02.md` for live measurements.
+
 ## What the existing code really does (as of this design note)
 
 `mcio_ctrl.network.ObservationPacket` **already exposes** `player_pos`,

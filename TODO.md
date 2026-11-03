@@ -13,11 +13,15 @@
   research task**: calibrate FOV, projected size, range, occlusion,
   transparency, lighting and vanilla interaction reach. Do NOT choose
   arbitrary cutoffs, feed hidden ore maps or claim a detector exists yet.
-- [ ] AFTER fixing MCio throughput, implement a **versioned player-knowledge
-  observation adapter** exposing existing MCio memory state to the policy in
-  BOTH training and normal evaluation. Add structured visible-block support
-  as experiments justify it; train/eval observation parity is required.
-  Preserve old RGB CNN and earlier saved artifacts as baselines.
+- [x] Implement the **first opt-in, versioned `player_knowledge_v1`
+  packet adapter** for player XYZ/yaw/pitch, health, owned inventory slots,
+  and available own progress stats. Pure tests passed, plus live Minecraft
+  synchronized 300-tick log inventory parity; no policy wiring yet.
+- [ ] Integrate this exact bounded structured schema in BOTH new-from-scratch
+  training and frozen normal-game evaluation; retain RGB-only baselines.
+  Calibrate observable blocks/entities empirically before admitting world
+  objects. Additional player status not supplied by MCio requires scoped
+  mod instrumentation, not fabricated readings.
 
 ## NEXT SESSION — PRIORITY 0: recover MCio throughput BEFORE any more AI training
 
@@ -26,10 +30,18 @@ session to work on the throughput regression before continuing the learning
 course correction. **Do not skip this section just because earlier sections
 contain completed learning milestones.**
 
-- [ ] Capture a **matched, repeatable no-Torch** MCio benchmark showing where
-  ~300 game ticks spend wall time; current measured ~3.9-4.0s in a learner
-  (~3.876s inside game send/receive), ~5.008s in no-Torch baseline.
-  Earlier ~0.6-0.8s/300 ticks is historical, not necessarily matched.
+- [x] Create fresh-tagged 300-tick, no-Torch, sequence-checked real-Minecraft
+  benchmark (`experiments/mcio_throughput_probe.py`). Four separate launches
+  and 10 timed repeats demonstrated 0.62–0.72 s per 300 ticks after first
+  300-tick warm-up; all acquired real oak-log inventory. Send ~0.008–0.01s,
+  receive ~0.6–0.7s. See `docs/MCIO_THROUGHPUT_2026_11_02.md`.
+- [x] Measure synchronous send vs receive in an instrumented vanilla game:
+  >98% of game I/O wait is observation receive. First repeat 1.17–1.24s,
+  later repeats 0.62–0.72s, exact accepted action sequences, no frame gaps.
+  Temporary no-VSync/260-FPS control did not justify permanent changes.
+- [ ] Reproduce historical ~4s slowdown under exactly matched neural and
+  no-neural host conditions and explain transient/workload dependence;
+  current machine is again in historical fast range but root cause unknown.
 - [ ] Trace and isolate actual MCio sync/action send/receive and game/server
   pacing, render/viewer conditions and startup/warmup effects. Keep same
   world/viewport/tick budget/input sequence; do not guess CPU rendering or

@@ -28,6 +28,20 @@ then pursue visibility-threshold research and integrate learning toward real
 unrestricted first-log success. Never damage old saved experiments or quietly
 pretend the new sensors are already implemented.
 
+## Live update: recovered fast MCio ticks and opt-in player-state memory
+
+`docs/MCIO_THROUGHPUT_2026_11_02.md` records four actual no-Torch
+Minecraft launches, including one with the opt-in `player_knowledge_v1`
+adapter: ~0.62–0.72 s/300 ticks after warm-up, real vanilla log pickup,
+no missing frames. First repeats are ~1.17–1.24 s. The historical ~4 s
+regression was **not reproduced**, not conclusively fixed; retain it as an
+open root-cause question if it returns. Do not change host drivers or
+Minecraft options on speculative grounds. The new
+`src/gmaincraft/player_knowledge.py` reads own XYZ, camera, health,
+inventory, known stats directly from MCio. Legacy RGB `AgentView` is
+untouched; **new memory view has NOT yet been wired into training/eval**.
+Calibrating block visibility and identical train/eval policy inputs are next.
+
 ## MANDATORY FIRST TASK FOR A NEW CHAT: MCio speed regression (highest priority)
 
 **Start with [`docs/NEXT_SESSION.md`](docs/NEXT_SESSION.md), not a new PPO

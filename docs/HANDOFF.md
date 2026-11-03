@@ -2,6 +2,29 @@
 
 **Last verified: 2026-11-02.** Canonical code: [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. **Historical early milestone (superseded by the sections below):** learn movement W/A/S/D from real RGB features (2 independently trained models; fresh fixture audit p01 **30/32**, p02 **24/32**, always-W 21/32); then **combine frozen RGB aim/ATTACK and pickup policies** on *real mined logs* (two independent camera-angle sets, trained p02 **51/56**, hardcoded W **49/56**, untrained movement 21/56). Earlier numerical-navigation and RGB log-aiming milestones remain preserved; `docs/EXPERIMENTS.md` records all results. The initial uncleaned aim 12/14 and aborted first drop-distance audits are **invalid evidence**. No general world-seed Minecraft speedrunning. Do not ask for old test logs.
 
+## Latest verified update: performance probe + structured player knowledge
+
+`docs/MCIO_THROUGHPUT_2026_11_02.md` documents a new no-Torch real-game
+probe (`experiments/mcio_throughput_probe.py`) with four unique disposable
+worlds/launches and 10 measured 300-tick repeats. First each launch ~1.17–1.24
+seconds; after warm-up **0.617–0.721 seconds** per 300 ticks, overlapping
+old fast results. All tests used normal vanilla attack/pickup; each repeat
+collected exactly one real log, with action/observation sequence parity and
+no dropped frame sequences. The old ~4-second slowdown is therefore NOT
+currently reproducible; its root cause remains unknown. Explicit FPS cap
+change gave no reliable advantage and original instance options were fully
+restored. Gamescope wrapper still reports post-child exit 139.
+
+New `player_knowledge_v1` in `src/gmaincraft/player_knowledge.py` and
+`MCioAgentBridge.player_knowledge()` offers immutable opt-in numeric
+player position/facing, health, owned inventory and available own progress
+stats. The 66-test pure suite and a real synchronized 300-tick smoke verified
+memory packet/inventory agreement. **No trained policy consumes it yet**;
+legacy RGB AgentView and saved checkpoints remain unchanged. Next: train/eval
+parity wiring for a new from-scratch model, then scope and validate perceived
+block/entity candidate filters (not raw world X-ray). Reinvestigate I/O if
+historical regression returns; no host-level changes justified.
+
 ## Canonical user intent: direct bounded Minecraft memory observations
 
 **Read [OBSERVATION_POLICY.md](OBSERVATION_POLICY.md).** The user corrected
