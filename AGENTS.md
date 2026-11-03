@@ -28,6 +28,47 @@ then pursue visibility-threshold research and integrate learning toward real
 unrestricted first-log success. Never damage old saved experiments or quietly
 pretend the new sensors are already implemented.
 
+## Latest verified milestone: V4 memory policy + controllable natural-world speed
+
+**Read `docs/MEMORY_POLICY_V4.md` and `docs/MINECRAFT_RENDER_PERF.md` FIRST.**
+A new opt-in **V4 `player_knowledge_v1` + RGB neural controller** genuinely
+consumes player XYZ/facing/health/inventory/stats in BOTH from-scratch
+Minecraft CUDA training and frozen Minecraft evaluation. It has a separate
+checkpoint schema, 20-float numeric encoder and 6-tick factorized actions;
+legacy V2/V3 checkpoints are untouched. Real 10-episode V4 training and
+12 fresh frozen trials worked with **0 log pickups**, so do not claim general
+learning. Paired natural seeds 31415927 and 246813579 also scored zero.
+
+**Performance discovery:** natural-world Minecraft with default render
+distance can take ~12–13ms per game tick even with a no-neural controller.
+Controlled 600-tick idle real-world comparison on seed246813579 showed
+**4.535s default versus 1.695s at renderDistance4 + VSync off/FPS260**;
+8 chunks 3.387s, 6 chunks 2.590s. The first 100 ticks are significantly
+slower than later ones. This is a genuine reproducible graphics-setting
+performance lever, **not proof** that all older 4-second runs share a single
+root cause. `src/gmaincraft/instance_options.py` temporarily overrides only
+the disposable MCio instance and restores byte-exact prior options. New
+V4 training defaults to 4 chunks. This reduces visible distance—record
+profiles and match train/scored comparison settings.
+
+**Gamescope caveat:** the second Minecraft launch inside one viewer sometimes
+asserts `vulkan_remake_swapchain()` and aborts the wrapper; an abandoned
+Python child needed SIGTERM before options were restored. For new V4 work
+run `joint_log_memory.py --skip-eval` and call `memory_frozen_eval.py` in a
+**separate** viewer session. The old usual 139 after successful child exit is
+also common; always examine durable JSONL/checkpoint/child success. No
+host GPU driver, filesystems, or sandbox mounts were changed.
+
+**Next real research gate:** direct read-only *perceivable* block/raycast
+state and player-owned missing status in MCio, then empirically calibrate
+visibility/LOS/occlusion/range on held-out scenes before exposing bounded
+block lists. The installed twoturtles MCio 1.6.1 observation packet does
+not currently provide block IDs/hunger; source was inspected in ignored
+`mcio-data/mcio-upstream-inspect`. Do not give unobserved hidden chunks.
+Then test paired actual unrestricted first-log FIND/MINE/COLLECT with frozen
+models and RGB/memory ablations. Do not burn thousands of PPO episodes
+without evidence of improved real-scene success.
+
 ## Live update: recovered fast MCio ticks and opt-in player-state memory
 
 `docs/MCIO_THROUGHPUT_2026_11_02.md` records four actual no-Torch

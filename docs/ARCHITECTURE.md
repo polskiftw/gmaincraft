@@ -9,9 +9,12 @@ The project **intends to use direct read access to Minecraft state in both
 training and scored gameplay** for player-knowable facts. RGB-only was
 an earlier prototype convenience. Visibility-filtered block/entity IDs,
 player stats/counters, coordinates and inventory are intended inputs; do
-not make pixel reconstruction a mandatory bottleneck. **These features are
-not yet implemented in the current `AgentView`.** Priority zero is still
-MCio game-step throughput recovery.
+not make pixel reconstruction a mandatory bottleneck. **The opt-in V4 now implements player-own structured state** and consumes
+it in real from-scratch training and frozen gameplay, while legacy
+`AgentView` remains RGB-only for old baselines. Block/entity visibility
+and remaining status fields still require engine instrumentation. A
+reversible 4-chunk vanilla rendering profile improves natural-world MCio
+performance; see `MEMORY_POLICY_V4.md` and `MINECRAFT_RENDER_PERF.md`.
 
 There are two separate roles:
 

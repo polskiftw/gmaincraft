@@ -120,6 +120,29 @@ observations with server commands or changes to the game's mechanics.
   historical pixel-only evaluations as **separate baselines** rather than
   pretending they used the newer structured inputs.
 
+## V4 milestone: memory as actual policy input in train AND frozen play
+
+`player_knowledge_v1` is no longer merely a staged Python adapter: the
+opt-in V4 factorized PPO actor (`src/gmaincraft/memory_factorized.py`)
+consumes the same own position/yaw/pitch/health/inventory/stats-derived
+20-float feature encoder during real Minecraft CUDA training and **normal
+frozen gameplay**, alongside two 84x84 rendered RGB frames. Code paths are
+`MCioAgentBridge.multimodal_view()` in `joint_log_factorized.run_episode`
+(training/heldout arena) and `natural_world_benchmark.py` via
+`natural_eval.MemoryFactorizedAgent` (seeded natural survival). The versioned
+schema is `factorized_v4_memory_v1_rgb2_6tick`; old RGB-only experiments are
+still separate. First V4 real games were 0 successful inventory pickups;
+implementation ≠ learning competence. See `MEMORY_POLICY_V4.md`.
+
+**World-object sensor is still absent.** Current MCio/Fabric 1.6.1 doesn't
+include targeted block/entity hit or hunger in the base observation packet.
+Do not substitute a raw loaded-chunk map or uncalibrated distance cutoff.
+The empirical visible/actionable filter remains a future milestone.
+Temporary V4 display distance of **4 chunks** is a graphics/performance
+choice, NOT an empirically calibrated memory-visible block cutoff; see
+`MINECRAFT_RENDER_PERF.md`. The same rendering profile must be recorded for
+fair side-by-side scored comparisons.
+
 ## Implementation note (November 2, 2026): first versioned adapter
 
 `src/gmaincraft/player_knowledge.py` now implements an opt-in,

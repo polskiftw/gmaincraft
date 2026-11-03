@@ -2,6 +2,55 @@
 
 **Last verified: 2026-11-02.** Canonical code: [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. **Historical early milestone (superseded by the sections below):** learn movement W/A/S/D from real RGB features (2 independently trained models; fresh fixture audit p01 **30/32**, p02 **24/32**, always-W 21/32); then **combine frozen RGB aim/ATTACK and pickup policies** on *real mined logs* (two independent camera-angle sets, trained p02 **51/56**, hardcoded W **49/56**, untrained movement 21/56). Earlier numerical-navigation and RGB log-aiming milestones remain preserved; `docs/EXPERIMENTS.md` records all results. The initial uncleaned aim 12/14 and aborted first drop-distance audits are **invalid evidence**. No general world-seed Minecraft speedrunning. Do not ask for old test logs.
 
+## CURRENT handoff (Nov 2, 2026): V4 actually trains on memory + RGB
+
+Read `MEMORY_POLICY_V4.md` and `MINECRAFT_RENDER_PERF.md` before further
+Minecraft work. Current opt-in *V4 `player_knowledge_v1` + RGB* agent passes
+own position/facing/health/inventory/stats numerically during both actual
+Minecraft CUDA training and normal frozen evaluation. Same validated
+`MCioAgentBridge.multimodal_view()` path in both. New V4 feature schema
+`factorized_v4_memory_v1_rgb2_6tick`/20 floats/976,430 parameters, separate
+source modules/scripts and checkpoints; all V1/V2/V3 source and weights
+remain preserved. `mempilot_nov03b` 4 train +3 frozen cases: no pickups;
+`memfast_nov03c` 10 train +2 updates, 0/10 inventory and 0 true mined
+events; separate `memfrozen_nov03e` 12/12 completed frozen evaluations,
+**0/12** pickups. Natural seeds31415927 and246813579 each compared random
+vs frozen V4 for180 ticks, all 0 logs at identical starts. Do NOT treat
+these runs as learned tree-finding or even reliable log mining. SHA of
+`memfast_nov03c` checkpoint c57d5aba99010a704fc332f5f5a7bf1dc598c8de6224a037613531781a30014f.
+
+A natural-scene no-Torch random control also reproduced ~12.96 ms/tick
+where warmed flat worlds were ~2 ms/tick: problem is not PyTorch. A
+controlled **600 idle-tick natural-world seed246813579** test under
+unmodified MCio options measured 4.535s vs 1.695s with
+`renderDistance:4`, `enableVsync:false`, `maxFps:260` (2.68x). Intermediate
+6 chunks 2.590s, 8 chunks 3.387s, uncapped alone 4.265s; cold first100
+is substantially slower. V4 new training defaults to the 4-chunk LEGAL
+Minecraft rendering mode; it reduces visible range, so paired training and
+scored play must explicitly match it. The project `temporary_game_options`
+restores the original bytes; no permanent host modifications. See
+`MINECRAFT_RENDER_PERF.md` for caveats, timings, source/seed parity.
+
+Gamescope can assert `vulkan_remake_swapchain()` and abort when launching a
+second Minecraft in the same viewer (this happened immediately after
+`memfast_nov03c` completed valid 10 episodes and saved its checkpoint).
+One orphaned Python child was terminated via SIGTERM and it restored options.
+Use `joint_log_memory.py --skip-eval`, then **new**
+`memory_frozen_eval.py --model-tag TAG` in a separate viewer wrapper. The
+first 12-case standalone eval succeeded. Do not confuse wrapper 139 after
+child completion with failed Python tests. Preserve all local ignored runs.
+
+**Actual next research gate:** installed twoturtles/MCio 1.6.1 source
+(at ignored `mcio-data/mcio-upstream-inspect`) exposes own player state,
+inventory and stats, but not player hunger or targeted block/entity, nor
+perceivable block lists. Implement safe versioned engine-read status and
+vanilla crosshair raycast first, then derive bounded block/entity eligibility
+via real-game camera/frustum/occlusion/reach testing on held-out scenarios.
+No hidden world map or privileged target as policy input. When that sensor
+works, compare new state, RGB-only and numeric-ablated frozen agents under
+identical settings and natural seeds; then pursue real unrestricted first-log
+FIND/MINE/COLLECT, not massive unproductive PPO runs.
+
 ## Latest verified update: performance probe + structured player knowledge
 
 `docs/MCIO_THROUGHPUT_2026_11_02.md` documents a new no-Torch real-game
@@ -51,7 +100,7 @@ next expose player-knowable memory state and calibrate block visibility;
 then resume from-scratch learning of unrestricted first-log acquisition,
 followed by eventual Any%. Preserve old RGB results as diagnostics.
 
-## FIRST ACTION FOR NEW CHAT — explicit user priority (Nov 2, 2026)
+## HISTORICAL FIRST ACTION — superseded by the CURRENT V4 handoff
 
 **The user wants the MCio performance regression investigated and fixed
 FIRST. Read [`NEXT_SESSION.md`](NEXT_SESSION.md) before doing any model

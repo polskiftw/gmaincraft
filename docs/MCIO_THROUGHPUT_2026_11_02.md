@@ -2,6 +2,19 @@
 
 **Status:** Fast MCio throughput is reproducible **in the current environment**. The historical 4-second slowdown was not reproduced. This is a recovery/triage finding, **not** a proven root-cause fix. Do not attribute the earlier slowdown to VSync, graphics driver, PyTorch, system CPU governor, Gamescope, or a Minecraft mod without evidence.
 
+## Subsequent natural-world measurement: rendering strongly matters
+
+**Newer evidence:** `MINECRAFT_RENDER_PERF.md` reproduced ~12–13ms/tick
+I/O with a no-Torch **natural-world** controller, unlike the warmed flat
+fixture. Paired natural-world 600-idle-tick runs on seed246813579 showed
+4.535 s with default game options, 4.265 s uncapped only, 3.387 s at
+renderDistance8, 2.590 s at 6, **1.695 s at 4** (all nondefault distance
+trials uncapped). Cold first100 ticks were slower for every setting.
+4-chunk rendering reduces distant player perception, so treat this as a
+recorded game setting/throughput tradeoff and keep train/eval matched.
+The old ~4s original workload isn't causally reconstructed from a complete
+Java renderer profile; it remains an open narrower question.
+
 ## Reproduction method
 
 New no-Torch `experiments/mcio_throughput_probe.py` copies a *new* disposable world from the existing `DemoWorld`, starts Minecraft 1.21.3+MCio in synchronous mode using the normal nested Gamescope viewer, constructs an equivalent small flat log fixture and resets the player (including clear inventory and item entities) before each measured repeat. Each 300-tick test holds vanilla attack 110 ticks, W 35 ticks, then idle 155 ticks. The probe checks every sent sequence is the last accepted action, receives every frame without sequence gaps, updates MCio stats at each step, decodes RGB periodically and scores actual oak log inventory. No Torch or policy decisions. Records send/receive timing and separates ~18 s game launch overhead from measured game steps.

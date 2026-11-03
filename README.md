@@ -12,9 +12,16 @@ expert demonstrations nor a scripted speedrun are the intended solution.
 **Design contract:** [docs/OBSERVATION_POLICY.md](docs/OBSERVATION_POLICY.md).
 Visible/actionable-block eligibility and field-of-view/occlusion thresholds
 are future experiments, **not something to guess before measuring**.
-**Execution priority:** fix MCio performance regression first as specified
-in [docs/NEXT_SESSION.md](docs/NEXT_SESSION.md), then implement the bounded
-structured observation interface, then return to the learning course.
+**Latest progress:** a versioned **V4 from-scratch memory+RGB actor** now
+consumes the *same* bounded own-state observations during training and frozen
+survival gameplay. The first 10-episode trained pilot and 12 frozen cases ran
+on actual CUDA/Minecraft, but **zero logs** were acquired. More importantly,
+a reproducible Minecraft render-distance A/B identified a **2.68× natural-
+world I/O throughput improvement** using a legal 4-chunk render distance.
+See [V4 design/results](docs/MEMORY_POLICY_V4.md),
+[real-game performance](docs/MINECRAFT_RENDER_PERF.md), and
+[next-session roadmap](docs/NEXT_SESSION.md). Next major feature: empirical
+engine-derived visible/actionable blocks without X-ray information.
 
 **Historical experiments (2026-11-02; NOT the target sensor design):** Minecraft Java 1.21.3 + MCio and three seeded numerical-navigation runs are verified. Two random-initialized, RGB-feature mouse+ATTACK models learn to aim at a controlled oak trunk (audited 15/20 and 18/20 real Minecraft logs). Two independently trained RGB-feature W/A/S/D policies learn to approach a **dropped** oak log: in a fresh 32-case offset-item audit, the best reaches **30/32**, versus **21/32** for just holding W. Combining the learned aiming and collection policies yields **51/56 real mined-log inventory pickups** over two fresh camera-angle sets for pickup model `p02`, versus **49/56** with scripted W. This does **not** establish a meaningful advantage in the centered-tree setup, and it still uses hand-engineered pixel masks, controller-only scalar rewards, fixed 100-tick attack holds, a single flat-world template, and separate training for the two neural stages. No general tree recognition or Any% speedrunning.
 
@@ -28,25 +35,41 @@ reasonably perceive or remember, using visibility research rather than an
 arbitrary fixed radius or free X-ray. Screen images are an optional source
 of additional information.
 
-**Current implementation, not intended final input:** MCio already sends
-player position, yaw/pitch, health, inventory and optional statistics, but
-the early `AgentView` deliberately exposes only RGB frames to the CNN.
-Training also receives scalar feedback and self-generated actions. No new
-memory-based policy is implemented yet. Existing RGB experiments are valid
-historical baselines; they should not monopolize the project's next phase.
+**Current implementation:** MCio directly sends own coordinates, facing,
+health, inventory and some statistics; `player_knowledge_v1` is an immutable,
+bounded adapter to expose those fields. V4's 20-feature numeric encoder and
+separate RGB CNN now **actually learn and run** from that state with normal
+Minecraft keyboard/mouse inputs. It has no visible-block list, hunger or
+raycast status yet; the older RGB-only `AgentView` remains for historical
+baseline models. No first-log skill has yet transferred to natural worlds.
 See [docs/OBSERVATION_POLICY.md](docs/OBSERVATION_POLICY.md).
 
-## Next-session priority: MCio performance first
+## Active entrypoints and next research priority
 
-**For a fresh conversation, open [`docs/NEXT_SESSION.md`](docs/NEXT_SESSION.md)
-and have the Gentoo Shell bridge enabled.** The user explicitly requests
-that the next task is finding/fixing the Minecraft/MCio game-step slowdown
-(~300 ticks took ~0.6-0.8s historically; now ~3.9-4.0s in the learner and
-~5.0s in a no-Torch control). Only after reliable, matched investigation and
-benchmarking should work return to the updated player-observable-input, from-scratch
-first-log learning course correction **using bounded direct game-state
-read access**. No external pretrained models or scripted speedruns; only
-hidden *unobserved* world information is excluded from the playing agent.
+The historical slowdown is strongly associated with rendering natural terrain
+at larger distances and first-scene warm-up, NOT CUDA bottlenecks. For the
+**disposable MCio instance**, the V4 trainer defaults to VSync off, 260 FPS
+cap and 4-chunk render distance; the original options are **restored after
+runs**. In one paired natural-seed 600-tick no-neural test, measured game I/O
+was 4.535s with defaults versus **1.695s** with four chunks. This cuts distant
+visibility, so always record the profile and use the same setting for paired
+model comparisons. Read [performance evidence](docs/MINECRAFT_RENDER_PERF.md).
+
+```bash
+cd /workspace
+.venv/bin/python tools/gpu-preflight.py
+.venv/bin/python -m unittest discover -s tests -q
+# V4: from random weights with MCio player memory + rendered RGB.
+tools/run-mcio-viewer.sh .venv/bin/python -u -B experiments/joint_log_memory.py --run-tag NEWTRAIN --episodes 10 --update-every 5 --max-ticks 240 --device cuda --visible --skip-eval
+# Use separate Gamescope sessions: restarting a second Minecraft sometimes crashes Gamescope.
+tools/run-mcio-viewer.sh .venv/bin/python -u -B experiments/memory_frozen_eval.py --run-tag NEWEVAL --model-tag NEWTRAIN --eval 4 --max-ticks 240 --device cuda --visible
+```
+
+These tests are curriculum science, **not a general speedrunner**. The highest
+priority after performance/observation parity is adding read-only, empirically
+filtered engine block/entity observations, then learning unrestricted finding,
+mining and collecting wood on unseen natural survival seeds. Full handoff:
+[`docs/NEXT_SESSION.md`](docs/NEXT_SESSION.md).
 
 ## Historical November 2 experiment — self-collected RGB learning and mining events
 

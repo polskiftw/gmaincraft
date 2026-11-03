@@ -66,6 +66,13 @@ class AgentView:
         return cls(safe_pixels)
 
 
+@dataclass(frozen=True)
+class MultimodalView:
+    """Versioned player-own state plus rendered pixels; no hidden target."""
+    pixels: np.ndarray
+    player: object  # PlayerKnowledgeV1 (late-bound to avoid MCio import)
+
+
 class MCioAgentBridge:
     """Turn AgentAction into synchronized MCio input, NEVER admin commands.
 
@@ -90,6 +97,10 @@ class MCioAgentBridge:
 
     def view(self):
         return AgentView.from_packet(self.packet)
+
+    def multimodal_view(self):
+        """Identical opt-in RGB + memory interface for train and gameplay."""
+        return MultimodalView(self.view().pixels,self.player_knowledge())
 
     def player_knowledge(self):
         """Opt-in v1 memory observations, identical for training and eval.

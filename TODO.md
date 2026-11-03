@@ -15,20 +15,26 @@
   arbitrary cutoffs, feed hidden ore maps or claim a detector exists yet.
 - [x] Implement the **first opt-in, versioned `player_knowledge_v1`
   packet adapter** for player XYZ/yaw/pitch, health, owned inventory slots,
-  and available own progress stats. Pure tests passed, plus live Minecraft
-  synchronized 300-tick log inventory parity; no policy wiring yet.
-- [ ] Integrate this exact bounded structured schema in BOTH new-from-scratch
-  training and frozen normal-game evaluation; retain RGB-only baselines.
-  Calibrate observable blocks/entities empirically before admitting world
-  objects. Additional player status not supplied by MCio requires scoped
-  mod instrumentation, not fabricated readings.
+  and available own progress stats. Pure and actual Minecraft tests passed.
+- [x] Integrate identical memory observations in new from-scratch TRAINING
+  and FROZEN normal survival evaluation: opt-in V4 `memory_factorized.py`,
+  `joint_log_memory.py`, `memory_frozen_eval.py`, `natural_world_benchmark.py`.
+  Ten tuned real CUDA train episodes/two PPO updates and 12 frozen cases
+  completed; **0/10** and **0/12** wood acquisitions. Old RGB V2/V3 intact.
+  See `docs/MEMORY_POLICY_V4.md`.
+- [ ] Instrument MCio/Fabric read-only **targeted/visible block and entity**
+  IDs and own missing status (e.g., hunger), with calibrated frustum/LOS/
+  occlusion/reach and bounded world knowledge; current schema has NO
+  world-object data. Ensure policy visibility parity and explicit schema
+  version before comparing learned cases.
 
-## NEXT SESSION — PRIORITY 0: recover MCio throughput BEFORE any more AI training
+## Historical Priority 0 — MCio slowdown narrowed, render-distance mitigation measured
 
-**Read `docs/NEXT_SESSION.md` first.** The user explicitly wants the next
-session to work on the throughput regression before continuing the learning
-course correction. **Do not skip this section just because earlier sections
-contain completed learning milestones.**
+**Read `docs/NEXT_SESSION.md`, `docs/MINECRAFT_RENDER_PERF.md`, and
+`docs/MEMORY_POLICY_V4.md` first.** The older no-Torch vs CUDA regression is
+now substantially narrowed and the next research gate is world-object
+memory sensors plus real unrestricted first-log acquisition; preserve
+performance monitoring and matched display settings.
 
 - [x] Create fresh-tagged 300-tick, no-Torch, sequence-checked real-Minecraft
   benchmark (`experiments/mcio_throughput_probe.py`). Four separate launches
@@ -39,28 +45,38 @@ contain completed learning milestones.**
   >98% of game I/O wait is observation receive. First repeat 1.17–1.24s,
   later repeats 0.62–0.72s, exact accepted action sequences, no frame gaps.
   Temporary no-VSync/260-FPS control did not justify permanent changes.
-- [ ] Reproduce historical ~4s slowdown under exactly matched neural and
-  no-neural host conditions and explain transient/workload dependence;
-  current machine is again in historical fast range but root cause unknown.
-- [ ] Trace and isolate actual MCio sync/action send/receive and game/server
-  pacing, render/viewer conditions and startup/warmup effects. Keep same
-  world/viewport/tick budget/input sequence; do not guess CPU rendering or
-  blame CUDA when inference is only ~0.09s. Small viewport and reverting
-  chat scale already failed to restore speed.
-- [ ] Apply the smallest safe repo-scoped fix, preserve normal vanilla
-  interaction and observation correctness, and show a reliable matched
-  before/after improvement. If blocked, document narrowed root cause and
-  options **without claiming the regression resolved**; get user decision
-  before deprioritizing it. No host driver/sandbox changes without approval.
-- [ ] Update performance results, `docs/NEXT_SESSION.md`, AGENTS/HANDOFF/TODO,
-  tests, commit and push through connected Gentoo Shell `/workspace`.
-- [ ] **ONLY AFTER PRIORITY 0:** implement bounded, **direct memory-derived
-  player-knowable state** as policy input in training AND evaluation; then
-  research actual visible/actionable block thresholds and integrate it into
-  from-scratch learning of real unrestricted log mining and item pickup.
-  Screenshots may supplement state, not substitute for required numeric
-  observations. Compare unchanged RGB historical baselines on held-out seeds.
-  Keep contaminated `v3event01` excluded and all local models preserved.
+- [x] Reproduce a comparable **natural-world no-neural** I/O slowdown
+  (2.33 s for 180 random ticks on natural seed246813579) versus warmed flat
+  world 0.6–0.7 s/300; show model inference is not cause. Isolate rendering
+  impact with paired 600-tick natural/idle test: defaults 4.5349 s, uncapped
+  4.2651 s, renderDistance8 3.3872 s, 6 2.59 s, **4 1.6945 s**.
+  Details `docs/MINECRAFT_RENDER_PERF.md`. Historical 4s episodes may have
+  additional transient conditions; exact old workload not reproduced A/B.
+- [x] Introduce scoped, exact-backup-restored game display profiles and
+  use fast 4-chunk vanilla option for V4 training/frozen evaluation; no
+  permanent changes to the user's normal Minecraft or sandbox.
+- [ ] Reproduce original slow controlled PPO workload under exact old host/
+  game conditions if it returns and profile any residual bottleneck. No
+  evidence yet to claim every historical slowdown was caused by render
+  distance alone.
+- [x] Trace first-100-tick warm-up and cumulative I/O by 100-tick segment.
+  At defaults natural seed246813579, first100 ~15.99ms/tick vs last100
+  ~5.51; with 4-chunk display, first100 ~6.16 vs last100 ~1.79.
+  Actual internal Java render-vs-simulation split remains a future profiler
+  task; don't guess a system driver or GPU fall-back.
+- [x] Demonstrate an evidence-backed reversible repo-scoped game option
+  lever rather than changing drivers/sandbox: 4-chunk render distance,
+  VSync off, FPS260 improves 600 idle ticks **2.68x** on one natural seed;
+  new fast V4 curriculum runs ~1.3–1.5ms/tick after warmup. Caveat: this
+  limits distant visibility; test at 6/8 chunks for future long-horizon tasks.
+- [x] Document, test, commit and push V4/performance work through isolated
+  Gentoo Shell (this task is complete when the accompanying commit is
+  confirmed on `origin/main`).
+- [ ] **NEXT milestone after V4 parity and render performance:** implement
+  empirical player-perceivable target/block/entity sensor, then compare
+  memory+RGB vs legacy RGB and memory-ablated new models under EXACT paired
+  held-out cases. Develop real unrestricted log mining AND inventory pickup,
+  not a scripted speedrun. Keep contaminated `v3event01` excluded.
 
 ## Historical November 2 research snapshot — RGB perception and mining events
 
@@ -96,10 +112,11 @@ contain completed learning milestones.**
 - [x] Load V3 in genuine fixed-spawn noise Minecraft survival world seed
   31415927: 0 natural wood within 240 ticks for random and frozen V3,
   exactly paired spawn, no observed transfer.
-- [ ] Resolve **unexplained MCio game I/O throughput regression**: now ~3.9s
-  per 300 game ticks even with no Torch; GPU model inference only~0.09s.
-  Chat scale / tiny viewport / 6 vs 12 action interval don't explain it.
-  Avoid unsafe host changes and keep frame-size comparisons fair.
+- [x] Narrow historical MCio throughput concern: natural-world chunk/render
+  workload plus cold-start penalties explain measured current slowdown; a
+  reversible 4-chunk profile improves active step I/O 2.68x in controlled
+  natural-world test. Exact original old host/state regression not causally
+  proven. See `docs/MINECRAFT_RENDER_PERF.md`.
 - [ ] **NEXT research gate:** make full-movement and camera action effects
   separable with history/object-centric perception; evaluate online rather
   than trusting offline classifier accuracy. Try replay-aware/sample-efficient

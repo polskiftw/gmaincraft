@@ -6,6 +6,56 @@ memory-derived structured game state**, not a permanently screenshot-only
 agent; read [OBSERVATION_POLICY.md](OBSERVATION_POLICY.md). The memory-state
 work follows **after** the performance regression investigation.
 
+## Current continuation point — V4 policy, measured render-distance lever
+
+**This paragraph supersedes the historical FIRST/SECOND instructions below.**
+The user approved changing any disposable game settings within `/workspace`,
+and requested that performance be watched continuously. The V4
+`player_knowledge_v1`+RGB neural policy now ACTUALLY trains and runs as frozen
+Minecraft gameplay with the same opt-in bounded memory observation:
+`src/gmaincraft/memory_factorized.py`, `experiments/joint_log_memory.py`,
+`experiments/memory_frozen_eval.py`, and `natural_world_benchmark.py --modes
+memory_factorized`. Ten real CUDA episodes and 12 frozen cases passed
+pipeline/sequence tests, but learned **0 wood inventory pickups**. See
+[`MEMORY_POLICY_V4.md`](MEMORY_POLICY_V4.md) for exact checkpoints, seeds,
+commands and limitations. Do not reuse run tags/checkpoints or claim success.
+
+**Very actionable performance measurement:** on real, genuinely natural
+seed246813579 (600 idle Minecraft ticks, same initial pose, no neural net),
+original options took **4.535 s** in MCio game I/O; VSync-off/FPS260 took
+**4.265 s**; adding renderDistance8 took **3.387 s**, 6 took **2.590 s**,
+4 took **1.695 s**. The first 100 game ticks after launch are slower than
+later ones. This strongly narrows the current 4s regression to render/chunk
+load/viewport costs, not model inference. **It does not establish a unique
+internal Java cause for every historical slowdown.** `instance_options.py`
+backs up and restores only the disposable MCio options; no global changes.
+See [`MINECRAFT_RENDER_PERF.md`](MINECRAFT_RENDER_PERF.md). V4 now defaults
+to legal 4-chunk rendering to prioritize learner throughput, but this also
+reduces distant visual perception and MUST match paired scored comparisons.
+
+**Critical operational instruction:** use separate Gamescope sessions for
+V4 training and frozen evaluation. An otherwise valid 10-episode CUDA run
+`memfast_nov03c` wrote a valid checkpoint, then Gamescope aborted during the
+SECOND Minecraft launch (`vulkan_remake_swapchain()` assertion) and left a
+Python child; SIGTERM to **that owned child only** restored the temporary
+options backup. Running `memory_frozen_eval.py` separately passed 12 cases;
+wrapper exit 139 AFTER child success remains expected. Avoid repeating
+failed tags. Check local ignored `logs/` and checkpoint before cleanup.
+
+**NEXT:** implement and TEST read-only MCio/Fabric **targeted-visible block
+information** and other player-knowable status unavailable in current
+ObservationPacket; start with actual vanilla hit raycast as an unambiguous
+baseline, then empirically calibrate FOV/range/occlusion/transparency/
+projected size for a bounded visible object list before any general model
+consumes it. MCio Java source at tag 1.6.1+1.21.3 has been inspected in
+ignored `mcio-data/mcio-upstream-inspect`. Keep vanilla inputs/scored actions,
+no X-ray/hidden seed oracle, parity between train/eval. Compare numeric+
+RGB, numeric ablation, and legacy RGB on identical held-out near/broad and
+new natural-world seeds; continue from-scratch full first-log acquisition
+ONLY when the observable world/object pipeline is real. Run pure tests,
+short live game probes, update docs/TODO/results, commit and push Git. Do not
+blindly scale the currently zero-success PPO.
+
 ## November 2 update: current runtime recovered, cause not yet proven
 
 Fresh independent Minecraft launches using `experiments/mcio_throughput_probe.py`
@@ -31,7 +81,7 @@ integrated **identically** into train and held-out inference, with explicit
 schema versioning, and visible block/entity eligibility research is still
 pending. Do not claim a learned general log-finding agent yet.
 
-## FIRST: diagnose and restore MCio simulation throughput
+## HISTORICAL plan: earlier MCio regression diagnosis (now characterized)
 
 **Do this before further reinforcement-learning architecture work, extended GPU training, or crafting/speedrun subtasks.** The present bottleneck is a ~5x-6x regression in real Minecraft game-step throughput, making research expensive. It is **not yet explained or fixed**.
 
@@ -58,7 +108,7 @@ Historical and current runs are **not necessarily a strictly matched A/B compari
 
 **Performance exit criterion:** reproducibly demonstrate a material throughput improvement on matched real-game measurements (and preserve correctness), ideally approaching the previous ~300 ticks / 0.6-0.8 s range. That historical number is a goal, **not a guaranteed entitlement**. If it is not technically attainable, provide an evidence-based explanation and explicitly ask the user whether to proceed with slower training; do not quietly switch priorities after a single inconclusive run.
 
-## SECOND: resume the updated course correction, not the obsolete V1 path
+## HISTORICAL SECOND: course correction principles still apply
 
 After the throughput issue has been diagnosed and fixed or clearly quantified with the user deciding to proceed:
 
@@ -88,9 +138,21 @@ After the throughput issue has been diagnosed and fixed or clearly quantified wi
 
 ## Fresh chat starter (copy-paste into a new conversation)
 
-> Please connect to my **Gentoo Shell** and continue `polskiftw/gmaincraft` in `/workspace` directly. Read `AGENTS.md`, `docs/NEXT_SESSION.md`, `docs/OBSERVATION_POLICY.md`, `TODO.md`, `docs/HANDOFF.md`, and `docs/VISUAL_SELF_SUPERVISION.md`. **First priority: investigate and fix/quantify the MCio game-step throughput regression (~300 ticks / 0.6-0.8 s before versus ~3.9-4.0 s now), using a controlled no-Torch benchmark. Do not start more agent training until this is addressed.** Once fixed or explicitly triaged, implement **direct, bounded Minecraft
-memory-derived observations** for player stats, inventory and eligible visible
-blocks in both training and gameplay, investigate the visibility thresholds,
-then continue learned unrestricted first-log acquisition. Preserve all local worlds/weights, use direct Git in the shell, update docs/TODO/AGENTS, run tests, and commit/push validated changes. Please execute rather than merely explain a plan.
+> Connect to Gentoo Shell `/workspace` and continue `polskiftw/gmaincraft`.
+> Read `AGENTS.md`, `TODO.md`, `docs/NEXT_SESSION.md`,
+> `docs/OBSERVATION_POLICY.md`, `docs/MEMORY_POLICY_V4.md`,
+> `docs/MINECRAFT_RENDER_PERF.md`, and `docs/HANDOFF.md`. V4 memory+RGB
+> from-scratch training/frozen natural-world evaluation now works but all
+> completed V4 learning tests have 0 log pickups; do not blindly retrain.
+> Natural-world MCio throughput improves ~2.68x with the temporary 4-chunk
+> display profile; keep watching game I/O vs warmup. Preserve existing local
+> checkpoints/worlds and restore any pending options backup. Next implement
+> bounded, read-only **player-visible targeted-block**/player-status memory
+> instrumentation within MCio/Fabric and experimentally derive a reliable
+> visible/actionable world-object eligibility filter without hidden map
+> cheating. Run small actual Minecraft tests and controls, update docs,
+> commit/push source changes via Git in the isolated shell. Never use an
+> already-used run tag or mix training and frozen evaluation in the same
+> Gamescope session if possible.
 
 **Bridge availability is per conversation:** a new chat does not automatically inherit tool authorization or the old chat's detailed working context. The repository records the project decisions; give the new chat the starter text and enable Gentoo Shell when needed.

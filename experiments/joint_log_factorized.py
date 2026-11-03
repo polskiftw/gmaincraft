@@ -29,6 +29,8 @@ from gmaincraft.vision_ppo import PixelHistory
 from gmaincraft.rollout_store import save_rollout_batch
 from gmaincraft.inverse_dynamics import load_encoder_checkpoint
 from gmaincraft.reward_events import mined_event_reward
+from gmaincraft.memory_factorized import (MemoryFactorizedPPOTrainer,
+    MemoryFactorTransition, encode_player_knowledge)
 from gmaincraft.vision_factorized import (FactorizedPPOTrainer,FactorTransition,
                                            ACTION_TICKS,SCHEMA,action_schema,action_for_factors)
 from joint_log_ppo import launch_world
@@ -76,8 +78,11 @@ def run_episode(arena,agent,case,*,max_ticks,training,active_heads=(True,True,Tr
                 decision_ticks=ACTION_TICKS,mine_event_bonus=0.):
     ob=arena.reset(case)
     bridge=MCioAgentBridge(arena.client.ctrl,ob)
+    memory_mode=isinstance(agent,MemoryFactorizedPPOTrainer)
     history=PixelHistory()
-    image=history.reset(bridge.view())
+    initial=bridge.multimodal_view() if memory_mode else bridge.view()
+    image=history.reset(initial)
+    features=encode_player_knowledge(initial.player) if memory_mode else None
     event_tracker=arena.mined_events
     event_tracker.begin_episode(bridge.stat_total('minecraft:mined','minecraft:oak_log'))
     total_event_mined=0
@@ -96,11 +101,19 @@ def run_episode(arena,agent,case,*,max_ticks,training,active_heads=(True,True,Tr
     success=False;dead=False
     while ticks<max_ticks:
         clock=time.perf_counter()
-        factors,logp,value=agent.act(image,greedy=not training,active_heads=active_heads)
+        if memory_mode:
+            factors,logp,value=agent.act(image,features,greedy=not training,
+                                         active_heads=active_heads)
+        else:
+            factors,logp,value=agent.act(image,greedy=not training,active_heads=active_heads)
         time_inference+=time.perf_counter()-clock
         action=action_for_factors(factors,max_ticks-ticks,decision_ticks=decision_ticks)
         clock=time.perf_counter()
         next_view=bridge.apply(action)
+        if memory_mode:
+            # The bridge's same read-only opt-in view is used during real-game
+            # training and frozen scored evaluation (including natural seeds).
+            next_view=bridge.multimodal_view()
         time_game+=time.perf_counter()-clock
         ticks+=action.ticks;decisions+=1
         after=arena.geometry(bridge.packet)
@@ -127,8 +140,12 @@ def run_episode(arena,agent,case,*,max_ticks,training,active_heads=(True,True,Tr
                 reward+=mined_event_reward(0,new_blocks,reward_per_block=mine_event_bonus)
         done=success or dead or ticks>=max_ticks
         if training:
-            trajectory.append(FactorTransition(image.copy(),factors,float(reward),
-                                               value,logp,action.ticks,done,active_heads))
+            if memory_mode:
+                trajectory.append(MemoryFactorTransition(image.copy(),features.copy(),
+                    factors,float(reward),value,logp,action.ticks,done,active_heads))
+            else:
+                trajectory.append(FactorTransition(image.copy(),factors,float(reward),
+                                                   value,logp,action.ticks,done,active_heads))
         total+=reward
         counter['attack_ticks']+=action.ticks*int(factors[2]==1)
         counter['move_ticks']+=action.ticks*int(factors[0]!=0)
@@ -143,6 +160,8 @@ def run_episode(arena,agent,case,*,max_ticks,training,active_heads=(True,True,Tr
         before=after
         clock=time.perf_counter()
         image=history.append(next_view)
+        if memory_mode:
+            features=encode_player_knowledge(next_view.player)
         time_resize+=time.perf_counter()-clock
         if done:break
     outcome='success' if success else 'dead' if dead else 'timeout'
@@ -163,6 +182,8 @@ def run_episode(arena,agent,case,*,max_ticks,training,active_heads=(True,True,Tr
                 policy_inference_wall_s=round(time_inference,4),
                 game_io_wall_s=round(time_game,4),
                 rgb_processing_wall_s=round(time_resize,4))
+    if memory_mode:
+        result['observation_schema']=agent.observation_schema
     return result,trajectory
 
 

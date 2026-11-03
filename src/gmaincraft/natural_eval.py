@@ -13,7 +13,7 @@ from .agent_interface import AgentAction
 from .log_vision import VisualAimPolicy, visual_features
 from .log_pickup import PickupPolicy, PICKUP_ACTIONS, pickup_features
 
-MODES = ('idle', 'random', 'forward_attack', 'legacy_probe', 'joint_ppo', 'joint_factorized')
+MODES = ('idle', 'random', 'forward_attack', 'legacy_probe', 'joint_ppo', 'joint_factorized', 'memory_factorized')
 
 
 @dataclass(frozen=True)
@@ -153,8 +153,44 @@ class FactorizedPPOAgent:
         return self.action_for_factors(choices,remaining,decision_ticks=self.decision_ticks)
 
 
+class MemoryFactorizedAgent:
+    """Frozen V4 from-scratch actor with exactly the TRAINED memory schema.
+
+    No trainer target geometry, administrative resets or hidden world fields.
+    The same view and feature pipeline powers both train and gameplay.
+    """
+    def __init__(self, checkpoint, device='auto'):
+        import torch
+        from .memory_factorized import (MemoryFactorizedPPOTrainer, SCHEMA,
+                                        FEATURE_NAMES, encode_player_knowledge)
+        from .vision_factorized import action_for_factors
+        from .vision_ppo import PixelHistory
+        cp=torch.load(checkpoint,map_location='cpu',weights_only=True)
+        metadata=cp.get('metadata',{})
+        if metadata.get('schema')!=SCHEMA or tuple(metadata.get('feature_names',()))!=FEATURE_NAMES:
+            raise ValueError('Incompatible memory observation or network checkpoint schema')
+        self.trainer=MemoryFactorizedPPOTrainer(device=device,seed=0)
+        self.trainer.load_weights(checkpoint)
+        self.history=PixelHistory()
+        self.started=False
+        self.encode_player_knowledge=encode_player_knowledge
+        self.action_for_factors=action_for_factors
+        self.decision_ticks=6
+
+    def act(self, view, remaining):
+        from .agent_interface import MultimodalView
+        if not isinstance(view,MultimodalView):
+            raise ValueError('Memory policy requires bounded combined observation')
+        frame=self.history.append(view) if self.started else self.history.reset(view)
+        self.started=True
+        values=self.encode_player_knowledge(view.player)
+        choices,_,_=self.trainer.act(frame,values,greedy=True)
+        return self.action_for_factors(choices,remaining,decision_ticks=self.decision_ticks)
+
+
 def make_agent(mode, action_seed, *, aim_weights=None, pickup_weights=None,
-               joint_checkpoint=None, factorized_checkpoint=None, device='auto'):
+               joint_checkpoint=None, factorized_checkpoint=None,
+               memory_checkpoint=None, device='auto'):
     if mode == 'idle':
         return IdleAgent()
     if mode == 'forward_attack':
@@ -169,6 +205,10 @@ def make_agent(mode, action_seed, *, aim_weights=None, pickup_weights=None,
         if joint_checkpoint is None:
             raise ValueError('Joint PPO mode requires a trained local checkpoint')
         return JointPPOAgent(joint_checkpoint, device=device)
+    if mode == 'memory_factorized':
+        if memory_checkpoint is None:
+            raise ValueError('Memory factorized mode requires a trained local checkpoint')
+        return MemoryFactorizedAgent(memory_checkpoint,device=device)
     if mode == 'joint_factorized':
         if factorized_checkpoint is None:
             raise ValueError('Factorized mode requires a frozen checkpoint')
