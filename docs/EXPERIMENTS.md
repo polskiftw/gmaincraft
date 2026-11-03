@@ -1,6 +1,19 @@
 # Experiment record
 
-## New real mined-drop inventory audit and on-demand crack feedback
+## LATEST: real unscripted survival online learning (Nov 3, 2026)
+
+Full verifiable evidence + commands: [`NATURAL_SURVIVAL_ONLINE_TRAINING.md`](NATURAL_SURVIVAL_ONLINE_TRAINING.md). From scratch neural PPO with only read-only Minecraft player/crosshair/memory first-hit camera objects now chooses six-tick MOVE+LOOK+ATTACK jointly and trains in independently seeded normal noise survival worlds with no placed tree, admin action, scripted phase switch or pretraining. Multiple real MCio and CUDA runs verified world rotation, checkpointed optimizer, per-world explored map and cumulative stats, append-only heartbeat, clean stop marker, resumed model/world, legitimate independently seeded frozen evaluation. User's new direction supersedes excessive staged case research.
+
+- `natpilot_1103a`: real two-world 20-decision launch, saved 4 updates; after fixing CUDA ByteTensor RNG state load, resumed to40 decisions/8 updates without resetting evolving worlds.
+- `freshworld1103`: actual Minecraft vanilla noise server produced independent source seed -382102578238778906 and2549380921493329309, checked NBT and spawn scatter.
+- `natreal_1103a` `explore_v1`: 480 real decisions,12 updates,114 first-visit cells,5727 new grouped first-hit observations,40 nonwood blocks mined,0 logs.
+- `natwood_1103a` `wood_discovery_v2`: 720 decisions,12 updates,136 cells,7499 observed first-hit block surfaces,366 newly seen true camera-first-hit wood block IDs,21 ordinary nonwood mined,0 mined/collected logs. The run RESUMED seamlessly 360->720 on same three evolving natural worlds; no invalid crack readings in continuation.
+- Held-out `explore_v1` frozen120 decisions on two unseen natural seeds: greedy policy11 cells/2 mined blocks vs uniform-random20 cells/1 mined; no wood.
+- V2 heldout two OTHER never-trained natural seeds (2549380921493329309 and246813579), 120 total decisions each: trained **greedy** 2 cells/875 first-hit surfaces/42 wood surfaces/0 blocks; trained **sampled** 24 cells/725 surfaces/44 wood surfaces/5 nonwood blocks; uniform random 28 cells/1575 surfaces/59 wood surfaces/15 nonwood blocks. All zero actual wood inventory; random is NOT outperformed, greedy policy collapsed. This is a functioning long-run training pipeline, NOT competent survival.
+- Exact `tools/run-long-natural.sh start wrappertest_1103a freshworld1103 10` journal-verified exit0, `resume ... 30` correctly continued same checkpoint to30 decisions/2 updates. `stoptest_1103a` stop-marker created a clean pause and resumable checkpoint, then removed marker. No training daemon installed, game options restored; NVIDIA naturally ~2–3ms/game-tick warm normal scenes. Nested Gamescope exits139 after valid child report; launcher checks actual journal to prevent false success.
+- Raw Minecraft once reported `actively_destroying=true` with `crack_stage=-1` (unknown animation, NOT an invalid target), now represented truthfully and unit tested. First-hit 13x9 object calibration still provisional; visible dropped item entities and hard-crash consistency remain next work.
+
+## Prior: real mined-drop inventory audit and on-demand crack feedback
 
 See [`COMPOSED_MINE_PICKUP_AUDIT.md`](COMPOSED_MINE_PICKUP_AUDIT.md).
 The previously scratch-trained memory crack motor was composed with an

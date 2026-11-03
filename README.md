@@ -1,5 +1,7 @@
 # gmaincraft
 
+**Primary development track: [real natural survival online learning](docs/NATURAL_SURVIVAL_ONLINE_TRAINING.md).** The project now has a working, resumable **from-scratch memory-first Minecraft PPO trainer**, running in actual vanilla-noise survival worlds. Movement, camera and attack are all learned actions; no player teleport, preaimed log, world cheat command or scripted mining/pickup handoff occurs during training. The run includes world rotation, local model/optimizer/exploration checkpoints, clean stop/resume and independent frozen/random controls. The first v2 pilot completed 720 normal-world decisions across three seeds and encountered 366 genuinely first-hit visible wood surfaces, but **has not yet mined or collected natural wood**. A held-out random policy still beats the immature learner on short exploration benchmarks; don't conflate a successful training pipeline with a successful speedrunner. To actually train unattended, see the linked guide for `tools/run-long-natural.sh` start/resume/stop commands.
+
 **Newest verified resource-acquisition milestone:** [Frozen learned mining + pickup on genuine Minecraft drops](docs/COMPOSED_MINE_PICKUP_AUDIT.md).
 Two scratch-trained policies have been composed without privileged actions
 while playing: a Minecraft-client mining-progress motor mines an oak log,

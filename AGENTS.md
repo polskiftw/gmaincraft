@@ -1,6 +1,16 @@
 # AGENTS.md — project instructions for coding assistants
 
-## NEWEST: real mined log to inventory, frozen skill composition
+## ACTIVE PRIORITY: unattended natural survival learning, NOT more fixed fixtures
+
+**Start with [`docs/NATURAL_SURVIVAL_ONLINE_TRAINING.md`](docs/NATURAL_SURVIVAL_ONLINE_TRAINING.md), then read `docs/OBSERVATION_POLICY.md`, `TODO.md`, `docs/NEXT_SESSION.md` and `docs/HANDOFF.md`.** The user wants a FROM-SCRATCH Minecraft AI that can spend extended periods learning in normal noise-generated survival worlds; the repeatedly controller-placed and pre-aimed oak arenas have diminishing returns and should be relegated to quick **diagnostic** tests.
+
+We now have a REAL, tested memory-first, six-tick from-scratch actor choosing movement, camera and attack simultaneously. Its opt-in read-only observation is own player state, actual crosshair/crack stage and up to 24 bounded first-hit camera block surfaces, with complete registry ID bytes and short-term memory. No admin input or scripted break-to-pickup phase. Training sources are verified vanilla Minecraft 1.21.3 noise survival worlds; individually evolving saves are rotated and persisted; optimizer, RNG, exploration, event history and model are checkpointed for resuming. A real `tools/run-long-natural.sh start|resume TAG COHORT TOTAL_DECISIONS` command exists, and a `.stop` file lets it exit cleanly without installing a daemon. A normal long-run setup is in the dedicated new document.
+
+Verified `natreal_1103a` `explore_v1`: 480 actual decisions, 12 neural updates, 114 new 2x2 cells, 5727 observed first-hit surfaces, 40 ordinary mined blocks, **zero mined/picked wood**. `natwood_1103a` `wood_discovery_v2`: 720 real decisions, 12 updates, 136 new cells, 7499 first-hit surfaces, 366 newly visible wood surfaces, 21 ordinary nonwood blocks broken, **zero mined/picked wood**. The second run really resumed from 360 decisions without overwriting old game state. Two fresh Minecraft generated seeds `freshworld1103` and held-out natural-world tests are verified. On two unseen seeds, `wood_discovery_v2` greedy policy explored only 2 cells and mined 0, sampled frozen policy 24 cells and 5 ordinary blocks, **uniform random** 28 cells and 15 ordinary blocks, none got a log. Do not call this trained agent superior or an autonomous wood collector yet. This is a working scalable natural learning *platform* with real honest negative baselines. Report actual inventory-based success only.
+
+Keep prior controlled mining/pickup checkpoints, old scripted worlds, original mod backups and source history; they remain valuable but historical. Do not require pure RGB: skilled-player-knowable read-only game memory is explicitly permitted. Keep sensor input train/eval parity and versioned observations/reward (older `explore_v1`, new `wood_discovery_v2`). Next prioritize real learning curves, early exploration-collapse fixes, interruption safety, missing player-visible dropped-item state, and eventually full survival progression. Main Git working directory is `/workspace`; update source, TODO and handoff, run tests+real Minecraft checks and commit/push changed code. **Never edit the host outside the isolated workspace.**
+
+## Prior: real mined log to inventory, frozen skill composition
 
 Read [`docs/COMPOSED_MINE_PICKUP_AUDIT.md`](docs/COMPOSED_MINE_PICKUP_AUDIT.md)
 FIRST, then `docs/MINING_FEEDBACK_AND_ATTACK_LEARNING.md`,

@@ -1,6 +1,21 @@
 # TODO — gmaincraft
 
-## NEWEST: real mined-drop inventory acquisition + memory observation work
+## ACTIVE: natural survival AI training, scalable continuous learning
+
+- [x] User direction change: **normal unseen survival worlds first**, fixed oak training and manually scripted pickup only for brief diagnostics. Record honest natural inventory success instead of optimizing scripted-fixture accuracy.
+- [x] Implement a new FROM-SCRATCH memory-first (no pretrained weights/RGB dependency) `NaturalPPO`, 50,913 params, three heads simultaneously selecting movement, look and attack every six Minecraft ticks; typed player-own+crosshair+current crack+top24 bounded 13x9 camera first-hit block surfaces. Schema `natural_memory_online_v1_first_hit_objects_ppo6`; old checkpoint families unaffected.
+- [x] Natural survival world seed generator `tools/prepare-natural-training-worlds.py` + verified noise terrain, and per-world continuous evolving MCio saves. `--source-cohort` or explicit `--sources` training; no tree fixture, privileged world location, scripted phase switch, spawn item or teleport during play.
+- [x] Long-run launcher `tools/run-long-natural.sh start|resume TAG COHORT TOTAL_DECISIONS`: actual start/resume run passed, per-world PPO updates, reproducible model+optimizer+RNG+visited surfaces+event counters checkpoint after clean world save, appended JSONL, rolling speed telemetry, process lock, `.stop` safe pause verified, no service/daemon installed. Nested Gamescope may exit139 **after** valid Python journal; launcher validates results.
+- [x] Real natural `explore_v1` run/resume: 480 total decisions, 12 updates, 114 new cells, 5727 observed surfaces, 40 actually mined blocks, **no wood**. Existing checkpoint kept local.
+- [x] New versioned `wood_discovery_v2` reward for first-time, physically camera-visible wood ID (no hidden map, no goal coordinates), plus cells, surfaces and real mined/picked rewards. From scratch across three natural worlds: **720 decisions/12 updates**, 136 cells, 7499 surfaces, **366 newly seen wood surfaces**, 21 nonwood blocks broken, **0 actual wood**. Resumed 360 -> 720 on same three worlds.
+- [x] Frozen evaluation on completely held-out natural seeds: first `explore_v1` 120-decision greedy vs random gave cells11 vs20, mined blocks2 vs1, wood0 each. `wood_discovery_v2` 120-decision greedy vs sampled vs uniform random: **cells 2/24/28**, actual blocks **0/5/15**, wood0 in all. NOT proven better than random; greedy policy action collapse is actionable next weakness.
+- [x] Live Minecraft showed valid transient `actively_destroying=true, crack_stage=-1`; revised Python adapter to represent **unknown** crack stage, not fabricated 0 or a hard crash; added pure test; subsequent actual 360+360 natural wood run no invalid readings.
+- [ ] **NEXT:** improve the natural-world training learning curve and held-out generalization, especially degenerate greedy/stationary action selection, without returning to staged tree curriculum. Compare truly frozen sampled/greedy/untrained/random across more seed/time budgets, track actual wood pickup and performance/episode survival.
+- [ ] Harden recovery from abrupt SIGKILL, world auto-save vs model checkpoint drift (clean `.stop`/world-save path already verified). Never misrepresent orphaned post-checkpoint journal events as committed experience.
+- [ ] Add bounded player-perceivable *dropped-item entity* memory with actual camera/FOV/occlusion/size checks, and train one autonomous attack/collect policy; add missing interaction, crafting, tools and dimension progression in new versioned policy schemas.
+- [ ] Drive real multiple-seed, sustained natural Minecraft first-log inventory success, then resource/crafting progression toward independent Any% completion; all scripted stages remain diagnostics only.
+
+## Prior: real mined-drop inventory acquisition + memory observation work
 
 - [x] Add opt-in `MiningFeedbackRequest(fresh=True)` on same synchronous
   action packet, gated by `GMAINCRAFT_MINING_FEEDBACK_ON_DEMAND_V1=1`;

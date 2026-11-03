@@ -49,7 +49,11 @@ class MiningFeedbackV1:
                                    option.crack_stage, option.crosshair_on_block)
         if type(active) is not bool or type(targeted) is not bool or type(stage) is not int:
             raise ValueError('Invalid mining feedback types')
-        if active and not 0 <= stage <= 10:
+        # Actual Minecraft 1.21.3 sometimes reports isDestroying()==true
+        # while getDestroyStage()==-1, before/after a rendered crack is
+        # available. -1 is UNKNOWN (not completion, not zero progress).
+        # Preserve both raw client fields without fabricating an animation.
+        if active and not -1 <= stage <= 10:
             raise ValueError(f'Active mining crack stage out of range: {stage}; crosshair={targeted}')
         if not active and stage != -1:
             raise ValueError('Inactive mining must report unknown crack stage')
@@ -62,4 +66,4 @@ class MiningFeedbackV1:
         The actual Java stage is integer stepped. 1.0 is a visible crack
         stage, NOT a claim that the block has been successfully mined.
         """
-        return self.crack_stage / 10.0 if self.actively_destroying else -1.0
+        return self.crack_stage / 10.0 if self.crack_stage >= 0 else -1.0

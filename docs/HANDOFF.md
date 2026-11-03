@@ -1,6 +1,12 @@
 # Handoff for a brand-new ChatGPT conversation
 
-## NEWEST: frozen learned mining AND pickup of real physical drops
+## LATEST verified: ready-to-run natural survival training
+
+Start with [`NATURAL_SURVIVAL_ONLINE_TRAINING.md`](NATURAL_SURVIVAL_ONLINE_TRAINING.md), not preaimed experiment notebooks. User now prioritizes **leaving a from-scratch agent training in real survival worlds** instead of more scripted controlled scenes. The new **memory-only 50,913-param** PyTorch actor controls normal movement, camera and attack simultaneously at six-game-tick cadence, learns from own-player state, crosshair/visible crack stage and 24 bounded first-hit camera block surfaces with registry-ID byte embeddings; no whole-world X-ray, admin commands, fixed tree, directed phase handoff or pretrained model. Each natural-world save evolves uninterrupted across training segments. Independent source seed cohort generator, verified live train/resume/clean-stop helper, periodic after-world-save checkpoint of network+optimizer+RNG+per-world exploration/event memory, append-only journal, frozen evaluation and random/untrained controls all exist. No daemon was started. User commands and details in new doc.
+
+Actual real Minecraft tests: `natpilot_1103a` started20 and resumed to40 successfully after CUDA RNG restore fix; `natreal_1103a` 480 decisions/12 updates,114 new map cells,5727 new first-hit surfaces,40 ordinary blocks, **0 logs**; `natwood_1103a` from scratch to720 decisions/12 updates across 3 natural seeds,136 cells,7499 surfaces,366 genuine previously unseen wood surfaces,21 nonwood mined, **0 logs**. Fresh source cohort `freshworld1103` contains 2 new real noise seeds; all local copies and ignored checkpoints preserved. Held-out v2 frozen on unseen seeds: greedy2 cells/0 mined, sampled24 cells/5 mined, uniform random28 cells/15 mined, all 0 wood. The random baseline currently outperforms learned exploratory and mining behavior; do NOT overclaim. Minecraft sometimes gives `isDestroying=true` crack=-1, now explicitly typed as *unknown progress*; avoid fabricated stages. More testing and natural-world RL improvement, hard-crash alignment and player-visible entity sensor are next. Old staged composed skill 11/12 is historical and not general natural capability.
+
+## Prior: frozen learned mining AND pickup of real physical drops
 
 **START with [`COMPOSED_MINE_PICKUP_AUDIT.md`](COMPOSED_MINE_PICKUP_AUDIT.md).**
 Two independently trained, frozen Minecraft policies have for the first

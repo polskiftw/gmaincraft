@@ -32,6 +32,15 @@ class MiningFeedbackTests(unittest.TestCase):
         self.assertIsInstance(copy.options[0],MiningFeedbackRequest)
         self.assertTrue(copy.options[0].fresh)
 
+    def test_live_transient_active_but_unavailable_crack_stage(self):
+        # This occurred twice in 240 actual unstructured survival decisions.
+        # Distinguish active input from progress; -1 means UNKNOWN stage.
+        active_unknown=MiningFeedbackV1.from_packet(self.packet(
+            actively_destroying=True,crack_stage=-1,crosshair_on_block=True))
+        self.assertTrue(active_unknown.actively_destroying)
+        self.assertEqual(active_unknown.crack_stage,-1)
+        self.assertEqual(active_unknown.normalized_crack,-1.)
+
     def test_idle_and_no_packet(self):
         idle=MiningFeedbackV1.from_packet(self.packet(
             actively_destroying=False,crack_stage=-1,crosshair_on_block=False))

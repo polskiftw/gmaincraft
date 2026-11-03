@@ -1,6 +1,12 @@
 # What the Minecraft speedrunner is allowed to know
 
-## Latest actual inventory evidence and remaining observation boundary
+## Active unscripted memory-only Minecraft learner
+
+The actual user-prioritized normal survival trainer is documented at [`NATURAL_SURVIVAL_ONLINE_TRAINING.md`](NATURAL_SURVIVAL_ONLINE_TRAINING.md). Its **same train and frozen evaluation** typed observation combines: own Minecraft XYZ, own status and inventory; real vanilla crosshair targeted block+distance; Minecraft client `isDestroying` and crack stage (including transient stage `-1` meaning no animation available); a **bounded top24 first-collision camera 13x9 sample** with block ID, relative position, projected ray coverage, lighting, face/screen information. No world seed, unseen map, hidden items/chunks, scripted location or privileged trainer geometry can reach the actor. The actor selects normal movement/look/attack every six game ticks with *no* scripted phase handoff. It learns from fresh on-demand samples, not bulk memory scans and not a required RGB decoder.
+
+**Limit:** first-hit camera samples are geometric and not yet a perfect human-rendered visibility test; a small projected object can be invisible to a human; glass/leaves can conceal samples and grid resolution misses visible details. The 24 object cap is a bounded sample budget, not a new arbitrary visibility radius. Do not conflate actual observed wood surfaces with mined/collected wood. Natural training/reward versions `explore_v1` and `wood_discovery_v2` are distinct, retain checkpoint schemas and the full source/eval parity; any truly improved perception or item entity state must receive a new versioned schema. No trained policy has yet collected a log in an unscripted natural world.
+
+## Prior actual inventory evidence and remaining observation boundary
 
 The audited composition in [`COMPOSED_MINE_PICKUP_AUDIT.md`](COMPOSED_MINE_PICKUP_AUDIT.md)
 has a scratch-trained six-field **own-memory** mining controller followed
