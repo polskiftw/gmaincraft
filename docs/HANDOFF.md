@@ -1,5 +1,27 @@
 # Handoff for a brand-new ChatGPT conversation
 
+## November 3 update: speedrun01 completed, mining-action collapse measured
+
+Read [`docs/SPEEDRUN01_POLICY_COLLAPSE_2026_11_03.md`](docs/SPEEDRUN01_POLICY_COLLAPSE_2026_11_03.md)
+for the committed 24,000-decision/10-seed result, the matched frozen
+policy-vs-random Minecraft baseline and the newly versioned `wood_progress_v3`
+training profile. `speedrun01` is preserved as its own original v2 run: 106
+ordinary blocks mined, 759 visible wood surfaces, **0 wood mined/picked**.
+Frozen policy (two heldout Minecraft seeds, 480 decisions) chose jump-forward
+452 times and attack only 12, mined 0 blocks; matched random mined 2.
+Added non-policy per-head/crosshair/mining action telemetry, a conservative
+one-time player-visible wood crack-stage reward, and lower learning rate plus
+higher entropy regularization ONLY for new v3 runs. An independent 96-decision
+actual vanilla Minecraft v3 smoke saved a valid CUDA checkpoint. **129 pure
+tests pass.** Next user run is a NEW from-scratch experiment:
+`tools/run-fresh-treadmill.sh start woodv3_01 24000 2400 wood_progress_v3`.
+Do NOT silently resume `speedrun01` with a changed objective; use original
+v2 settings to resume v2, or begin the separately named v3 comparison.
+After v3 training, compare on matched unseen seeds and inspect logged
+attacks-on-wood, sustained camera-still mining, real mined wood and inventory.
+No evidence of a general self-directed first log yet.
+
+
 New optional scoped NVIDIA mitigation: fresh treadmill now launches
 Minecraft JVM with `__GL_THREADED_OPTIMIZATIONS=0` by default, reversible
 via `--nvidia-gl-threading default` for direct Python evaluation. Verified

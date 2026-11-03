@@ -41,6 +41,16 @@ class StreamRecoveryTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 parse_args(['--run-tag','../x'])
 
+    def test_versioned_v3_reward_does_not_mutate_old_resume_metadata(self):
+        old=parse_args(['--run-tag','oldv2','--decisions','96'])
+        new=parse_args(['--run-tag','newv3','--decisions','96',
+                        '--reward-profile','wood_progress_v3'])
+        self.assertEqual(metadata(old)['reward_profile'],'wood_discovery_v2')
+        self.assertEqual(metadata(new)['reward_profile'],'wood_progress_v3')
+        self.assertNotEqual(metadata(old),metadata(new))
+        self.assertEqual(NaturalPPO(device='cpu').entropy_coef,.014)
+        self.assertEqual(NaturalPPO(device='cpu',entropy_coef=.04).entropy_coef,.04)
+
     def test_checkpoint_tied_to_exact_seed_stream_and_lossless_cursor(self):
         args=parse_args(['--run-tag','safe1','--episode-decisions','12',
                          '--update-every','8','--seed-root','2121'])

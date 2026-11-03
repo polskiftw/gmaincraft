@@ -1,5 +1,18 @@
 # Fresh-seed Minecraft survival training treadmill (current primary runner)
 
+**Latest checked November 3:** The original `speedrun01` completed 24,000
+six-tick decisions / ten seeds and exhibited action collapse: see
+[`SPEEDRUN01_POLICY_COLLAPSE_2026_11_03.md`](SPEEDRUN01_POLICY_COLLAPSE_2026_11_03.md).
+The optional `wood_progress_v3` uses one-time visible wood crack advancement,
+plus existing v2 reward, learning rate 0.00015 and entropy coefficient 0.04.
+It needs a **new** training run tag; original v2 remains unchanged. Example:
+`tools/run-fresh-treadmill.sh start woodv3_01 24000 2400 wood_progress_v3`.
+The training wrapper's fifth argument selects the reward version, and the
+frozen evaluation wrapper's sixth argument does likewise. An actual
+96-decision Minecraft v3 smoke and 130 pure tests passed; **no natural
+wood pickup yet**.
+
+
 **Nov 3, 2026. Tested in actual Minecraft Java 1.21.3 / MCio / Gentoo NVIDIA.**
 This supersedes the previous *eight fixed worlds rotated forever* long-run
 launcher. The user wants a FROM-SCRATCH neural speedrunning agent that

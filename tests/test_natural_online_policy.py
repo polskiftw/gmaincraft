@@ -9,6 +9,7 @@ from gmaincraft.player_knowledge import PlayerKnowledgeV1,OwnedItem
 from gmaincraft.mcio_status import PlayerStatusV1,CrosshairBlock
 from gmaincraft.mcio_surface_objects import SurfaceObjectsV1,ProjectedBlockV1
 from gmaincraft.mcio_mining_feedback import MiningFeedbackV1
+from gmaincraft.natural_diagnostics import NaturalActionAudit,WoodCrackProgress
 
 
 def sample(wood='minecraft:oak_log'):
@@ -40,6 +41,40 @@ class NaturalPolicyTests(unittest.TestCase):
         self.assertNotIn('target_location',','.join(SELF_FEATURES))
         self.assertTrue(wood_id('minecraft:cherry_log'))
         self.assertFalse(wood_id('minecraft:stone'))
+
+    def test_action_diagnostics_are_observational_only(self):
+        audit=NaturalActionAudit()
+        state=sample()
+        hit=CrosshairBlock('minecraft:oak_log',(6,69,-1),'north',2.4)
+        audit.observe((1,0,1),state,hit)
+        audit.observe((2,0,1),state,hit)
+        audit.observe((3,2,0),state,None)
+        d=audit.summary()
+        self.assertEqual(d['action_counts'],[[0,1,1,1,0,0],[2,0,1,0,0,0,0],[1,2]])
+        self.assertEqual(d['attack_on_wood_decisions'],2)
+        self.assertEqual(d['max_attack_still_streak'],2)
+        self.assertEqual(d['crosshair_block_decisions'],2)
+        with self.assertRaises(ValueError):audit.observe((1,2,7),state,None)
+
+    def test_crack_progress_only_increments_once_on_same_observed_wood(self):
+        from dataclasses import replace
+        audit=WoodCrackProgress(max_blocks=1)
+        obs=sample()
+        oak=CrosshairBlock('minecraft:oak_log',(6,69,-1),'north',2.4)
+        stone=CrosshairBlock('minecraft:stone',(6,69,-1),'north',2.4)
+        def stage(t):
+            own=obs.own.copy();own[22]=t/10
+            return replace(obs,own=own)
+        self.assertEqual(audit.observe(stage(1),oak),0.)  # first sample cannot establish progress
+        self.assertAlmostEqual(audit.observe(stage(3),oak),.60)
+        self.assertEqual(audit.observe(stage(2),oak),0.)
+        self.assertAlmostEqual(audit.observe(stage(4),oak),.30)
+        self.assertEqual(audit.observe(stage(1),stone),0.)
+        self.assertEqual(audit.observe(stage(9),oak),0.)  # first frame after target change
+        self.assertEqual(audit.observe(stage(10),oak),.30)
+        other=CrosshairBlock('minecraft:birch_log',(7,69,-1),'north',2.4)
+        self.assertEqual(audit.observe(stage(1),other),0.)
+        self.assertEqual(audit.observe(stage(3),other),0.) # capped dedupe memory
 
     def test_only_vanilla_motor_choices(self):
         action=action_from_heads((1,2,1))

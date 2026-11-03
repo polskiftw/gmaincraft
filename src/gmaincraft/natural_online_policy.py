@@ -161,13 +161,13 @@ class NaturalTransition:
 class NaturalPPO:
     """Small attention-pooled byte-ID/block-memory actor-critic; no RGB encoder."""
     def __init__(self,*,seed=730011,device='auto',learning_rate=.00035,
-                 epochs=3,minibatch=64):
+                 epochs=3,minibatch=64,entropy_coef=.014):
         import torch
         from torch import nn
         if device=='auto':device='cuda' if torch.cuda.is_available() else 'cpu'
         if device not in ('cpu','cuda') or device=='cuda' and not torch.cuda.is_available():
             raise RuntimeError('Requested policy accelerator unavailable')
-        if not 1<=epochs<=8 or not 8<=minibatch<=512:
+        if not 1<=epochs<=8 or not 8<=minibatch<=512 or not 0 <= entropy_coef <= .2:
             raise ValueError('Invalid PPO hyperparameters')
         self.torch=torch
         self.device=torch.device(device)
@@ -209,6 +209,7 @@ class NaturalPPO:
         self.optimizer=torch.optim.Adam(self.net.parameters(),lr=learning_rate,eps=1e-5)
         self.epochs=epochs
         self.minibatch=minibatch
+        self.entropy_coef=float(entropy_coef)
         self.updates=0
         self.seed=seed
 
@@ -255,7 +256,7 @@ class NaturalPPO:
                 ratio=(logp-old_logp[ix]).exp()
                 objective=torch.minimum(ratio*adv[ix],ratio.clamp(.8,1.2)*adv[ix]).mean()
                 value_loss=(values-ret[ix]).square().mean()
-                loss=-objective+.30*value_loss-.014*entropy
+                loss=-objective+.30*value_loss-self.entropy_coef*entropy
                 if not bool(torch.isfinite(loss).item()):raise RuntimeError('Nonfinite PPO loss')
                 self.optimizer.zero_grad(set_to_none=True)
                 loss.backward()

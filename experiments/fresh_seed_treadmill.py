@@ -42,11 +42,13 @@ from gmaincraft.mcio_process_watchdog import (WatchedControllerSync,MinecraftPro
 from gmaincraft.natural_online_policy import (NaturalPPO,NaturalTransition,SCHEMA,
                           DECISION_TICKS,HEAD_SIZES,observe,action_from_heads)
 from gmaincraft.natural_online_session import NaturalSessionMemory
+from gmaincraft.natural_diagnostics import NaturalActionAudit,WoodCrackProgress
 from gmaincraft.vision_settings import ensure_clean_visual_options
 from natural_online_train import (MCIO,INSTANCE,ENV_EXTRA,OVERRIDES,REWARDS,
                                    read_step,log_row)
 
 RUN_TAG_RE=r'[A-Za-z0-9][A-Za-z0-9_-]{0,22}'
+FRESH_REWARDS={**REWARDS,'wood_progress_v3':'wood_discovery_v2+nonrepeatable_own_wood_crack_stage_progress'}
 
 
 def parse_args(argv=None):
@@ -67,7 +69,7 @@ def parse_args(argv=None):
     ap.add_argument('--seed-root',type=int,default=917211,
                     help='deterministic fresh-seed stream (not a policy feature)')
     ap.add_argument('--policy-seed',type=int,default=731117)
-    ap.add_argument('--reward-profile',choices=tuple(REWARDS),default='wood_discovery_v2')
+    ap.add_argument('--reward-profile',choices=tuple(FRESH_REWARDS),default='wood_discovery_v2')
     ap.add_argument('--device',choices=('auto','cuda','cpu'),default='auto')
     ap.add_argument('--retain-worlds',type=int,default=2,
                     help='keep this many most recent completed disposable worlds')
@@ -249,6 +251,8 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     ctrl=None
     trajectory=[]
     events=Counter()
+    audit=NaturalActionAudit()
+    crack_progress=WoodCrackProgress()
     elapsed_io=0.
     trained=0
     decisions=0
@@ -290,6 +294,7 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                     heads,logp,value=model.act(state,greedy=(args.mode=='eval' and
                                                            args.control=='policy_greedy'))
                 action=action_from_heads(heads)
+                audit.observe(heads,state,bridge.player_status().crosshair_block)
                 before=time.perf_counter()
                 bridge.apply(action,request_surface_objects=True,request_mining_feedback=True)
                 elapsed_io+=time.perf_counter()-before
@@ -300,7 +305,14 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                 next_state,next_player,next_surfaces=read_step(bridge,memory,0,bad_counter=bad_counter)
                 died=next_player.health<=0
                 record=memory.accrue(0,next_player,next_surfaces,bridge._stats,heads,
-                                     action.ticks,death=died,reward_profile=args.reward_profile)
+                                     action.ticks,death=died,reward_profile=(
+                                         'wood_discovery_v2' if args.reward_profile=='wood_progress_v3'
+                                         else args.reward_profile))
+                progress_bonus=(crack_progress.observe(next_state,bridge.player_status().crosshair_block)
+                                if args.reward_profile=='wood_progress_v3' else 0.)
+                record['wood_crack_progress_reward']=progress_bonus
+                record['reward']=round(record['reward']+progress_bonus,5)
+                if progress_bonus:events['wood_crack_progress_reward']+=progress_bonus
                 for key in ('fresh_cell','new_visible_surfaces','new_visible_wood',
                             'new_mined_blocks','new_wood_mined','wood_inventory_gain','death'):
                     events[key]+=record[key]
@@ -324,7 +336,8 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                                decisions=decisions,game_ticks=decisions*DECISION_TICKS,
                                game_io_s=round(elapsed_io,3),
                                game_io_ms_per_tick=round(1000*elapsed_io/(decisions*DECISION_TICKS),3),
-                               totals=dict(events),invalid_mining_readings=bad_counter[0])
+                               totals=dict(events),action_audit=audit.summary(),
+                               invalid_mining_readings=bad_counter[0])
                     log_row(log,pulse)
                     print('FRESH PULSE',json.dumps(pulse),flush=True)
                     if (elapsed_io/(decisions*DECISION_TICKS))*1000>args.slow_ms:
@@ -357,7 +370,7 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                 game_io_s=round(elapsed_io,3),
                 game_io_ms_per_tick=round(1000*elapsed_io/(max(1,decisions)*DECISION_TICKS),3),
                 invalid_mining_readings=bad_counter[0],
-                counts=dict(events),
+                counts=dict(events),action_audit=audit.summary(),
                 stopped_early=decisions<budget)
     return result
 
@@ -390,7 +403,9 @@ def main(argv=None):
           checkpoint.with_suffix('.pt.pending').exists() or
           inflight.with_suffix('.json.pending').exists()):
         raise FileExistsError('Existing training stream or unfinished stages; use --resume or inspect artifacts')
-    model=NaturalPPO(seed=args.policy_seed,device=args.device)
+    model=NaturalPPO(seed=args.policy_seed,device=args.device,
+                     learning_rate=.00015 if args.reward_profile=='wood_progress_v3' else .00035,
+                     entropy_coef=.04 if args.reward_profile=='wood_progress_v3' else .014)
     cursor=0
     committed_decisions=0
     total=Counter()

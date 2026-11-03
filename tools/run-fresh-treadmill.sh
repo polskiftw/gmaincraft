@@ -6,12 +6,12 @@ set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 usage() {
-  echo 'Usage: tools/run-fresh-treadmill.sh start|resume RUN_TAG 100000|forever [EPISODE_DECISIONS]' >&2
+  echo 'Usage: tools/run-fresh-treadmill.sh start|resume RUN_TAG 100000|forever [EPISODE_DECISIONS] [REWARD_PROFILE]' >&2
   echo '       tools/run-fresh-treadmill.sh stop|status RUN_TAG' >&2
   echo 'New Minecraft noise seeds generated automatically, never reused for completed episodes.' >&2
   exit 2
 }
-(( $# >= 2 && $# <= 4 )) || usage
+(( $# >= 2 && $# <= 5 )) || usage
 operation="$1"; tag="$2"
 [[ "$tag" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,22}$ ]] || usage
 mkdir -p -- logs checkpoints
@@ -59,16 +59,18 @@ PY
     exit 0
     ;;
   start|resume)
-    (( $# == 3 || $# == 4 )) || usage
+    (( $# >= 3 && $# <= 5 )) || usage
     ;;
   *) usage;;
 esac
 limit="$3"
 episode_decisions="${4:-2400}"
+reward_profile="${5:-wood_discovery_v2}"
 if [[ -e "$marker" ]];then
   echo "Stale stop marker exists: $marker. Inspect the previous run before starting or resuming." >&2
   exit 1
 fi
+if [[ "$reward_profile" != wood_discovery_v2 && "$reward_profile" != wood_progress_v3 ]]; then usage; fi
 if [[ "$limit" != 'forever' && ! "$limit" =~ ^[1-9][0-9]*$ ]] ||
    [[ ! "$episode_decisions" =~ ^[1-9][0-9]*$ ]] ||
    (( episode_decisions < 12 || episode_decisions > 100000 )); then usage;fi
@@ -96,7 +98,7 @@ if [[ -e "$console" ]]; then echo 'Console log already exists' >&2;exit 1;fi
 ln -sfn -- "$(basename "$console")" "logs/fresh_treadmill_${tag}_latest.log"
 opts=(--run-tag "$tag" --seed-root 917211 --policy-seed 731117
       --episode-decisions "$episode_decisions" --update-every 96 --report-every 100
-      --reward-profile wood_discovery_v2 --retain-worlds 2 --device cuda --visible)
+      --reward-profile "$reward_profile" --retain-worlds 2 --device cuda --visible)
 if [[ "$limit" == 'forever' ]]; then opts+=(--until-stopped)
 else opts+=(--decisions "$limit");fi
 if [[ "$operation" == resume ]];then opts+=(--resume);fi

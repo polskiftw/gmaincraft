@@ -1,5 +1,32 @@
 # TODO — gmaincraft
 
+## LATEST: speedrun01 policy-collapse audit and v3 learning experiment
+
+- [x] Validate resumed `speedrun01`: 10 vanilla seeds, 24,000 committed
+  decisions / 250 CUDA updates, 106 ordinary blocks broken, 759 unique
+  wood surfaces seen, **zero** wood actually mined or collected; last two
+  training seeds had zero block breaks.
+- [x] Complete same-seed, identical-spawn, held-out Minecraft frozen
+  controls, sampled v2 vs uniform random, 480 decisions each. V2 chose
+  jump-forward452/480 and attack12/480, mined0; random mined2. Neither
+  picked up wood. Treat as diagnostic, not proof of generalization.
+- [x] Add observational action diagnostics for attack rates, crosshair wood,
+  camera stability, crack feedback, attack streak and per-head actions;
+  include in journal and pulse without changing the actor's input.
+- [x] Add optional versioned `wood_progress_v3`: bounded, deduplicated
+  own visible crack-stage gain for consecutively targeted wood, no hidden
+  targets/scripted handoff; lower learning rate and higher entropy only for
+  new v3. Existing v2 checkpoint/resume settings remain unchanged.
+- [x] Run a real scratch-v3 96-decision/one-CUDA-update vanilla Minecraft
+  smoke plus the full 130-test suite; checkpoint verified.
+- [ ] NEXT: run `tools/run-fresh-treadmill.sh start woodv3_01 24000 2400
+  wood_progress_v3` from a foreground terminal. Compare frozen v3 to
+  original v2 and random on fresh same-spawn held-out seeds. Measure actual
+  wood mining, inventory, target accuracy and sustained camera-still attacks.
+- [ ] Investigate action persistence and visible dropped-item entities,
+  without making phase switching scripted.
+
+
 New optional scoped NVIDIA mitigation: fresh treadmill now launches
 Minecraft JVM with `__GL_THREADED_OPTIMIZATIONS=0` by default, reversible
 via `--nvidia-gl-threading default` for direct Python evaluation. Verified

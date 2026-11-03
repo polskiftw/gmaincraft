@@ -4,12 +4,14 @@
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
-if (( $# < 3 || $# > 5 )); then
-  echo 'Usage: tools/run-fresh-evaluation.sh TRAIN_RUN|- EVAL_TAG TOTAL_DECISIONS [policy_sampled|policy_greedy|uniform_random|untrained] [EPISODE_DECISIONS]' >&2
+if (( $# < 3 || $# > 6 )); then
+  echo 'Usage: tools/run-fresh-evaluation.sh TRAIN_RUN|- EVAL_TAG TOTAL_DECISIONS [policy_sampled|policy_greedy|uniform_random|untrained] [EPISODE_DECISIONS] [REWARD_PROFILE]' >&2
   exit 2
 fi
 training="$1"; tag="$2"; decisions="$3"; mode="${4:-policy_sampled}"
 horizon="${5:-1200}"
+reward_profile="${6:-wood_discovery_v2}"
+if [[ "$reward_profile" != wood_discovery_v2 && "$reward_profile" != wood_progress_v3 ]]; then echo "Invalid reward profile" >&2; exit 2; fi
 if [[ ! "$tag" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,22}$ ]] ||
    [[ "$training" != '-' && ! "$training" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,22}$ ]] ||
    [[ ! "$decisions" =~ ^[1-9][0-9]*$ ]] ||
@@ -30,7 +32,7 @@ if [[ -e "$journal" ]];then echo 'Refusing to overwrite existing evaluation repo
 console="logs/fresh_eval_${tag}_$(date +%Y%m%d_%H%M%S)_$$.console"
 args=(--mode eval --control "$mode" --run-tag "$tag" --decisions "$decisions"
       --episode-decisions "$horizon" --seed-root 917211 --policy-seed 731117
-      --reward-profile wood_discovery_v2 --retain-worlds 2 --device cuda --visible)
+      --reward-profile "$reward_profile" --retain-worlds 2 --device cuda --visible)
 if [[ "$training" != '-' ]];then args+=(--model-run "$training");fi
 printf 'Frozen evaluation: %s, %s, %s decisions; fresh held-out Minecraft seeds\n' "$training" "$mode" "$decisions"
 set +e
