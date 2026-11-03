@@ -5,11 +5,11 @@ import unittest
 from dataclasses import replace
 
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/'src'))
-from gmaincraft.mcio_surface_objects import (SCHEMA,SurfaceObjectHit,
+from gmaincraft.mcio_surface_objects import (SCHEMA,SurfaceObjectsRequest,SurfaceObjectHit,
                                             SurfaceObjectsOption,SurfaceObjectsV1)
 from gmaincraft.mcio_surface_grid import (SurfaceGridOption,SurfaceRayHit,
                                          SurfaceGridV0,SCHEMA as GRID_SCHEMA)
-from mcio_ctrl.network import ObservationPacket
+from mcio_ctrl.network import ObservationPacket, ActionPacket
 
 
 class GroupedSurfaceTests(unittest.TestCase):
@@ -44,6 +44,13 @@ class GroupedSurfaceTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             bad=ObservationPacket(options=[grouped,replace(raw,hits=raw.hits[:1])])
             obj.assert_same_first_hits(SurfaceGridV0.from_packet(bad))
+
+    def test_request_action_CBOR_roundtrip(self):
+        original=ActionPacket(options=[SurfaceObjectsRequest(True)])
+        decoded=ActionPacket.unpack(original.pack())
+        self.assertEqual(len(decoded.options),1)
+        self.assertIsInstance(decoded.options[0],SurfaceObjectsRequest)
+        self.assertTrue(decoded.options[0].fresh)
 
     def test_fail_closed_and_reject_invalid(self):
         self.assertEqual(SurfaceObjectsV1.from_packet(self.packet(objects=[])).objects,())

@@ -1,6 +1,18 @@
 # START HERE — next ChatGPT/Gentoo Shell session
 
-## NEWEST NEXT step: calibrate and optimize grouped surface sensor
+## NEWEST NEXT: calibrate view-eligible objects; on-demand solved
+
+See `SURFACE_REQUEST_V1.md`. A fresh grouped camera-ray object sample is
+now requestable on the last normal MCio action tick and absent otherwise.
+Eight real bridge controls, 87 pure tests passed. Fixed-300-tick warm
+measurements: no surface 0.7302s, 50 on-demand samples 0.7140s, prior
+300 continuous samples 0.8898s, each in separate non-neural launches.
+This is NOT a trained policy or validated human-visual object list.
+Next derive true perceptual eligibility in natural worlds across dynamic
+FOV, small distant blocks, transparency, lighting and entities; then design
+the same bounded train/frozen neural input and improve mining/pickup.
+
+## Earlier NEXT step: calibrate and optimize grouped surface sensor
 
 The latest real Minecraft memory change is summarized in
 [`SURFACE_SENSOR_V1.md`](SURFACE_SENSOR_V1.md). Two opt-in read-only camera

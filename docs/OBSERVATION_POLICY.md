@@ -120,6 +120,15 @@ observations with server commands or changes to the game's mechanics.
   historical pixel-only evaluations as **separate baselines** rather than
   pretending they used the newer structured inputs.
 
+## New on-demand experimental surface reads (NOT trained yet)
+
+A normal MCio sync action may explicitly request a fresh grouped first-hit
+sample on the last policy-decision tick. Missing observations contain no
+old world-object data. This **scheduling optimization** was validated
+in real Minecraft; it does not solve human-visible eligibility, rendering,
+transparency or entity selection. See `SURFACE_REQUEST_V1.md`. Do not
+silently add this information to V5 or score it under an unverified schema.
+
 ## Experimental off-crosshair objects are NOT policy observations yet
 
 The opt-in `gmaincraft_surface_grid_v0` and `gmaincraft_surface_objects_v1`

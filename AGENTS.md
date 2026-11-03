@@ -1,6 +1,19 @@
 # AGENTS.md — project instructions for coding assistants
 
-## NEWEST experimental milestone: grouped camera-ray surfaces (not V6 yet)
+## NEWEST: synced on-demand grouped first-hit surface samples
+
+See [`docs/SURFACE_REQUEST_V1.md`](docs/SURFACE_REQUEST_V1.md). The opt-in
+Fabric patch supports request-on-final-normal-action-tick samples, with
+none on unrequested ticks and no stale world data. Eight real bridge checks,
+87 pure tests, and a no-neural fixed-fixture 300-tick comparison passed.
+Warm on-demand 50 samples/300 ticks took 0.7140s; same current mod with
+sensor disabled 0.7302s; older continuous grouped 0.8898s (single
+launches, not statistical guarantees). Keep V5 checkpoint and its player
+status/crosshair unchanged. Further sensor *visibility calibration*, then
+train/held-out parity for new model + learned sustained mining and pickup
+are the next priorities. Keep all previous worlds/checkpoints/backup JARs.
+
+## Earlier experimental milestone: grouped camera-ray surfaces (not V6 yet)
 
 See **`docs/SURFACE_SENSOR_V1.md`** before modifying game memory or scaling
 training. An opt-in, read-only 13x9 camera first-hit ray grid and a bounded

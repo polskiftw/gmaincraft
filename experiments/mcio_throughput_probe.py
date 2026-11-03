@@ -22,17 +22,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from gmaincraft.player_knowledge import PlayerKnowledgeV1
 from gmaincraft.mcio_status import PlayerStatusV1, ENV_NAME
 from gmaincraft.mcio_surface_grid import SurfaceGridV0, ENV_NAME as SURFACE_GRID_ENV
-from gmaincraft.mcio_surface_objects import SurfaceObjectsV1, ENV_NAME as SURFACE_OBJECTS_ENV
+from gmaincraft.mcio_surface_objects import (SurfaceObjectsV1,SurfaceObjectsOption,SurfaceObjectsRequest,
+                                          ENV_NAME as SURFACE_OBJECTS_ENV,ON_DEMAND_ENV)
 
 ROOT = Path(__file__).resolve().parents[1]
 MCIO = ROOT / 'mcio-data'
 INSTANCE = MCIO / 'instances' / 'DemoInstance'
 
 
-def action(ctrl, manager, keys=(), commands=(), clear=False):
+def action(ctrl, manager, keys=(), commands=(), clear=False, request_objects=False):
     states = {key: int(key in keys) for key in mcio_env.INPUT_MAP}
     events = manager.process_action(states, mcio_env.INPUT_MAP)
-    pkt = network.ActionPacket(inputs=events, commands=list(commands), clear_input=clear)
+    pkt = network.ActionPacket(inputs=events, commands=list(commands), clear_input=clear,
+                               options=[SurfaceObjectsRequest(True)] if request_objects else [])
     t0 = time.perf_counter_ns()
     ctrl.send_action(pkt)
     t1 = time.perf_counter_ns()
@@ -97,7 +99,7 @@ def reset(ctrl, xyz):
     return manager
 
 
-def do_run(ctrl, xyz, ticks, label, *, status_v1=False, surface_grid=False, surface_objects=False, idle_only=False):
+def do_run(ctrl, xyz, ticks, label, *, status_v1=False, surface_grid=False, surface_objects=False, on_demand=False, idle_only=False):
     manager = reset(ctrl, xyz)
     stats = env_util.StatsCache()
     sends, receives, frames, stat_times, frame_times = [], [], [], [], []
@@ -112,7 +114,10 @@ def do_run(ctrl, xyz, ticks, label, *, status_v1=False, surface_grid=False, surf
     start = time.perf_counter()
     for tick in range(ticks):
         keys = () if idle_only else ('LEFT_BUTTON',) if tick < 110 else ('W',) if tick < 145 else ()
-        ob, send_ms, recv_ms = action(ctrl, manager, keys=keys)
+        request = on_demand and (tick+1)%6==0
+        ob, send_ms, recv_ms = action(ctrl, manager, keys=keys,request_objects=request)
+        if on_demand and not request and ob.get_option(SurfaceObjectsOption) is not None:
+            raise AssertionError('Unexpected unrequested surface data')
         sends.append(send_ms)
         receives.append(recv_ms)
         frame_delta_mismatch += int(last_frame >= 0 and ob.frame_sequence != last_frame+1)
@@ -132,7 +137,7 @@ def do_run(ctrl, xyz, ticks, label, *, status_v1=False, surface_grid=False, surf
             grid=SurfaceGridV0.from_packet(ob)
             grid_ray_hits+=len(grid.hits)
             grid_validations+=1
-        if surface_objects:
+        if surface_objects and (not on_demand or request):
             grouped=SurfaceObjectsV1.from_packet(ob)
             object_validations+=1
             object_count+=len(grouped.objects)
@@ -214,6 +219,8 @@ def main():
                     help='use the same fixed anchor (-82,64,-9) as the camera-ray live probe')
     ap.add_argument('--fixture-xyz',type=int,nargs=3,metavar=('X','Y','Z'),
                     help='pin same lab terrain and height across independent launches')
+    ap.add_argument('--surface-on-demand',action='store_true',
+                    help='explicit fresh grouped sample only every sixth sync tick')
     ap.add_argument('--surface-objects',action='store_true',
                     help='opt-in grouped first-hit screen objects, bounded by ray count')
     ap.add_argument('--surface-grid',action='store_true',
@@ -227,6 +234,8 @@ def main():
         ap.error('Invalid ticks/repeats')
     if not 96 <= min(args.frame_width,args.frame_height) and max(args.frame_width,args.frame_height) <= 1920:
         ap.error('Invalid frame width/height')
+    if args.surface_on_demand and not args.surface_objects:
+        ap.error('--surface-on-demand requires --surface-objects')
     if args.surface_grid and args.surface_objects:
         ap.error('For throughput comparisons choose exactly one sensor format')
     if args.fixed_fixture and args.fixture_xyz is not None:
@@ -245,7 +254,8 @@ def main():
                             width=args.frame_width,height=args.frame_height,
                             env_extra={**({ENV_NAME:'1'} if args.status_v1 else {}),
                                        **({SURFACE_GRID_ENV:'1'} if args.surface_grid else {}),
-                                       **({SURFACE_OBJECTS_ENV:'1'} if args.surface_objects else {})})
+                                       **({SURFACE_OBJECTS_ENV:'1'} if args.surface_objects else {}),
+                                       **({ON_DEMAND_ENV:'1'} if args.surface_on_demand else {})})
     with temporary_options(args.vsync,args.max_fps,args.run_tag):
         launcher=instance.Launcher(opts)
         ctrl=None
@@ -260,7 +270,7 @@ def main():
                   'position',xyz,'vsync',args.vsync,'max_fps',args.max_fps,flush=True)
             results=[do_run(ctrl,xyz,args.ticks,f'repeat{i+1}',status_v1=args.status_v1,
                             surface_grid=args.surface_grid,surface_objects=args.surface_objects,
-                            idle_only=args.idle_only)
+                            on_demand=args.surface_on_demand,idle_only=args.idle_only)
                      for i in range(args.repeats)]
             path.parent.mkdir(parents=True,exist_ok=True)
             with path.open('x',encoding='utf-8') as f:

@@ -14,7 +14,15 @@ from mcio_ctrl.cbor import MCioType
 
 SCHEMA = 'gmaincraft_surface_objects_v1'
 ENV_NAME = 'GMAINCRAFT_SURFACE_OBJECTS_V1'
+ON_DEMAND_ENV = 'GMAINCRAFT_SURFACE_ON_DEMAND_V1'
 FACES = ('down','up','north','south','west','east')
+
+
+@MCioType
+@dataclass
+class SurfaceObjectsRequest:
+    """Request a fresh same-action observation, NOT an admin action."""
+    fresh: bool = True
 
 
 @MCioType

@@ -14,6 +14,8 @@ v5_hash='fff86beea0da5c66dc1e78ee8ae450260dace9d5f112120f9c6088388e77ffbb'
 v5_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.status-v5.jar"
 grid_v0_hash='9ff0456aa6e37d7201477466eb97581ba31ddc5974e4358dbf3aeb7b06f245fc'
 grid_v0_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.surface-grid-v0.jar"
+group_v1_hash="8d1152104e6646c59f963456b2d3c243b6c87b0e4b6d2ca9773b8fbb88a34fb3"
+group_v1_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.grouped-v1.jar"
 if [[ "$mode" == '--restore' ]]; then
   [[ -f "$backup" ]] || { echo "No backed-up original mod at $backup" >&2; exit 1; }
   tmp="${mod}.gmaincraft.$$.tmp"
@@ -45,12 +47,14 @@ fi
 actual="$root/mcio-data/mcio-current-diff.$$.patch"
 trap 'rm -f -- "$actual"' EXIT
 git -C "$src" diff -- src/client/java/net/twoturtles/MCioNetworkPacket.java \
-  src/client/java/net/twoturtles/MCioObservationHandler.java > "$actual"
+  src/client/java/net/twoturtles/MCioObservationHandler.java \
+  src/client/java/net/twoturtles/MCioClientSync.java > "$actual"
 if ! cmp -s -- "$actual" "$patch"; then
   echo 'Unexpected source patch divergence; refusing to build an unreviewed mod' >&2
   exit 1
 fi
-[[ -z "$(git -C "$src" status --porcelain | grep -v '^ M src/client/java/net/twoturtles/MCioNetworkPacket.java$' | grep -v '^ M src/client/java/net/twoturtles/MCioObservationHandler.java$' || :)" ]] || {
+[[ -z "$(git -C "$src" status --porcelain | grep -v '^ M src/client/java/net/twoturtles/MCioNetworkPacket.java$' | grep -v '^ M src/client/java/net/twoturtles/MCioObservationHandler.java$' \
+  | grep -v '^ M src/client/java/net/twoturtles/MCioClientSync.java$' || :)" ]] || {
   echo 'Unexpected tracked modifications in MCio upstream checkout' >&2; exit 1;
 }
 export JAVA_HOME="$root/mcio-data/instances/DemoInstance/runtime/java-runtime-delta/linux/java-runtime-delta"
@@ -71,6 +75,8 @@ if [[ "$mode" == '--install' ]]; then
         previous_backup="$v5_backup"
       elif [[ "$actual_hash" == "$grid_v0_hash" ]]; then
         previous_backup="$grid_v0_backup"
+      elif [[ "$actual_hash" == "$group_v1_hash" ]]; then
+        previous_backup="$group_v1_backup"
       else
         echo 'Unknown mod jar differs from all verified previous builds; aborting' >&2
         exit 1
@@ -91,5 +97,5 @@ if [[ "$mode" == '--install' ]]; then
   mv -f -- "$tmp" "$mod"
   echo 'INSTALLED ONLY in disposable DemoInstance. Original backed up at:'
   echo "$backup"
-  echo 'GMAINCRAFT_STATUS_V1=1: status; GMAINCRAFT_SURFACE_GRID_V0=1: rays; GMAINCRAFT_SURFACE_OBJECTS_V1=1: grouped rays.'
+  echo 'GMAINCRAFT_STATUS_V1=1: status; GMAINCRAFT_SURFACE_GRID_V0=1: rays; GMAINCRAFT_SURFACE_OBJECTS_V1=1: grouped rays; GMAINCRAFT_SURFACE_ON_DEMAND_V1=1: explicit requests.'
 fi

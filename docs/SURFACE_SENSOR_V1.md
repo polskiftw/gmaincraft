@@ -6,6 +6,13 @@ these block lists.** The canonical policy knowledge boundary is
 [`OBSERVATION_POLICY.md`](OBSERVATION_POLICY.md), not every loaded Minecraft
 block. Do not claim that this is a validated human-visible block detector.
 
+## Newer on-demand optimization
+
+The on-demand action-triggered grouped sensor has now been built and tested
+in real Minecraft. See [SURFACE_REQUEST_V1.md](SURFACE_REQUEST_V1.md).
+It avoids full per-tick scans and does not replay stale block observations.
+The experiments below are the earlier continuous-sampling baseline.
+
 ## Design and reproducible build
 
 The pinned `twoturtles/MCio` 1.6.1 Fabric patch

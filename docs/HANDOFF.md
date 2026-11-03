@@ -1,6 +1,16 @@
 # Handoff for a brand-new ChatGPT conversation
 
-## NEWEST handoff: bounded off-crosshair surface-object experiments
+## NEWEST: real tested on-demand surface observations
+
+See `SURFACE_REQUEST_V1.md`. Grouped first-hit samples can now be requested
+only on the last tick of a normal 6-tick action, rather than every tick.
+Eight real Minecraft bridge checks and 87 Python tests passed. Warm fixed
+300-tick no-neural timing: 0.714s with 50 requests, 0.7302s disabled on
+same JAR, 0.8898s prior always-on. No training/policy integration yet.
+Next: rendered-visibility calibration, natural-world throughput and
+sustained learned mining/pickup. Preserve all ignored data and old JARs.
+
+## Earlier handoff: bounded off-crosshair surface-object experiments
 
 **Start at [`SURFACE_SENSOR_V1.md`](SURFACE_SENSOR_V1.md).** The isolated
 Fabric patch now optionally sends first-hit 13x9 camera rays and grouped

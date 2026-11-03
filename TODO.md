@@ -21,7 +21,7 @@
   visibility (FOV/dynamic zoom, small distant blocks, partial occlusion,
   glass/leaves/fluid, light/night, entities, held-out natural worlds).
   Distinguish sample occupancy from pixel area, and detect false X-rays.
-- [ ] Avoid the measured ~32% per-tick grouped overhead: investigate an
+- [x] FIXED: avoid the measured ~32% per-tick grouped overhead: investigate an
   explicit request for a fresh surface observation on each 6-tick learner
   decision, with schema/age validity; re-benchmark matched real frames.
 - [ ] Only once the detector is evidence-backed, wire a versioned **V6**
@@ -398,3 +398,10 @@ an agent that can already beat Minecraft.
 3. Move major completed milestones to a concise history; do not let a stale checklist masquerade as live status.
 4. Record *actual* experimental results in [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md), not merely in chat.
 5. Future chats should begin by reading this and [docs/HANDOFF.md](docs/HANDOFF.md).
+
+## Follow-up: on-demand sample scheduling verified
+
+- [x] Synchronized last-action-tick requests produced 50 fresh block views
+  across 300 real game ticks, without stale samples on other packets.
+- [x] Eight real bridge protocol controls passed; 87 Python tests passed.
+- [ ] Next: natural-scene/visual calibration and learned pickup control.

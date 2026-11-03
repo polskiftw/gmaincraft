@@ -1,6 +1,11 @@
 # gmaincraft
 
-**Latest sensor experiment (Nov 2026):** See
+**Updated:** The opt-in camera-ray sensor now supports synchronized,
+on-demand last-action-tick observations with real Minecraft verification;
+see [`docs/SURFACE_REQUEST_V1.md`](docs/SURFACE_REQUEST_V1.md).
+Original V5 model weights and scoring are unchanged.
+
+**Previous sensor experiment (Nov 2026):** See
 [`docs/SURFACE_SENSOR_V1.md`](docs/SURFACE_SENSOR_V1.md). A reversible,
 opt-in Fabric patch now samples first-hit camera rays and groups visible
 block-position candidates; actual Minecraft off-crosshair and occlusion

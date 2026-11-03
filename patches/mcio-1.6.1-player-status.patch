@@ -1,8 +1,22 @@
+diff --git a/src/client/java/net/twoturtles/MCioClientSync.java b/src/client/java/net/twoturtles/MCioClientSync.java
+index fe285c0..18dd386 100644
+--- a/src/client/java/net/twoturtles/MCioClientSync.java
++++ b/src/client/java/net/twoturtles/MCioClientSync.java
+@@ -83,6 +83,9 @@ public class MCioClientSync {
+     ActionPacket action = optAction.get();
+     lastActionSequence = action.sequence();
+     LOGGER.debug("ACTION {}", action);
++    observationHandler.requestSurfaceObjects(action.options() != null &&
++        action.options().stream().anyMatch(o ->
++            o instanceof SurfaceObjectsRequest request && request.fresh()));
+     actionHandler.processAction(action);
+   }
+ 
 diff --git a/src/client/java/net/twoturtles/MCioNetworkPacket.java b/src/client/java/net/twoturtles/MCioNetworkPacket.java
-index 92d6661..296fe08 100644
+index 92d6661..2225344 100644
 --- a/src/client/java/net/twoturtles/MCioNetworkPacket.java
 +++ b/src/client/java/net/twoturtles/MCioNetworkPacket.java
-@@ -91,6 +91,44 @@ record StatsUpdateOption(ArrayList<StatCategory> categories) implements Option {
+@@ -91,6 +91,49 @@ record StatsUpdateOption(ArrayList<StatCategory> categories) implements Option {
  @JsonTypeInfo(use = Id.MINIMAL_CLASS, include = As.PROPERTY, property = MCioConfig.MCIO_TYPE)
  record StatsFullOption(ArrayList<StatCategory> categories) implements Option {}
  
@@ -44,11 +58,16 @@ index 92d6661..296fe08 100644
 +    float vertical_fov_degrees, float max_distance,
 +    ArrayList<SurfaceObjectHit> objects) implements Option {}
 +
++/* Observation-only request, not a gameplay command or a world-map query.
++ * In opt-in SYNC on-demand mode, the requested first-hit camera surface
++ * sample is attached to the observation for THIS normal action. */
++record SurfaceObjectsRequest(boolean fresh) implements Option {}
++
  /* Serialize ObservationPacket */
  class ObservationPacketPacker {
    private static final Logger LOGGER = LogUtils.getLogger();
 diff --git a/src/client/java/net/twoturtles/MCioObservationHandler.java b/src/client/java/net/twoturtles/MCioObservationHandler.java
-index 1e0d5f2..f2f4ee4 100644
+index 1e0d5f2..ed98172 100644
 --- a/src/client/java/net/twoturtles/MCioObservationHandler.java
 +++ b/src/client/java/net/twoturtles/MCioObservationHandler.java
 @@ -5,15 +5,21 @@ import com.mojang.logging.LogUtils;
@@ -73,7 +92,7 @@ index 1e0d5f2..f2f4ee4 100644
  import org.lwjgl.glfw.GLFW;
  import org.slf4j.Logger;
  
-@@ -26,6 +32,12 @@ public class MCioObservationHandler {
+@@ -26,6 +32,19 @@ public class MCioObservationHandler {
    private final Logger LOGGER = LogUtils.getLogger();
    private static final TrackPerSecond sendFPS = new TrackPerSecond("ObservationsSent");
    private int observationSequence = 0;
@@ -83,25 +102,37 @@ index 1e0d5f2..f2f4ee4 100644
 +      "1".equals(System.getenv("GMAINCRAFT_SURFACE_GRID_V0"));
 +  private final boolean emitGmaincraftSurfaceObjects =
 +      "1".equals(System.getenv("GMAINCRAFT_SURFACE_OBJECTS_V1"));
++  private final boolean surfaceObjectsOnDemand =
++      "1".equals(System.getenv("GMAINCRAFT_SURFACE_ON_DEMAND_V1"));
++  private boolean requestSurfaceObjects = false;
++
++  void requestSurfaceObjects(boolean fresh) {
++    requestSurfaceObjects = fresh;
++  }
  
    public MCioObservationHandler(Minecraft client, MCioConfig config) {
      this.client = client;
-@@ -53,6 +65,14 @@ public class MCioObservationHandler {
+@@ -53,6 +72,19 @@ public class MCioObservationHandler {
      // XXX For now just manually add the stats update.
      // This will be based on the action packet in the future.
      options.add(getStatsUpdate());
 +    if (emitGmaincraftStatus) {
 +      options.add(getGmaincraftPlayerStatus(player));
 +    }
-+    if (emitGmaincraftSurfaceGrid || emitGmaincraftSurfaceObjects) {
++    boolean emitObjectsNow = emitGmaincraftSurfaceObjects &&
++        (!surfaceObjectsOnDemand || requestSurfaceObjects);
++    // Never repeat a previous request: the packet is synchronized to THIS
++    // normal action only, with no stale cached world data.
++    requestSurfaceObjects = false;
++    if (emitGmaincraftSurfaceGrid || emitObjectsNow) {
 +      SurfaceGridOption grid = getGmaincraftSurfaceGrid(player);
 +      if (emitGmaincraftSurfaceGrid) options.add(grid);
-+      if (emitGmaincraftSurfaceObjects) options.add(getGmaincraftSurfaceObjects(grid));
++      if (emitObjectsNow) options.add(getGmaincraftSurfaceObjects(grid));
 +    }
      //        options.add(getStatsFull());
  
      getCursorPosRV cursorPosRV = getCursorPos(client);
-@@ -126,6 +146,139 @@ public class MCioObservationHandler {
+@@ -126,6 +158,139 @@ public class MCioObservationHandler {
      return new StatsFullOption(updates);
    }
  

@@ -2,6 +2,21 @@
 
 This is the **verified evidence ledger**, not a roadmap. Add measured results here only after reading actual runtime output and identify evaluation conditions. Initial records were obtained on 2026-11-01, and subsequent experiments were executed in the user's isolated Gentoo Shell MCP workspace on 2026-11-02. Retain caveats and avoid converting synthetic tests into Minecraft evidence.
 
+## New verified off-center sensor and on-demand schedule (Nov 2-3, 2026)
+
+See [`SURFACE_SENSOR_V1.md`](SURFACE_SENSOR_V1.md) and
+[`SURFACE_REQUEST_V1.md`](SURFACE_REQUEST_V1.md) for exact local run tags,
+mod source and caveats. Independent real Minecraft scenes: off-crosshair
+wood observed (4/117 sampled rays), stone/glass prevent a concealed oak
+hit, grouped and raw first-hit rays match exactly. Eight further live
+request/response controls passed. With NVIDIA headless Gamescope and
+300 same-scene idle ticks: previous always-on grouped 0.8898s warmed,
+new explicit every-sixth-tick grouped 0.7140s warmed (50 samples),
+same-current-JAR sensor disabled 0.7302s warmed. All 0 frame gaps and
+no premature policies or scored log pickups. Only one launch per mode;
+these values are not statistically powered or general natural-world costs.
+All outputs saved in ignored `logs/`; pure test suite 87 passed.
+
 | Test / script | Verified output | Interpretation / limitation |
 |---|---|---|
 | MCio demo | Minecraft 1.21.3 runs, player state and RGB frames received; viewer visible with XWayland and `cbor2<6` | Control connection works, not an RL result |

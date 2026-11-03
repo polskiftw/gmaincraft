@@ -128,6 +128,11 @@ class MCioAgentBridge:
         from gmaincraft.player_knowledge import PlayerKnowledgeV1
         return PlayerKnowledgeV1.from_packet(self.packet, stats=self._stats)
 
+    def surface_objects(self):
+        """Research-only fresh first-hit object groups; NOT in V5 model."""
+        from gmaincraft.mcio_surface_objects import SurfaceObjectsV1
+        return SurfaceObjectsV1.from_packet(self.packet)
+
     def player_status(self):
         """Opt-in patched-MCio own status + game crosshair target, not X-ray."""
         from gmaincraft.mcio_status import PlayerStatusV1
@@ -137,7 +142,7 @@ class MCioAgentBridge:
         """Privileged Minecraft statistics; evaluator only, NOT policy input."""
         return int(self._stats[category][item])
 
-    def apply(self, action: AgentAction):
+    def apply(self, action: AgentAction, *, request_surface_objects=False):
         from mcio_ctrl import network
         if not isinstance(action, AgentAction):
             raise TypeError('Agent must return an AgentAction')
@@ -146,6 +151,9 @@ class MCioAgentBridge:
             inputs = self.input_manager.process_action(
                 {name: int(name in held) for name in self.input_map}, self.input_map)
             packet = network.ActionPacket(inputs=inputs, commands=[])
+            if request_surface_objects and tick == action.ticks-1:
+                from gmaincraft.mcio_surface_objects import SurfaceObjectsRequest
+                packet.options = [SurfaceObjectsRequest(True)]
             if tick == 0 and (action.look_dx != 0 or action.look_dy != 0):
                 packet.cursor_pos = [(float(self.packet.cursor_pos[0]) + action.look_dx,
                                       float(self.packet.cursor_pos[1]) + action.look_dy)]
