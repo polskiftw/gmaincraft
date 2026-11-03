@@ -1,8 +1,8 @@
 diff --git a/src/client/java/net/twoturtles/MCioNetworkPacket.java b/src/client/java/net/twoturtles/MCioNetworkPacket.java
-index 92d6661..bc9fb43 100644
+index 92d6661..296fe08 100644
 --- a/src/client/java/net/twoturtles/MCioNetworkPacket.java
 +++ b/src/client/java/net/twoturtles/MCioNetworkPacket.java
-@@ -91,6 +91,22 @@ record StatsUpdateOption(ArrayList<StatCategory> categories) implements Option {
+@@ -91,6 +91,44 @@ record StatsUpdateOption(ArrayList<StatCategory> categories) implements Option {
  @JsonTypeInfo(use = Id.MINIMAL_CLASS, include = As.PROPERTY, property = MCioConfig.MCIO_TYPE)
  record StatsFullOption(ArrayList<StatCategory> categories) implements Option {}
  
@@ -22,18 +22,48 @@ index 92d6661..bc9fb43 100644
 +    String targeted_block_face,
 +    float targeted_hit_distance) implements Option {}
 +
++/* Experimental opt-in screen-space RAY samples. Not yet a calibrated
++ * visibility guarantee or a policy input: each hit is the FIRST block
++ * collider along a ray cast from the current player's camera. */
++@JsonTypeInfo(use = Id.MINIMAL_CLASS, include = As.PROPERTY, property = MCioConfig.MCIO_TYPE)
++record SurfaceRayHit(
++    int ray_index, String block_id, int[] block_pos, String face,
++    float distance, int sky_light, int block_light) {}
++
++record SurfaceGridOption(
++    String schema, int columns, int rows, float vertical_fov_degrees,
++    float max_distance, ArrayList<SurfaceRayHit> hits) implements Option {}
++
++/* Same bounded first-hit camera samples grouped by visible block, rather
++ * than serializing repeated registry IDs/positions once for every ray. */
++@JsonTypeInfo(use = Id.MINIMAL_CLASS, include = As.PROPERTY, property = MCioConfig.MCIO_TYPE)
++record SurfaceObjectHit(String block_id, int[] block_pos, int face_mask,
++    float nearest_distance, int sky_light, int block_light, int[] ray_indices) {}
++
++record SurfaceObjectsOption(String schema, int columns, int rows,
++    float vertical_fov_degrees, float max_distance,
++    ArrayList<SurfaceObjectHit> objects) implements Option {}
++
  /* Serialize ObservationPacket */
  class ObservationPacketPacker {
    private static final Logger LOGGER = LogUtils.getLogger();
 diff --git a/src/client/java/net/twoturtles/MCioObservationHandler.java b/src/client/java/net/twoturtles/MCioObservationHandler.java
-index 1e0d5f2..dc3fb59 100644
+index 1e0d5f2..f2f4ee4 100644
 --- a/src/client/java/net/twoturtles/MCioObservationHandler.java
 +++ b/src/client/java/net/twoturtles/MCioObservationHandler.java
-@@ -10,10 +10,13 @@ import java.util.Map;
+@@ -5,15 +5,21 @@ import com.mojang.logging.LogUtils;
+ import java.nio.ByteBuffer;
+ import java.util.ArrayList;
+ import java.util.HashMap;
++import java.util.LinkedHashMap;
+ import java.util.List;
+ import java.util.Map;
  import java.util.Optional;
  import net.minecraft.client.Minecraft;
  import net.minecraft.client.player.LocalPlayer;
 +import net.minecraft.core.BlockPos;
++import net.minecraft.world.level.ClipContext;
++import net.minecraft.world.level.LightLayer;
  import net.minecraft.core.registries.BuiltInRegistries;
  import net.minecraft.world.entity.player.Inventory;
  import net.minecraft.world.item.ItemStack;
@@ -43,26 +73,35 @@ index 1e0d5f2..dc3fb59 100644
  import org.lwjgl.glfw.GLFW;
  import org.slf4j.Logger;
  
-@@ -26,6 +29,8 @@ public class MCioObservationHandler {
+@@ -26,6 +32,12 @@ public class MCioObservationHandler {
    private final Logger LOGGER = LogUtils.getLogger();
    private static final TrackPerSecond sendFPS = new TrackPerSecond("ObservationsSent");
    private int observationSequence = 0;
 +  private final boolean emitGmaincraftStatus =
 +      "1".equals(System.getenv("GMAINCRAFT_STATUS_V1"));
++  private final boolean emitGmaincraftSurfaceGrid =
++      "1".equals(System.getenv("GMAINCRAFT_SURFACE_GRID_V0"));
++  private final boolean emitGmaincraftSurfaceObjects =
++      "1".equals(System.getenv("GMAINCRAFT_SURFACE_OBJECTS_V1"));
  
    public MCioObservationHandler(Minecraft client, MCioConfig config) {
      this.client = client;
-@@ -53,6 +58,9 @@ public class MCioObservationHandler {
+@@ -53,6 +65,14 @@ public class MCioObservationHandler {
      // XXX For now just manually add the stats update.
      // This will be based on the action packet in the future.
      options.add(getStatsUpdate());
 +    if (emitGmaincraftStatus) {
 +      options.add(getGmaincraftPlayerStatus(player));
 +    }
++    if (emitGmaincraftSurfaceGrid || emitGmaincraftSurfaceObjects) {
++      SurfaceGridOption grid = getGmaincraftSurfaceGrid(player);
++      if (emitGmaincraftSurfaceGrid) options.add(grid);
++      if (emitGmaincraftSurfaceObjects) options.add(getGmaincraftSurfaceObjects(grid));
++    }
      //        options.add(getStatsFull());
  
      getCursorPosRV cursorPosRV = getCursorPos(client);
-@@ -126,6 +134,37 @@ public class MCioObservationHandler {
+@@ -126,6 +146,139 @@ public class MCioObservationHandler {
      return new StatsFullOption(updates);
    }
  
@@ -95,6 +134,108 @@ index 1e0d5f2..dc3fb59 100644
 +        player.getInventory().selected,
 +        player.level().dimension().location().toString(),
 +        blockId, blockPos, blockFace, hitDistance);
++  }
++
++  /** BOUNDED research-only camera sample grid; no iteration over chunks,
++   *  no wall penetration, and no world seed or generator knowledge. Occluding
++   *  collidable blocks (including glass) stop each ray. Fluid NONE means
++   *  water and non-collidable decorations need future experiments. This is
++   *  an approximation of projection, NOT a validated visual detector.
++   */
++  SurfaceGridOption getGmaincraftSurfaceGrid(LocalPlayer player) {
++    final int columns = 13;
++    final int rows = 9;
++    final float vfov = (float)(int)client.options.fov().get();
++    final double aspect = (double)client.getWindow().getWidth() /
++        Math.max(1,client.getWindow().getHeight());
++    final double tanV = Math.tan(Math.toRadians(vfov) * 0.5);
++    final double tanH = tanV * aspect;
++    // Use the game's own current render distance, NOT all loaded chunks.
++    final float limit = 16f * client.options.renderDistance().get();
++    Vec3 eye = player.getEyePosition();
++    Vec3 forward = player.getViewVector(1f).normalize();
++    Vec3 right = forward.cross(new Vec3(0,1,0)).normalize();
++    Vec3 up = right.cross(forward).normalize();
++    ArrayList<SurfaceRayHit> hits = new ArrayList<>();
++    if (client.level != null) {
++      for (int row = 0; row < rows; row++) {
++        double y = 1.0 - (row + .5) * 2.0 / rows;
++        for (int col = 0; col < columns; col++) {
++          double x = (col + .5) * 2.0 / columns - 1.0;
++          Vec3 direction = forward.add(right.scale(x * tanH))
++              .add(up.scale(y * tanV)).normalize();
++          BlockHitResult hit = client.level.clip(new ClipContext(
++              eye, eye.add(direction.scale(limit)),
++              ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
++          if (hit.getType() != HitResult.Type.BLOCK) continue;
++          BlockPos p = hit.getBlockPos();
++          // Guard against a ray ending in unloaded/unrendered data.
++          if (!client.level.hasChunkAt(p)) continue;
++          String id = BuiltInRegistries.BLOCK.getKey(
++              client.level.getBlockState(p).getBlock()).toString();
++          hits.add(new SurfaceRayHit(row*columns+col, id,
++              new int[]{p.getX(),p.getY(),p.getZ()},
++              hit.getDirection().getName(),
++              (float)eye.distanceTo(hit.getLocation()),
++              client.level.getBrightness(LightLayer.SKY,p),
++              client.level.getBrightness(LightLayer.BLOCK,p)));
++        }
++      }
++    }
++    return new SurfaceGridOption("gmaincraft_surface_grid_v0",
++        columns, rows, vfov, limit, hits);
++  }
++
++  private static final class SurfaceAccumulator {
++    final SurfaceRayHit first;
++    final ArrayList<Integer> rays = new ArrayList<>();
++    int faceMask = 0;
++    float nearestDistance;
++
++    SurfaceAccumulator(SurfaceRayHit initial) {
++      first = initial;
++      nearestDistance = initial.distance();
++    }
++
++    void add(SurfaceRayHit hit) {
++      rays.add(hit.ray_index());
++      nearestDistance = Math.min(nearestDistance, hit.distance());
++      faceMask |= switch (hit.face()) {
++        case "down" -> 1;
++        case "up" -> 2;
++        case "north" -> 4;
++        case "south" -> 8;
++        case "west" -> 16;
++        case "east" -> 32;
++        default -> throw new IllegalArgumentException("Unexpected hit face");
++      };
++    }
++
++    SurfaceObjectHit finish() {
++      return new SurfaceObjectHit(first.block_id(), first.block_pos(), faceMask,
++          nearestDistance, first.sky_light(), first.block_light(),
++          rays.stream().mapToInt(Integer::intValue).toArray());
++    }
++  }
++
++  /** Condense identical visible block positions into sample-coverage sets.
++   *  The first-hit ray evidence is unchanged; no additional world reads.
++   *  This grouping does NOT yet prove human-visual eligibility.
++   */
++  SurfaceObjectsOption getGmaincraftSurfaceObjects(SurfaceGridOption grid) {
++    Map<BlockPos, SurfaceAccumulator> seen = new LinkedHashMap<>();
++    for (SurfaceRayHit hit : grid.hits()) {
++      int[] coords = hit.block_pos();
++      BlockPos key = new BlockPos(coords[0], coords[1], coords[2]);
++      SurfaceAccumulator value = seen.computeIfAbsent(key,
++          unused -> new SurfaceAccumulator(hit));
++      value.add(hit);
++    }
++    ArrayList<SurfaceObjectHit> objects = new ArrayList<>();
++    for (SurfaceAccumulator value : seen.values()) objects.add(value.finish());
++    return new SurfaceObjectsOption("gmaincraft_surface_objects_v1",
++        grid.columns(),grid.rows(),grid.vertical_fov_degrees(),
++        grid.max_distance(),objects);
 +  }
 +
    float getYaw(LocalPlayer player) {

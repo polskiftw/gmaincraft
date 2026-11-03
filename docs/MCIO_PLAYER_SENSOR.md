@@ -2,6 +2,17 @@
 
 **Verified live on Minecraft Java 1.21.3, Fabric MCio 1.6.1 + gmaincraft patch, November 2–3 2026.** This is a read-only *player-knowledge* extension, NOT an X-ray map. V5 from-scratch CUDA training and normal frozen Minecraft gameplay both consume it; none of the earlier V1–V4 policy/checkpoint formats were rewritten. Scored gameplay continues to use ordinary vanilla mouse/keyboard input, inventory and world rules.
 
+## Later research extension (experimental; not V5 policy input)
+
+A newer read-only opt-in camera-ray grid and bounded grouped surface-block
+stream now exist **in addition** to this validated vanilla status/crosshair
+feature. They were tested in real Minecraft, with live off-crosshair oak and
+stone/glass controls, but are **NOT** calibrated visually and NOT wired to
+any trained policy. Refer to [`SURFACE_SENSOR_V1.md`](SURFACE_SENSOR_V1.md)
+for exact schemas, patch/JAR hashes, build upgrades, raw/grouped parity and
+the measured ~32% grouped sensor warm overhead when emitted every tick.
+The earlier crosshair-only V5 reports below remain valid V5 history.
+
 ## Source and reversible installation
 
 - Original MCio upstream: `twoturtles/MCio`, pinned tag `1.6.1+1.21.3`, Git commit `e89bd1ea5187814a9a3b854dedf3573defac6f8a`. Exact source is cloned into ignored `mcio-data/mcio-upstream-inspect` (NOT committed). Uses bundled Minecraft Java 21 and locally cached Gradle/Fabric Loom. An unmodified `compileClientJava` preflight passed before applying the patch.

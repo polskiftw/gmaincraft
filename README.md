@@ -1,5 +1,14 @@
 # gmaincraft
 
+**Latest sensor experiment (Nov 2026):** See
+[`docs/SURFACE_SENSOR_V1.md`](docs/SURFACE_SENSOR_V1.md). A reversible,
+opt-in Fabric patch now samples first-hit camera rays and groups visible
+block-position candidates; actual Minecraft off-crosshair and occlusion
+controls passed. These are **not** calibrated visual/perceivable thresholds
+and are **not** used by the current V5 trained model. Sample frequency
+must be optimized (~32% current warm overhead on one matched fixture)
+before a new observation-policy version or large training runs.
+
 **A Minecraft learning-to-speedrun research project.** The long-term goal is
 an agent that learns from randomly initialized weights to complete Minecraft
 Java Any% on unseen random survival seeds. It can **directly read structured

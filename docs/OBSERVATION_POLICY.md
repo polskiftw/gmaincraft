@@ -120,6 +120,22 @@ observations with server commands or changes to the game's mechanics.
   historical pixel-only evaluations as **separate baselines** rather than
   pretending they used the newer structured inputs.
 
+## Experimental off-crosshair objects are NOT policy observations yet
+
+The opt-in `gmaincraft_surface_grid_v0` and `gmaincraft_surface_objects_v1`
+MCio/Fabric memory streams now sample bounded **first-collision camera rays**
+and group them into block positions and visible ray indices; see
+[`SURFACE_SENSOR_V1.md`](SURFACE_SENSOR_V1.md). The new real Minecraft
+fixture controls passed 6/6, including off-center oak detection and no
+hidden oak behind stone, but glass blocks even visually visible wood,
+lighting/FOV/size thresholds remain uncalibrated, and the per-tick read
+adds measurable overhead. **No V5 or other learner consumes these streams.**
+Do NOT treat raw colliders as universally visually perceivable objects or
+turn on the new data silently during scored evaluation. Future V6 inputs
+must use validated eligibility, identical train/play contracts and
+fresh requested samples with measured overhead. Old V5 status+crosshair
+remains untouched and the zero-log model still has no acquired skill.
+
 ## NEWEST tested memory interface: V5 own status + vanilla crosshair hit
 
 This user-authorized, reversible, isolated MCio/Fabric 1.6.1 patch now

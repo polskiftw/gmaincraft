@@ -21,6 +21,8 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from gmaincraft.player_knowledge import PlayerKnowledgeV1
 from gmaincraft.mcio_status import PlayerStatusV1, ENV_NAME
+from gmaincraft.mcio_surface_grid import SurfaceGridV0, ENV_NAME as SURFACE_GRID_ENV
+from gmaincraft.mcio_surface_objects import SurfaceObjectsV1, ENV_NAME as SURFACE_OBJECTS_ENV
 
 ROOT = Path(__file__).resolve().parents[1]
 MCIO = ROOT / 'mcio-data'
@@ -43,11 +45,15 @@ def action(ctrl, manager, keys=(), commands=(), clear=False):
     return obs, (t1-t0)/1e6, (t2-t1)/1e6
 
 
-def setup(ctrl):
+def setup(ctrl, fixed_xyz=None):
     manager = env_util.InputStateManager()
     obs, _, _ = action(ctrl, manager, clear=True)
     x, z = math.floor(obs.player_pos[0]), math.floor(obs.player_pos[2])
     y = math.floor(obs.player_pos[1]) - 1
+    if fixed_xyz is not None:
+        # Controller-only matching fixture; both A/B processes use the SAME
+        # x/y/z instead of Minecraft's randomized safe spawn coordinates.
+        x, y, z = fixed_xyz
     commands = [
         'difficulty peaceful', 'gamerule doMobSpawning false',
         'gamerule doDaylightCycle false', 'time set day', 'weather clear',
@@ -91,16 +97,21 @@ def reset(ctrl, xyz):
     return manager
 
 
-def do_run(ctrl, xyz, ticks, label, *, status_v1=False):
+def do_run(ctrl, xyz, ticks, label, *, status_v1=False, surface_grid=False, surface_objects=False, idle_only=False):
     manager = reset(ctrl, xyz)
     stats = env_util.StatsCache()
     sends, receives, frames, stat_times, frame_times = [], [], [], [], []
     last_frame = -1
     frame_delta_mismatch = 0
     status_validations = 0
+    grid_validations = 0
+    grid_ray_hits = 0
+    object_validations = 0
+    object_count = 0
+    object_ray_coverage = 0
     start = time.perf_counter()
     for tick in range(ticks):
-        keys = ('LEFT_BUTTON',) if tick < 110 else ('W',) if tick < 145 else ()
+        keys = () if idle_only else ('LEFT_BUTTON',) if tick < 110 else ('W',) if tick < 145 else ()
         ob, send_ms, recv_ms = action(ctrl, manager, keys=keys)
         sends.append(send_ms)
         receives.append(recv_ms)
@@ -117,6 +128,15 @@ def do_run(ctrl, xyz, ticks, label, *, status_v1=False):
             if not 0<=status.hunger<=20:
                 raise AssertionError('Invalid hunger status')
             status_validations+=1
+        if surface_grid:
+            grid=SurfaceGridV0.from_packet(ob)
+            grid_ray_hits+=len(grid.hits)
+            grid_validations+=1
+        if surface_objects:
+            grouped=SurfaceObjectsV1.from_packet(ob)
+            object_validations+=1
+            object_count+=len(grouped.objects)
+            object_ray_coverage+=sum(len(o.ray_indices) for o in grouped.objects)
         stat_times.append((time.perf_counter_ns()-t0)/1e6)
         if tick % 6 == 0:
             t0 = time.perf_counter_ns()
@@ -131,7 +151,8 @@ def do_run(ctrl, xyz, ticks, label, *, status_v1=False):
         return dict(total_ms=round(sum(values),3), p50_ms=round(statistics.median(values),3),
                     p95_ms=round(values[int(.95*(len(values)-1))],3),
                     max_ms=round(values[-1],3))
-    result = dict(label=label, ticks=ticks, wall_s=round(elapsed,4),
+    result = dict(label=label, ticks=ticks, action_profile='idle' if idle_only else 'attack_walk',
+                  wall_s=round(elapsed,4),
                   ticks_per_wall_s=round(ticks/elapsed,2),
                   frame_size=[ob.frame_width, ob.frame_height], frame_bytes=round(statistics.median(frames)),
                   send=describe(sends), recv=describe(receives),
@@ -140,6 +161,9 @@ def do_run(ctrl, xyz, ticks, label, *, status_v1=False):
                   final_pos=[round(float(v),3) for v in ob.player_pos],
                   last_action_sequence=int(ob.last_action_sequence),
                   knowledge_schema=knowledge.schema, status_v1_checks=status_validations,
+                  surface_grid_checks=grid_validations, surface_grid_hits=grid_ray_hits,
+                  surface_object_checks=object_validations, surface_object_records=object_count,
+                  surface_object_rays=object_ray_coverage,
                   inventory_logs_v1=sum(
                       slot.count for slot in knowledge.main_inventory if slot.item_id=='minecraft:oak_log'))
     print('THROUGHPUT '+json.dumps(result,sort_keys=True),flush=True)
@@ -184,6 +208,16 @@ def main():
     ap.add_argument('--vsync', choices=('keep','on','off'), default='keep')
     ap.add_argument('--max-fps', type=int, default=None)
     ap.add_argument('--visible', action='store_true')
+    ap.add_argument('--idle-only',action='store_true',
+                    help='matched neutral ticks to isolate ray I/O from mining/pickup')
+    ap.add_argument('--fixed-fixture',action='store_true',
+                    help='use the same fixed anchor (-82,64,-9) as the camera-ray live probe')
+    ap.add_argument('--fixture-xyz',type=int,nargs=3,metavar=('X','Y','Z'),
+                    help='pin same lab terrain and height across independent launches')
+    ap.add_argument('--surface-objects',action='store_true',
+                    help='opt-in grouped first-hit screen objects, bounded by ray count')
+    ap.add_argument('--surface-grid',action='store_true',
+                    help='opt-in 13x9 first-hit screen rays from patched MCio')
     ap.add_argument('--status-v1',action='store_true',
                     help='require gmaincraft-patched MCio status option every tick (no Torch)')
     args = ap.parse_args()
@@ -193,6 +227,10 @@ def main():
         ap.error('Invalid ticks/repeats')
     if not 96 <= min(args.frame_width,args.frame_height) and max(args.frame_width,args.frame_height) <= 1920:
         ap.error('Invalid frame width/height')
+    if args.surface_grid and args.surface_objects:
+        ap.error('For throughput comparisons choose exactly one sensor format')
+    if args.fixed_fixture and args.fixture_xyz is not None:
+        ap.error('Choose either --fixed-fixture or --fixture-xyz')
     if args.max_fps is not None and not 10 <= args.max_fps <= 260:
         ap.error('max fps outside Minecraft option range 10..260')
     path = ROOT/'logs'/f'mcio_throughput_{args.run_tag}.json'
@@ -205,7 +243,9 @@ def main():
                             mcio_mode=types.MCioMode.SYNC,hide_window=not args.visible,
                             gpu_lib=None if args.visible else 'nvidia',
                             width=args.frame_width,height=args.frame_height,
-                            env_extra={ENV_NAME:'1'} if args.status_v1 else {})
+                            env_extra={**({ENV_NAME:'1'} if args.status_v1 else {}),
+                                       **({SURFACE_GRID_ENV:'1'} if args.surface_grid else {}),
+                                       **({SURFACE_OBJECTS_ENV:'1'} if args.surface_objects else {})})
     with temporary_options(args.vsync,args.max_fps,args.run_tag):
         launcher=instance.Launcher(opts)
         ctrl=None
@@ -214,10 +254,13 @@ def main():
             launcher.launch(wait=False)
             ctrl=controller.ControllerSync(action_port=opts.action_port,
                     observation_port=opts.observation_port,connection_timeout=65)
-            xyz=setup(ctrl)
+            anchor=(-82,64,-9) if args.fixed_fixture else (tuple(args.fixture_xyz) if args.fixture_xyz is not None else None)
+            xyz=setup(ctrl,anchor)
             print('READY seconds',round(time.perf_counter()-started,3),
                   'position',xyz,'vsync',args.vsync,'max_fps',args.max_fps,flush=True)
-            results=[do_run(ctrl,xyz,args.ticks,f'repeat{i+1}',status_v1=args.status_v1)
+            results=[do_run(ctrl,xyz,args.ticks,f'repeat{i+1}',status_v1=args.status_v1,
+                            surface_grid=args.surface_grid,surface_objects=args.surface_objects,
+                            idle_only=args.idle_only)
                      for i in range(args.repeats)]
             path.parent.mkdir(parents=True,exist_ok=True)
             with path.open('x',encoding='utf-8') as f:

@@ -1,5 +1,34 @@
 # TODO — gmaincraft
 
+## NEWEST: tested grouped surface-memory research (not neural policy)
+
+- [x] Build opt-in read-only MCio first-hit 13x9 camera ray sampling,
+  bounded by the actual 4-chunk render setting in tests; record per-ray
+  block ID, XYZ, face, distance and light without scanning chunks.
+- [x] Group duplicate sampled rays by block, preserving ray indices,
+  sample-screen occupancy and all visible first-hit faces. Verify **exact
+  grouped/raw parity** in real MCio copied survival scenes. Six live
+  scene/parity checks and 86 pure tests passed; off-center oak is detected,
+  stone blocks hidden oak, glass conservatively blocks oak as a known
+  visual false negative. Docs: `docs/SURFACE_SENSOR_V1.md`.
+- [x] Preserve pristine, earlier V5 status and grid-only Fabric mod JARs
+  through hash-checked backup; install only in disposable DemoInstance.
+- [x] Quantify sensor overhead in same-location, matched idle 300-tick
+  NVIDIA+RGB no-Torch experiments: baseline current JAR **0.6746s** warmed,
+  raw grid previous JAR **0.9497s**, grouped current JAR **0.8898s**.
+  Single-run comparisons, not statistical performance claims.
+- [ ] **NEXT:** empirically calibrate sampling vs rendered/player-perceivable
+  visibility (FOV/dynamic zoom, small distant blocks, partial occlusion,
+  glass/leaves/fluid, light/night, entities, held-out natural worlds).
+  Distinguish sample occupancy from pixel area, and detect false X-rays.
+- [ ] Avoid the measured ~32% per-tick grouped overhead: investigate an
+  explicit request for a fresh surface observation on each 6-tick learner
+  decision, with schema/age validity; re-benchmark matched real frames.
+- [ ] Only once the detector is evidence-backed, wire a versioned **V6**
+  learner to the SAME bounded surface state in both training/frozen normal
+  gameplay, and test sustained normal mining/pickup against held-out seeds
+  and memory-ablated/RGB-only controls. V5 log collection remains zero.
+
 **Last curated:** 2026-11-02. This is the live source of truth for project status. **All agents must read and update this file alongside substantive changes** (see [AGENTS.md](AGENTS.md)). Never mark a task done from source code alone; require actual run evidence where appropriate.
 
 ## ACTIVE NEXT: perceptible world objects + sustained learned action control

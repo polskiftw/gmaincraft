@@ -1,5 +1,22 @@
 # AGENTS.md — project instructions for coding assistants
 
+## NEWEST experimental milestone: grouped camera-ray surfaces (not V6 yet)
+
+See **`docs/SURFACE_SENSOR_V1.md`** before modifying game memory or scaling
+training. An opt-in, read-only 13x9 camera first-hit ray grid and a bounded
+**block-position-grouped** format are installed only in the disposable MCio
+DemoInstance, with ALL prior mod JARs backed up. They report off-crosshair
+wood, preserve stone/glass occlusion and have verified one-to-one actual
+Minecraft first-hit ray parity (6/6 live controls, 86 pure tests). This is
+**NOT** a calibrated player-visibility detector, does NOT handle entities,
+transparent surfaces or perceptual lighting, and is NOT fed to any V5 model.
+A same-jar fixed-fixture warm baseline took 0.6746 s/300 neutral ticks vs
+0.8898 s grouped (raw v0 0.9497 s under the earlier JAR). The next gate is
+visibility calibration AND efficient on-demand sample cadence before V6
+train/frozen parity and genuine unrestricted first-log learning. Do not
+claim grouped samples are rendered pixels or learned success. Preserve
+current ignored runs and weights; real test outputs in local `logs/`.
+
 This file is the operating contract for anyone (including a future ChatGPT conversation) editing **polskiftw/gmaincraft**. Treat the GitHub repository, not the conversation transcript or an assumed local checkout, as the authoritative codebase.
 
 ## NEWEST verified milestone: V5 patched MCio, true crosshair/player status and headless speed

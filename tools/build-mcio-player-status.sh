@@ -8,6 +8,12 @@ mode="${1:---build}"
 case "$mode" in --build|--install|--restore) ;; *) echo 'Use --build, --install or --restore' >&2; exit 2;; esac
 mod="$root/mcio-data/instances/DemoInstance/mods/mcio-1.6.1+1.21.3.jar"
 backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.pristine.jar"
+# The documented earlier status-v1 release has a known hash. Preserve it
+# byte-for-byte when upgrading to the experimental camera-ray patch.
+v5_hash='fff86beea0da5c66dc1e78ee8ae450260dace9d5f112120f9c6088388e77ffbb'
+v5_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.status-v5.jar"
+grid_v0_hash='9ff0456aa6e37d7201477466eb97581ba31ddc5974e4358dbf3aeb7b06f245fc'
+grid_v0_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.surface-grid-v0.jar"
 if [[ "$mode" == '--restore' ]]; then
   [[ -f "$backup" ]] || { echo "No backed-up original mod at $backup" >&2; exit 1; }
   tmp="${mod}.gmaincraft.$$.tmp"
@@ -60,8 +66,21 @@ if [[ "$mode" == '--install' ]]; then
   mkdir -p -- "$(dirname -- "$backup")"
   if [[ -f "$backup" ]]; then
     if ! cmp -s -- "$mod" "$backup" && ! cmp -s -- "$mod" "$built"; then
-      echo 'Unknown mod jar differs from BOTH original backup and patched build; aborting' >&2
-      exit 1
+      actual_hash="$(sha256sum "$mod" | cut -d ' ' -f1)"
+      if [[ "$actual_hash" == "$v5_hash" ]]; then
+        previous_backup="$v5_backup"
+      elif [[ "$actual_hash" == "$grid_v0_hash" ]]; then
+        previous_backup="$grid_v0_backup"
+      else
+        echo 'Unknown mod jar differs from all verified previous builds; aborting' >&2
+        exit 1
+      fi
+      if [[ -f "$previous_backup" ]] && ! cmp -s -- "$mod" "$previous_backup"; then
+        echo 'Existing previous-mod backup has differing data; refusing upgrade' >&2
+        exit 1
+      fi
+      cp -n -- "$mod" "$previous_backup"
+      echo 'Preserved exact previous mod JAR at:' "$previous_backup"
     fi
   else
     cp -n -- "$mod" "$backup"
@@ -72,5 +91,5 @@ if [[ "$mode" == '--install' ]]; then
   mv -f -- "$tmp" "$mod"
   echo 'INSTALLED ONLY in disposable DemoInstance. Original backed up at:'
   echo "$backup"
-  echo 'GMAINCRAFT_STATUS_V1=1 is needed to emit the new packet option.'
+  echo 'GMAINCRAFT_STATUS_V1=1: status; GMAINCRAFT_SURFACE_GRID_V0=1: rays; GMAINCRAFT_SURFACE_OBJECTS_V1=1: grouped rays.'
 fi

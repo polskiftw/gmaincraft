@@ -1,5 +1,20 @@
 # START HERE — next ChatGPT/Gentoo Shell session
 
+## NEWEST NEXT step: calibrate and optimize grouped surface sensor
+
+The latest real Minecraft memory change is summarized in
+[`SURFACE_SENSOR_V1.md`](SURFACE_SENSOR_V1.md). Two opt-in read-only camera
+research streams (raw 13x9 first-hit rays, grouped block positions) passed
+six controlled live comparisons and all 86 pure tests; prior V5 and
+pristine JARs are backed up. **Not yet policy inputs.** Measured same-JAR
+no-surface warm 300 ticks 0.6746s vs grouped 0.8898s on one fixed idle
+scene, so optimize sampling frequency with a correctly synchronized
+per-decision request before any extended RL. Then calibrate true visual
+FOV/distance, fine objects, occlusion/transparency, light, entities and
+non-fixture survival scenes. Maintain first-hit no-X-ray boundary and
+versioned train/frozen parity. Do not claim learned log acquisition or
+feed experimental surface data into existing V5 checkpoints.
+
 **Priority order is intentional.** Updated November 2, 2026. This document
 is the continuation contract for the next conversation. **The user wants
 memory-derived structured game state**, not a permanently screenshot-only

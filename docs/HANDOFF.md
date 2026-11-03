@@ -1,5 +1,26 @@
 # Handoff for a brand-new ChatGPT conversation
 
+## NEWEST handoff: bounded off-crosshair surface-object experiments
+
+**Start at [`SURFACE_SENSOR_V1.md`](SURFACE_SENSOR_V1.md).** The isolated
+Fabric patch now optionally sends first-hit 13x9 camera rays and grouped
+block-position objects (IDs/positions/sample rays/faces/distance/light).
+It detects off-center oak and stops at stone/glass, preserving no-X-ray
+behavior in six live tests; group records exactly match all original rays.
+These are **research-only, not part of V5 or a trained V6**, and lack proper
+transparency, daylight/fog, dynamic FOV, projected-size and entity
+calibration. A genuinely visible oak behind glass is conservatively missed.
+Matched 300 game tick idle warm results: no-surface current JAR 0.6746s,
+raw-ray v0 previous JAR 0.9497s, grouped current JAR 0.8898s. Current
+full-time sensor is too expensive; **next implement research into on-demand
+per-policy-decision rays, tune real rendered eligibility and add temporal
+mining feedback before building V6**. Never bulk world-scan; preserve all
+checkpoints/worlds. Exactly 86 pure tests passed. New patch JAR SHA256
+`8d1152104e6646c59f963456b2d3c243b6c87b0e4b6d2ca9773b8fbb88a34fb3`.
+Versions of the pristine, earlier status and first raw-grid mod were saved
+in ignored `mcio-data/mod_backups/`. Real logs under ignored `logs/`; viewer
+139 after child SAVED remains an unrelated teardown issue.
+
 **Last verified: 2026-11-02.** Canonical code: [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. **Historical early milestone (superseded by the sections below):** learn movement W/A/S/D from real RGB features (2 independently trained models; fresh fixture audit p01 **30/32**, p02 **24/32**, always-W 21/32); then **combine frozen RGB aim/ATTACK and pickup policies** on *real mined logs* (two independent camera-angle sets, trained p02 **51/56**, hardcoded W **49/56**, untrained movement 21/56). Earlier numerical-navigation and RGB log-aiming milestones remain preserved; `docs/EXPERIMENTS.md` records all results. The initial uncleaned aim 12/14 and aborted first drop-distance audits are **invalid evidence**. No general world-seed Minecraft speedrunning. Do not ask for old test logs.
 
 ## NEWEST handoff: patched MCio real block status, V5 parity, headless speed
