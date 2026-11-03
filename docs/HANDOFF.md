@@ -2,6 +2,21 @@
 
 **Last verified: 2026-11-02.** Canonical code: [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. **Historical early milestone (superseded by the sections below):** learn movement W/A/S/D from real RGB features (2 independently trained models; fresh fixture audit p01 **30/32**, p02 **24/32**, always-W 21/32); then **combine frozen RGB aim/ATTACK and pickup policies** on *real mined logs* (two independent camera-angle sets, trained p02 **51/56**, hardcoded W **49/56**, untrained movement 21/56). Earlier numerical-navigation and RGB log-aiming milestones remain preserved; `docs/EXPERIMENTS.md` records all results. The initial uncleaned aim 12/14 and aborted first drop-distance audits are **invalid evidence**. No general world-seed Minecraft speedrunning. Do not ask for old test logs.
 
+## Clarification before the next context reset: RGB is one source, not all training
+
+The user correctly challenged the shorthand **"RGB-only"**. The present
+visual PPO policy's observation is rendered RGB screenshots, but training
+also uses self-generated action labels, rewards, ticks, outcomes, and
+privileged trainer-only measured progress/events for scalar feedback.
+These are distinct data paths. Do **NOT** insist that all training or future
+agent perception must use RGB alone; legitimate player-accessible signals
+such as game audio, visible HUD/inventory, own action history and learned
+memory are allowed if explicitly designed and validated. Never inject
+hidden Minecraft internals/target coordinates into the *playing policy* or
+replace learning with scripted speedrun logic. None of the extra modalities
+should be described as already implemented. **Priority zero remains the
+MCio throughput regression**; modality expansion is later.
+
 ## FIRST ACTION FOR NEW CHAT — explicit user priority (Nov 2, 2026)
 
 **The user wants the MCio performance regression investigated and fixed
@@ -15,7 +30,7 @@ not yet known, and historical comparisons require matched reruns. Trace
 and reproduce the bottleneck first, report grounded before/after metrics,
 preserve normal Minecraft sync and safe restricted sandbox. Use Git directly
 from connected Gentoo Shell `/workspace`; code, docs and files are already
-pushed in prior work. Then resume the **corrected** from-scratch RGB-only
+pushed in prior work. Then resume the **corrected** from-scratch player-observable-input
 Any% course and real unrestricted first-log acquisition; details below.
 
 The very first `## Newest milestone` paragraph above is **historical** and

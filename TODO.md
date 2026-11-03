@@ -2,6 +2,19 @@
 
 **Last curated:** 2026-11-02. This is the live source of truth for project status. **All agents must read and update this file alongside substantive changes** (see [AGENTS.md](AGENTS.md)). Never mark a task done from source code alone; require actual run evidence where appropriate.
 
+## Input/reward clarification for future development
+
+- [x] Clarify the instructions: **training data are NOT RGB-only**. The
+  current agent's sensory observation uses screenshots, but training also
+  uses self-generated actions, rewards, action durations, outcomes and
+  teacher/evaluator-only event/geometry feedback. Future policies may add
+  legitimate human-player-observable information (e.g., game audio, visible
+  inventory/HUD, self-action history and learned memory). **Never pass
+  privileged world coordinates or Minecraft hidden state to the playing
+  policy as a shortcut.** Preserve from-scratch random-weight learning.
+- [ ] Keep prioritizing the MCio performance regression below, **ahead of**
+  adding sensor modalities, changing algorithms or training more models.
+
 ## NEXT SESSION — PRIORITY 0: recover MCio throughput BEFORE any more AI training
 
 **Read `docs/NEXT_SESSION.md` first.** The user explicitly wants the next
@@ -25,7 +38,7 @@ contain completed learning milestones.**
   before deprioritizing it. No host driver/sandbox changes without approval.
 - [ ] Update performance results, `docs/NEXT_SESSION.md`, AGENTS/HANDOFF/TODO,
   tests, commit and push through connected Gentoo Shell `/workspace`.
-- [ ] **ONLY AFTER PRIORITY 0:** resume RGB-only, from-scratch Minecraft
+- [ ] **ONLY AFTER PRIORITY 0:** resume player-observable-input, from-scratch Minecraft
   speedrunning course correction. Focus on learning simultaneous visual
   camera/movement and real **unrestricted** log mining + item pickup,
   evaluating against the unchanged held-out baselines and real world seeds.

@@ -2,6 +2,26 @@
 
 This file is the operating contract for anyone (including a future ChatGPT conversation) editing **polskiftw/gmaincraft**. Treat the GitHub repository, not the conversation transcript or an assumed local checkout, as the authoritative codebase.
 
+## Clarification: player-observable inputs, NOT an RGB-only training rule
+
+**The user's goal does not require all training data or future agent input to
+be RGB pixels.** The CURRENT factorized online policy takes Minecraft RGB
+screenshots (two frames). Training ALSO uses its own chosen actions, action
+durations, per-step scalar rewards/GAE, terminal outcomes, and controller-
+only geometric shaping or real mined/pickup event statistics to calculate
+rewards. Privileged trainer/event data **must not leak into the deployed
+policy's observations**. Inverse-dynamics studies explicitly train from
+RGB frame pairs **and labels of the agent's own actions**.
+
+Future sensors may include legitimate **player-perceivable** audio, rendered
+HUD/inventory, own input history and learned memory; RGB-only must NOT be
+imposed as a permanent design restriction. These are possible future
+inputs, not features already implemented. The governing constraint remains
+from-scratch learning with no human demos, external pretrained weights,
+secret world coordinates/hidden state as policy observations, or scripted
+Any% solutions. This clarification DOES NOT change the #1 priority below:
+fix/quantify the MCio performance regression before new training.
+
 ## MANDATORY FIRST TASK FOR A NEW CHAT: MCio speed regression (highest priority)
 
 **Start with [`docs/NEXT_SESSION.md`](docs/NEXT_SESSION.md), not a new PPO
@@ -17,7 +37,7 @@ did not fix it. The comparisons must be matched before claiming causality.
 repo/docs and GPU preflight -> reproduce/trace slow per-tick Minecraft I/O
 with minimal no-ML control -> fix/quantify and rebenchmark under matched
 conditions -> update evidence/docs/tests -> only THEN continue the valid
-from-scratch RGB-only RL course correction toward unrestricted first-log
+from-scratch player-observable-input RL course correction toward unrestricted first-log
 mining + inventory pickup. Do not spend hours on model training first.
 If root cause is unresolved, preserve precise profiler results and request
 a user decision before accepting the slower speed as the new baseline.
