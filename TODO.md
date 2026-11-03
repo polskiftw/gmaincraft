@@ -1,6 +1,56 @@
 # TODO — gmaincraft
 
-## NEWEST: actual vanilla mining progress + learned attack skill
+## NEWEST: real mined-drop inventory acquisition + memory observation work
+
+- [x] Add opt-in `MiningFeedbackRequest(fresh=True)` on same synchronous
+  action packet, gated by `GMAINCRAFT_MINING_FEEDBACK_ON_DEMAND_V1=1`;
+  verify 50 fresh packets / 300 normal game ticks, no data on other 250,
+  no lost frames and original frozen mine motor **12/12** preserved.
+- [x] Same-build no-Torch 300 warm tick controls: status-only 0.7527s,
+  per-tick crack stage0.7915s and on-demand0.8055s. Request frequency
+  reduced sixfold but **no proven wall-time benefit**. Do not claim free
+  sensing or another speed regression root cause without replication.
+- [x] Compose frozen learned own-crack mining + independently trained RGB
+  item pickup; real log must be mined before pickup begins, no spawned
+  items or commands during scored play. Main held-out seed784232 12 cases:
+  learned mine+learned p02 pickup **11/12 true inventory logs**,
+  always-attack+learned11/12, learned+forward9/12, random7/12,
+  no-movement0/12, no-attack0/12. Train/eval use the exact same memory
+  motor encoder; scripted handoff is NOT learned. Read
+  `docs/COMPOSED_MINE_PICKUP_AUDIT.md` for raw evidence and caveats.
+- [x] Fix false per-episode mined/pickup stat deltas from cumulative MCio
+  StatsUpdate after per-episode cache reset. Persist absolute counter
+  tracker across cases; corrected 12-case logs verify one real event per
+  successful inventory acquisition. Pilot event deltas INVALID, though
+  its inventory observations were real.
+- [x] Additional eval seed784233 comparison: frozen pickup p01 yielded
+  7/12 learned-mine inventory success; p02 yielded9/12; forward9-10/12.
+  No statistically established learned superiority over trivial controls.
+- [x] Independently scratch-train the attack motor using on-demand feedback
+  throughout 28 real Minecraft episodes:14/28 mining successes, first half
+  2/14 vs second 12/14; frozen 12/12 on fresh cases, untrained0/12 and
+  always-attack12/12. Older checkpoint and weights not overwritten.
+- [x] Verify combined on-demand first-hit surface blocks AND own crack
+  stage can share the SAME normal 6-tick action: 13/13 real Minecraft
+  controls passed, including both absent on the next non-request packet;
+  `surface_mining_joint_nov03d`. Original V5 status-only crosshair 4/4
+  still passed with new research env flags OFF (`mining_req_compat_nov03d`).
+- [ ] **NEXT:** add bounded **player-visible dropped-item entity state**
+  with FOV/occlusion/render-distance/size checks and real validation;
+  no hidden items or world/chunk/entity list sent to policy. Train and
+  frozen game must use exactly same memory schema and action history.
+- [ ] Train a new from-scratch agent to choose attack/pickup phase on its
+  own, rather than scripted evaluator handoff, and test real held-out
+  actual inventory logs with no controller commands during play.
+- [ ] Investigate intermittent early on-demand training error (game active
+  while crack stage violates accepted range); preserve failed JSONL,
+  report raw values before relaxing validation. Do not silently invent
+  crack progress or accept aborted run as training success.
+- [ ] Eventually discover/approach/aim/mine/collect wood in truly new
+  natural survival noise seeds with continuous ordinary vanilla actions.
+  No Any% win or autonomous first log has been demonstrated yet.
+
+## Earlier: actual vanilla mining progress + learned attack skill
 
 - [x] Inspect Minecraft 1.21.3 client and add opt-in read-only
   `gmaincraft_mining_feedback_v1`: client's own `isDestroying` and visible

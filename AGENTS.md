@@ -1,6 +1,36 @@
 # AGENTS.md — project instructions for coding assistants
 
-## NEWEST verified milestone: real crack-stage feedback and learned attack motor
+## NEWEST: real mined log to inventory, frozen skill composition
+
+Read [`docs/COMPOSED_MINE_PICKUP_AUDIT.md`](docs/COMPOSED_MINE_PICKUP_AUDIT.md)
+FIRST, then `docs/MINING_FEEDBACK_AND_ATTACK_LEARNING.md`,
+`docs/OBSERVATION_POLICY.md`, `TODO.md` and `docs/NEXT_SESSION.md`.
+Two **independently scratch-trained frozen** components have now broken
+ACTUAL vanilla oak and collected dropped log items into actual inventory
+on a new copied disposable Minecraft world. With held-out pre-aimed case
+seed 784232: learned memory-based mining + older frozen RGB-pickup **11/12
+inventory logs**; always-attack+learned pickup11/12; always-forward9/12;
+random7/12; no-move0/12; no-attack0/12. All mined deltas are one per real
+break, and pickup deltas one per true inventory item, fixed using persistent
+cumulative stat trackers across new per-episode MCio bridges. Extra seed
+784233: older p01 pickup7/12 and p02 pickup9/12 with learned mining;
+forward also9/12 in the p02 run. These are NOT improvements proven over
+simple baselines and NOT end-to-end independent natural tree discovery.
+**Critically** controller still places/preaims tree BEFORE scored play and
+an evaluator SCRIPTED mined-event handoff chooses when to use the pickup
+component. No controller commands or summoned drops during scored play.
+Opt-in on-demand fresh mining-crack requests now exist and preserve frozen
+12/12 mining. 50 requests/300 ticks carry no stale data; on-demand wall
+speedup is NOT established in fixed same-JAR controls. A separately trained
+on-demand motor had14/28 training breaks, frozen12/12; one early aborted
+training run hit a currently unresolved rare out-of-range stage. Local
+ignored checkpoints/worlds/logs are preserved. The main next work is a
+bounded, calibrated **visible dropped item memory** channel and joint
+learning of phase selection, approach, aim, mine and pickup in real
+Minecraft, not more permanent pixel-only experiments. Update the handoff,
+TODO and experiment ledger; push verified changes to GitHub after tests.
+
+## Earlier verified milestone: real crack-stage feedback and learned attack motor
 
 **Start with [`docs/MINING_FEEDBACK_AND_ATTACK_LEARNING.md`](docs/MINING_FEEDBACK_AND_ATTACK_LEARNING.md).**
 An opt-in direct game-memory observation now exposes THIS player's visible

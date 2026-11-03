@@ -1,5 +1,26 @@
 # What the Minecraft speedrunner is allowed to know
 
+## Latest actual inventory evidence and remaining observation boundary
+
+The audited composition in [`COMPOSED_MINE_PICKUP_AUDIT.md`](COMPOSED_MINE_PICKUP_AUDIT.md)
+has a scratch-trained six-field **own-memory** mining controller followed
+by a separately scratch-trained **RGB** item-pickup movement controller.
+The phase transition is explicitly triggered by evaluator-only TRUE mined
+stats and is therefore not yet a learned policy decision; stage switching
+MUST NOT be represented as an internally learned capability. Real Minecraft
+inventory, not cumulative stats or summoned items, determines success.
+Game memory crack observations are now explicitly requestable on a
+six-tick decision, with old readings absent on other packets. A new
+training run and frozen run used the SAME on-demand scheduling and
+versioned feature schema; an earlier independent run aborted on a rare
+out-of-range crack stage, which remains under investigation. **Next**
+replace the temporary RGB-only pickup learner with a *calibrated*,
+first-hit/occlusion-checked on-screen item-entity memory representation,
+without exposing hidden item entity positions, unseen chunks or a whole-
+world loot map. Any new from-scratch joint agent must choose phase and
+motor actions itself and consume the SAME bounded schema in training
+and frozen normal gameplay.
+
 ## Latest own-action feedback (not hidden world knowledge)
 
 `gmaincraft_mining_feedback_v1` adds opt-in **current player's actual

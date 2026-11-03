@@ -1,5 +1,18 @@
 # gmaincraft
 
+**Newest verified resource-acquisition milestone:** [Frozen learned mining + pickup on genuine Minecraft drops](docs/COMPOSED_MINE_PICKUP_AUDIT.md).
+Two scratch-trained policies have been composed without privileged actions
+while playing: a Minecraft-client mining-progress motor mines an oak log,
+and a separate RGB-only learned movement component walks to pick up its
+physical vanilla drop. In 12 independent pre-aimed held-out scenarios,
+**11/12 real inventory logs** were collected with the `p02` pickup model;
+a second set yielded 9/12. Simple always-hold attack and often forward
+movement remain competitive. **Still NOT end-to-end or a natural Any%:**
+controller stages/aims the tree BEFORE play, and a scripted real mined-event
+handoff chooses when pickup starts. The next goal is calibrated memory-
+visible dropped items and autonomous phase selection in shared train/frozen
+observations. Checkpoints/worlds remain local and Git-ignored.
+
 **New actual learned Minecraft behavior:** see
 [`docs/MINING_FEEDBACK_AND_ATTACK_LEARNING.md`](docs/MINING_FEEDBACK_AND_ATTACK_LEARNING.md).
 An opt-in real engine-memory mining feedback sensor now exposes the current

@@ -11,6 +11,14 @@ from mcio_ctrl.cbor import MCioType
 
 SCHEMA = 'gmaincraft_mining_feedback_v1'
 ENV_NAME = 'GMAINCRAFT_MINING_FEEDBACK_V1'
+ON_DEMAND_ENV = 'GMAINCRAFT_MINING_FEEDBACK_ON_DEMAND_V1'
+
+
+@MCioType
+@dataclass
+class MiningFeedbackRequest:
+    """Opt-in current-action read request; NOT a Minecraft command."""
+    fresh: bool = True
 
 
 @MCioType
@@ -42,7 +50,7 @@ class MiningFeedbackV1:
         if type(active) is not bool or type(targeted) is not bool or type(stage) is not int:
             raise ValueError('Invalid mining feedback types')
         if active and not 0 <= stage <= 10:
-            raise ValueError('Active mining crack stage out of range')
+            raise ValueError(f'Active mining crack stage out of range: {stage}; crosshair={targeted}')
         if not active and stage != -1:
             raise ValueError('Inactive mining must report unknown crack stage')
         return cls(SCHEMA,active,stage,targeted)

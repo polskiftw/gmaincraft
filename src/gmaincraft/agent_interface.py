@@ -147,7 +147,8 @@ class MCioAgentBridge:
         """Privileged Minecraft statistics; evaluator only, NOT policy input."""
         return int(self._stats[category][item])
 
-    def apply(self, action: AgentAction, *, request_surface_objects=False):
+    def apply(self, action: AgentAction, *, request_surface_objects=False,
+              request_mining_feedback=False):
         from mcio_ctrl import network
         if not isinstance(action, AgentAction):
             raise TypeError('Agent must return an AgentAction')
@@ -156,9 +157,16 @@ class MCioAgentBridge:
             inputs = self.input_manager.process_action(
                 {name: int(name in held) for name in self.input_map}, self.input_map)
             packet = network.ActionPacket(inputs=inputs, commands=[])
-            if request_surface_objects and tick == action.ticks-1:
-                from gmaincraft.mcio_surface_objects import SurfaceObjectsRequest
-                packet.options = [SurfaceObjectsRequest(True)]
+            if tick == action.ticks-1:
+                requests=[]
+                if request_surface_objects:
+                    from gmaincraft.mcio_surface_objects import SurfaceObjectsRequest
+                    requests.append(SurfaceObjectsRequest(True))
+                if request_mining_feedback:
+                    from gmaincraft.mcio_mining_feedback import MiningFeedbackRequest
+                    requests.append(MiningFeedbackRequest(True))
+                if requests:
+                    packet.options = requests
             if tick == 0 and (action.look_dx != 0 or action.look_dy != 0):
                 packet.cursor_pos = [(float(self.packet.cursor_pos[0]) + action.look_dx,
                                       float(self.packet.cursor_pos[1]) + action.look_dy)]

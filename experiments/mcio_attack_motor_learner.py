@@ -44,6 +44,8 @@ def parse_args(argv=None):
     parser.add_argument('--eval-seed',type=int,default=673231)
     parser.add_argument('--policy-seed',type=int,default=410233)
     parser.add_argument('--device',choices=('auto','cpu','cuda'),default='auto')
+    parser.add_argument('--mining-on-demand',action='store_true',
+                        help='fresh memory crack observation on each 6-tick action only')
     parser.add_argument('--visible',action='store_true')
     args=parser.parse_args(argv)
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,31}',args.run_tag):
@@ -59,12 +61,14 @@ def parse_args(argv=None):
         parser.error('Train always starts FROM SCRATCH; no --model-tag')
     # Existing shared launcher consumes these exact three properties.
     args.with_mining_feedback=True
+    args.with_mining_on_demand=args.mining_on_demand
     args.frame_width=320
     args.frame_height=180
     return args
 
 
-def run_case(arena,case,policy,*,max_decisions,mode,random_rng=None):
+def run_case(arena,case,policy,*,max_decisions,mode,random_rng=None,
+             mining_on_demand=False):
     if mode not in ('learned','train_sample','untrained','always_attack','no_attack','random'):
         raise ValueError('Bad mode')
     started=time.perf_counter()
@@ -72,6 +76,8 @@ def run_case(arena,case,policy,*,max_decisions,mode,random_rng=None):
     time.sleep(.14)  # game SERVER ticks lag synchronized MCio client frames
     obs=arena.client.advance(12)
     bridge=MCioAgentBridge(arena.client.ctrl,obs)
+    if mining_on_demand:
+        bridge.apply(action_for_attack(0,remaining_ticks=1),request_mining_feedback=True)
     feedback=bridge.mining_feedback()
     status=bridge.player_status()
     initial_target=status.crosshair_block.block_id if status.crosshair_block else None
@@ -98,7 +104,7 @@ def run_case(arena,case,policy,*,max_decisions,mode,random_rng=None):
         else:
             choice,prob=int(random_rng.random()<.5),.5
         old_feedback=feedback
-        bridge.apply(action_for_attack(choice))
+        bridge.apply(action_for_attack(choice),request_mining_feedback=mining_on_demand)
         feedback=bridge.mining_feedback()
         status=bridge.player_status()
         newly_mined=bridge.stat_total('minecraft:mined','minecraft:oak_log')>baseline
@@ -165,7 +171,7 @@ def main(argv=None):
                     for idx,case in enumerate(cases,1):
                         result,steps=run_case(arena,case,learner,
                                             max_decisions=args.max_decisions,
-                                            mode='train_sample')
+                                            mode='train_sample',mining_on_demand=args.mining_on_demand)
                         metrics=learner.update(steps)
                         outcomes.append(result)
                         stream.write(json.dumps(dict(kind='train',episode=idx,
@@ -207,7 +213,8 @@ def main(argv=None):
                     for idx,case in enumerate(cases,1):
                         policy=(learner if mode=='learned' else untrained if mode=='untrained' else None)
                         record,_=run_case(arena,case,policy,
-                               max_decisions=args.max_decisions,mode=mode,random_rng=rng)
+                               max_decisions=args.max_decisions,mode=mode,random_rng=rng,
+                               mining_on_demand=args.mining_on_demand)
                         record['case_index']=idx
                         subset.append(record)
                     outcomes[mode]=subset
@@ -217,7 +224,8 @@ def main(argv=None):
             report=dict(tag=tag,model_tag=args.model_tag,task=metadata['checkpoint_task'],
                     model_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),
                     policy_schema=SCHEMA,policy_inputs=FEATURE_NAMES,
-                    same_encoder_train_eval=True,
+                    same_encoder_train_eval=True,request_schedule='every_sixth_action' if
+                        args.mining_on_demand else 'continuous',
                     eval_seed=args.eval_seed,train_seed=actual['train_seed'],
                     fixture_admin_only_before_episode=True,
                     learned_tree_navigation=False,learned_inventory_pickup=False,

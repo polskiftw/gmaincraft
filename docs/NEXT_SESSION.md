@@ -1,6 +1,41 @@
 # START HERE — next ChatGPT/Gentoo Shell session
 
-## NEWEST: mined progress from Minecraft memory and trained attack motor
+## NEWEST NEXT: memory-visible dropped items and autonomous phase choice
+
+Read [`COMPOSED_MINE_PICKUP_AUDIT.md`](COMPOSED_MINE_PICKUP_AUDIT.md),
+[`MINING_FEEDBACK_AND_ATTACK_LEARNING.md`](MINING_FEEDBACK_AND_ATTACK_LEARNING.md)
+and [`OBSERVATION_POLICY.md`](OBSERVATION_POLICY.md), then AGENTS/TODO.
+The trained crack-memory attack motor and an older scratch-trained RGB
+pickup controller now PHYSICALLY obtained the same mined oak log in real
+Minecraft pre-aimed staged scenes. On 12 unseen held-out case jitter seed
+784232: learned+pickup p02 11/12 **actual inventory wood**, forward9/12,
+random7/12, no-attack0 and no-movement0. Independent case seed784233:
+learned+p02 9/12, learned+p01 7/12, simple forward9-10/12; always-hold
+attack performs as well as learned attack. Current observation is
+**not** fully memory-based because pickup still uses historical RGB, and
+controller PRIVILEGED PREP plus SCRIPTED MINED-EVENT PHASE HANDOFF persists.
+Do not describe the result as natural first-log finding or an Any% win.
+
+On-demand `MiningFeedbackRequest` integrated, current JAR SHA256
+`28fd3209bd15c9fecd1c2cdb3828b8dca3c17ff0840ea97e57be1f6da0cc05e6`.
+Old/new versioned models preserved ignored. 50 fresh crack readings in
+300 ticks and 0 on all other packets, headless RGB continuous; same-JAR
+wall time on-demand was NOT faster than continuous in the one-run pair.
+Additional 13/13 real combined surface+mining request and 4/4 legacy
+V5 crosshair-only tests passed under the latest patched mod. The exact
+Minecraft packet inputs are opt-in and the original V5 model unchanged.
+New independent from-scratch on-demand motor14/28 training, 12/12 frozen,
+with rare out-of-range crack stage causing a FAILED separate early training
+attempt (needs replication/instrumentation, not guesswork).
+
+NEXT substantial work: inspect Minecraft client item entity API, implement
+bounded **player-perceivable dropped item** observations with occlusion/
+render-distance/FOV tests, and train one new-from-scratch shared-schema
+policy to choose mining versus collecting without the evaluator handoff.
+Continue real held-out inventory controls; no hidden world item lists,
+no pretrained model, no admin gameplay, preserve all previous data.
+
+## Earlier: mined progress from Minecraft memory and trained attack motor
 
 See [`MINING_FEEDBACK_AND_ATTACK_LEARNING.md`](MINING_FEEDBACK_AND_ATTACK_LEARNING.md)
 for complete steps, source hashes and real-game results. A separate

@@ -1,6 +1,41 @@
 # Handoff for a brand-new ChatGPT conversation
 
-## NEWEST: learned vanilla mining motor, no pickup yet
+## NEWEST: frozen learned mining AND pickup of real physical drops
+
+**START with [`COMPOSED_MINE_PICKUP_AUDIT.md`](COMPOSED_MINE_PICKUP_AUDIT.md).**
+Two independently trained, frozen Minecraft policies have for the first
+time combined to break actual pre-aimed oak via opt-in *own* crack progress
+and then obtain an actual mined drop in normal survival inventory, with
+NO spawned items or admin commands during play. 12-case held-out seed
+784232 results: learned attack+frozen pickup p02 **11/12 inventory**,
+always-attack+pickup11/12, forward9/12, random7/12, no-move0,
+no-attack0. Replicate on seed784233: learned+p02 9/12, learned+p01 7/12,
+forward9-10/12. **NOT a complete trained general agent**: evaluator
+places/aims the trunk BEFORE each trial and SWITCHES TO PICKUP AFTER a
+real mined counter advances. No learned tree finding, aiming, phase
+selection, unknown world navigation or Any%. **Stat deltas corrected**:
+MCio sends cumulative counts, not per-episode, so persistent per-world
+trackers are essential; earlier pilot event DELTAS were invalid.
+
+The final mod also passed **13/13** simultaneous fresh surface+mining
+last-action-request checks and **4/4** older V5 crosshair controls with
+new research sensors OFF. Raw reports `surface_mining_joint_nov03d` and
+`mining_req_compat_nov03d` under ignored `logs/`.
+New opt-in `MiningFeedbackRequest` on-demand CBOR, one fresh own crack
+observation at each six-tick policy decision, no stale skipped packets.
+It reduced records 300->50/300 ticks but same-build warm timing 0.7527s
+status-only, 0.7915s continuous, 0.8055s on-demand: NOT a wall-time
+performance win yet. Old frozen attack policy preserved 12/12; independently
+trained on-demand model14/28 training, 12/12 frozen. An earlier on-demand
+training attempt aborted on an out-of-range crack stage; unresolved rare
+edge case, preserve failed data and investigate before changing type
+bounds. **100+ pure tests** must pass after next changes. All old Git-
+ignored worlds/weights and pristine+prior Fabric JAR backups preserved.
+NEXT: add a *bounded on-screen visible dropped-item memory sensor*,
+measure occlusion/FOV and light; then train one versioned from-scratch
+policy that chooses attack/approach/collect without a scripted transition.
+
+## Earlier: learned vanilla mining motor, no pickup yet
 
 Read [`MINING_FEEDBACK_AND_ATTACK_LEARNING.md`](MINING_FEEDBACK_AND_ATTACK_LEARNING.md)
 FIRST. The pinned, reversible Fabric patch now exposes read-only THIS

@@ -24,6 +24,8 @@ visible_calibration_hash="8cc58f899e7e824d0d67de7b74517b5390dbc3175375ec8c6b7560
 visible_calibration_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.visible-calibration.jar"
 mining_feedback_hash="7c41137b8789b0661700a322a90e4e7891752711b27786ac3fb5f750529d82c2"
 mining_feedback_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.mining-feedback-v1.jar"
+mining_ondemand_hash="28fd3209bd15c9fecd1c2cdb3828b8dca3c17ff0840ea97e57be1f6da0cc05e6"
+mining_ondemand_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.mining-feedback-ondemand.jar"
 if [[ "$mode" == '--restore' ]]; then
   [[ -f "$backup" ]] || { echo "No backed-up original mod at $backup" >&2; exit 1; }
   tmp="${mod}.gmaincraft.$$.tmp"
@@ -93,6 +95,8 @@ if [[ "$mode" == '--install' ]]; then
         previous_backup="$visible_calibration_backup"
       elif [[ "$actual_hash" == "$mining_feedback_hash" ]]; then
         previous_backup="$mining_feedback_backup"
+      elif [[ "$actual_hash" == "$mining_ondemand_hash" ]]; then
+        previous_backup="$mining_ondemand_backup"
       else
         echo 'Unknown mod jar differs from all verified previous builds; aborting' >&2
         exit 1
@@ -113,5 +117,5 @@ if [[ "$mode" == '--install' ]]; then
   mv -f -- "$tmp" "$mod"
   echo 'INSTALLED ONLY in disposable DemoInstance. Original backed up at:'
   echo "$backup"
-  echo 'GMAINCRAFT_STATUS_V1=1: status; GMAINCRAFT_SURFACE_GRID_V0=1: rays; GMAINCRAFT_SURFACE_OBJECTS_V1=1: grouped rays; GMAINCRAFT_SURFACE_ON_DEMAND_V1=1: requests; GMAINCRAFT_MINING_FEEDBACK_V1=1: own crack progress.'
+  echo 'GMAINCRAFT_STATUS_V1=1: status; GMAINCRAFT_SURFACE_GRID_V0=1: rays; GMAINCRAFT_SURFACE_OBJECTS_V1=1: grouped rays; GMAINCRAFT_SURFACE_ON_DEMAND_V1=1: requests; GMAINCRAFT_MINING_FEEDBACK_V1=1: own crack progress; GMAINCRAFT_MINING_FEEDBACK_ON_DEMAND_V1=1: explicit current-action request.'
 fi

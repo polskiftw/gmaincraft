@@ -19,6 +19,9 @@ sys.path.insert(0,str(ROOT/'src'))
 from gmaincraft.agent_interface import AgentAction,MCioAgentBridge
 from gmaincraft.instance_options import temporary_game_options
 from gmaincraft.mcio_status import ENV_NAME as STATUS_ENV
+from gmaincraft.mcio_mining_feedback import (MiningFeedbackOption,MiningFeedbackV1,
+                                             ENV_NAME as MINING_ENV,
+                                             ON_DEMAND_ENV as MINING_ON_DEMAND_ENV)
 from gmaincraft.mcio_surface_objects import (ENV_NAME as OBJECTS_ENV,ON_DEMAND_ENV,
                                              SurfaceObjectsOption)
 from gmaincraft.vision_settings import ensure_clean_visual_options
@@ -31,6 +34,8 @@ INSTANCE=MCIO/'instances'/'DemoInstance'
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--run-tag',required=True)
+    ap.add_argument('--with-mining',action='store_true',
+                    help='verify simultaneous fresh surface and own mining packets')
     ap.add_argument('--visible',action='store_true')
     ap.add_argument('--vertical-extremes',action='store_true',
                     help='real-game ray camera-basis test at +/-90 degree pitch')
@@ -47,7 +52,8 @@ def main():
                  mcio_mode=types.MCioMode.SYNC,hide_window=not args.visible,
                  gpu_lib=None if args.visible else 'nvidia',width=320,height=180,
                  env_extra={STATUS_ENV:'1',OBJECTS_ENV:'1',ON_DEMAND_ENV:'1',
-                            **({'GMAINCRAFT_SURFACE_RAY_PROFILE':'fine'} if args.vertical_extremes else {})})
+                            **({'GMAINCRAFT_SURFACE_RAY_PROFILE':'fine'} if args.vertical_extremes else {}),
+                            **({MINING_ENV:'1',MINING_ON_DEMAND_ENV:'1'} if args.with_mining else {})})
     profile={'renderDistance':'4','enableVsync':'false','maxFps':'260'}
     with temporary_game_options(INSTANCE,profile,run_tag=args.run_tag):
         launcher=instance.Launcher(options)
@@ -89,6 +95,29 @@ def main():
             instant=bridge.surface_objects()
             checks['single_tick_fresh_request']=bool(instant.objects)
             checks['valid_sequential_packets']=bridge.packet.last_action_sequence>first_seq
+            combined=None
+            if args.with_mining:
+                checks['mining_initially_absent']=initial.get_option(MiningFeedbackOption) is None
+                bridge.apply(AgentAction(ticks=6),request_surface_objects=True,
+                             request_mining_feedback=True)
+                joint=bridge.surface_objects()
+                feedback=bridge.mining_feedback()
+                checks['combined_surface_and_mining_fresh']=bool(joint.objects) and feedback.schema=='gmaincraft_mining_feedback_v1'
+                checks['combined_idle_no_attack']=not feedback.actively_destroying and feedback.crack_stage==-1
+                bridge.apply(AgentAction(ticks=6))
+                checks['both_options_absent_next_action']=(
+                    bridge.packet.get_option(MiningFeedbackOption) is None and
+                    bridge.packet.get_option(SurfaceObjectsOption) is None)
+                try:
+                    bridge.mining_feedback()
+                except RuntimeError:
+                    checks['missing_mining_fails_closed']=True
+                else:
+                    checks['missing_mining_fails_closed']=False
+                combined=dict(objects=len(joint.objects),
+                              crack_stage=feedback.crack_stage,
+                              active=feedback.actively_destroying)
+                print('JOINT SENSOR',json.dumps(combined),flush=True)
             vertical=None
             if args.vertical_extremes:
                 # Stage off-center overhead oak OUTSIDE scored policy actions,
@@ -122,7 +151,7 @@ def main():
                               fine_grid=[up_view.columns,up_view.rows])
                 print('VERTICAL SENSOR',json.dumps(vertical),flush=True)
             report=dict(tag=args.run_tag,fixture=xyz,profile=profile,checks=checks,
-                        vertical=vertical,
+                        combined=combined,vertical=vertical,
                         first=dict(objects=len(first.objects),oak=len(first.matching('minecraft:oak_log')),
                                    game_io_s=round(elapsed,4)),
                         turned_away=dict(objects=len(away.objects),

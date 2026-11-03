@@ -4,9 +4,9 @@ import sys
 import unittest
 
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/'src'))
-from gmaincraft.mcio_mining_feedback import (SCHEMA,MiningFeedbackOption,
+from gmaincraft.mcio_mining_feedback import (SCHEMA,MiningFeedbackRequest,MiningFeedbackOption,
                                              MiningFeedbackV1)
-from mcio_ctrl.network import ObservationPacket
+from mcio_ctrl.network import ObservationPacket,ActionPacket
 
 
 class MiningFeedbackTests(unittest.TestCase):
@@ -24,6 +24,13 @@ class MiningFeedbackTests(unittest.TestCase):
         self.assertTrue(result.crosshair_on_block)
         self.assertEqual(tuple(vars(result)),('schema','actively_destroying',
                          'crack_stage','crosshair_on_block'))
+
+    def test_on_demand_request_cbor_registration(self):
+        pkt=ActionPacket(options=[MiningFeedbackRequest(True)])
+        copy=ActionPacket.unpack(pkt.pack())
+        self.assertEqual(len(copy.options),1)
+        self.assertIsInstance(copy.options[0],MiningFeedbackRequest)
+        self.assertTrue(copy.options[0].fresh)
 
     def test_idle_and_no_packet(self):
         idle=MiningFeedbackV1.from_packet(self.packet(

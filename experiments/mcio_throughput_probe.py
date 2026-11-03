@@ -21,7 +21,8 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from gmaincraft.player_knowledge import PlayerKnowledgeV1
 from gmaincraft.mcio_status import PlayerStatusV1, ENV_NAME
-from gmaincraft.mcio_mining_feedback import MiningFeedbackV1, ENV_NAME as MINING_ENV
+from gmaincraft.mcio_mining_feedback import (MiningFeedbackV1,MiningFeedbackOption,MiningFeedbackRequest,
+                                          ENV_NAME as MINING_ENV,ON_DEMAND_ENV as MINING_ON_DEMAND_ENV)
 from gmaincraft.mcio_surface_grid import SurfaceGridV0, ENV_NAME as SURFACE_GRID_ENV
 from gmaincraft.mcio_surface_objects import (SurfaceObjectsV1,SurfaceObjectsOption,SurfaceObjectsRequest,
                                           ENV_NAME as SURFACE_OBJECTS_ENV,ON_DEMAND_ENV)
@@ -31,11 +32,14 @@ MCIO = ROOT / 'mcio-data'
 INSTANCE = MCIO / 'instances' / 'DemoInstance'
 
 
-def action(ctrl, manager, keys=(), commands=(), clear=False, request_objects=False):
+def action(ctrl, manager, keys=(), commands=(), clear=False, request_objects=False, request_mining=False):
     states = {key: int(key in keys) for key in mcio_env.INPUT_MAP}
     events = manager.process_action(states, mcio_env.INPUT_MAP)
+    requests=([SurfaceObjectsRequest(True)] if request_objects else [])
+    if request_mining:
+        requests.append(MiningFeedbackRequest(True))
     pkt = network.ActionPacket(inputs=events, commands=list(commands), clear_input=clear,
-                               options=[SurfaceObjectsRequest(True)] if request_objects else [])
+                               options=requests)
     t0 = time.perf_counter_ns()
     ctrl.send_action(pkt)
     t1 = time.perf_counter_ns()
@@ -100,7 +104,7 @@ def reset(ctrl, xyz):
     return manager
 
 
-def do_run(ctrl, xyz, ticks, label, *, status_v1=False, surface_grid=False, surface_objects=False, on_demand=False, idle_only=False, mining_feedback=False):
+def do_run(ctrl, xyz, ticks, label, *, status_v1=False, surface_grid=False, surface_objects=False, on_demand=False, idle_only=False, mining_feedback=False, mining_on_demand=False):
     manager = reset(ctrl, xyz)
     stats = env_util.StatsCache()
     sends, receives, frames, stat_times, frame_times = [], [], [], [], []
@@ -118,7 +122,9 @@ def do_run(ctrl, xyz, ticks, label, *, status_v1=False, surface_grid=False, surf
     for tick in range(ticks):
         keys = () if idle_only else ('LEFT_BUTTON',) if tick < 110 else ('W',) if tick < 145 else ()
         request = on_demand and (tick+1)%6==0
-        ob, send_ms, recv_ms = action(ctrl, manager, keys=keys,request_objects=request)
+        mining_request=mining_on_demand and (tick+1)%6==0
+        ob, send_ms, recv_ms = action(ctrl, manager, keys=keys,
+                           request_objects=request,request_mining=mining_request)
         if on_demand and not request and ob.get_option(SurfaceObjectsOption) is not None:
             raise AssertionError('Unexpected unrequested surface data')
         sends.append(send_ms)
@@ -136,10 +142,12 @@ def do_run(ctrl, xyz, ticks, label, *, status_v1=False, surface_grid=False, surf
             if not 0<=status.hunger<=20:
                 raise AssertionError('Invalid hunger status')
             status_validations+=1
-        if mining_feedback:
+        if mining_feedback and (not mining_on_demand or mining_request):
             feedback=MiningFeedbackV1.from_packet(ob)
             feedback_validations+=1
             active_mining_packets+=int(feedback.actively_destroying)
+        elif ob.get_option(MiningFeedbackOption) is not None:
+            raise AssertionError('Unrequested or disabled mining feedback leaked')
         if surface_grid:
             grid=SurfaceGridV0.from_packet(ob)
             grid_ray_hits+=len(grid.hits)
@@ -236,6 +244,8 @@ def main():
                     help='opt-in grouped first-hit screen objects, bounded by ray count')
     ap.add_argument('--surface-grid',action='store_true',
                     help='opt-in 13x9 first-hit screen rays from patched MCio')
+    ap.add_argument('--mining-on-demand',action='store_true',
+                    help='request fresh current crack stage only on every sixth tick')
     ap.add_argument('--mining-feedback',action='store_true',
                     help='opt-in own vanilla break/crack stage, no Torch')
     ap.add_argument('--status-v1',action='store_true',
@@ -249,6 +259,8 @@ def main():
         ap.error('Invalid frame width/height')
     if args.ray_profile=='fine' and not (args.surface_grid or args.surface_objects):
         ap.error('--ray-profile fine requires a surface sensor')
+    if args.mining_on_demand and not args.mining_feedback:
+        ap.error('--mining-on-demand requires --mining-feedback')
     if args.surface_on_demand and not args.surface_objects:
         ap.error('--surface-on-demand requires --surface-objects')
     if args.surface_grid and args.surface_objects:
@@ -269,6 +281,7 @@ def main():
                             width=args.frame_width,height=args.frame_height,
                             env_extra={**({ENV_NAME:'1'} if args.status_v1 else {}),
                                        **({MINING_ENV:'1'} if args.mining_feedback else {}),
+                                       **({MINING_ON_DEMAND_ENV:'1'} if args.mining_on_demand else {}),
                                        **({SURFACE_GRID_ENV:'1'} if args.surface_grid else {}),
                                        **({SURFACE_OBJECTS_ENV:'1'} if args.surface_objects else {}),
                                        **({ON_DEMAND_ENV:'1'} if args.surface_on_demand else {}),
@@ -288,7 +301,8 @@ def main():
             results=[do_run(ctrl,xyz,args.ticks,f'repeat{i+1}',status_v1=args.status_v1,
                             surface_grid=args.surface_grid,surface_objects=args.surface_objects,
                             on_demand=args.surface_on_demand,idle_only=args.idle_only,
-                            mining_feedback=args.mining_feedback)
+                            mining_feedback=args.mining_feedback,
+                            mining_on_demand=args.mining_on_demand)
                      for i in range(args.repeats)]
             path.parent.mkdir(parents=True,exist_ok=True)
             with path.open('x',encoding='utf-8') as f:

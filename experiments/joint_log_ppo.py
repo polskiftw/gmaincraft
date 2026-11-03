@@ -174,7 +174,9 @@ def launch_world(world_name, args, evaluator):
                                 getattr(args,'with_status',False) or getattr(args,'with_mining_feedback',False)
                                 else {}),
                                 **({'GMAINCRAFT_MINING_FEEDBACK_V1':'1'} if
-                                getattr(args,'with_mining_feedback',False) else {})})
+                                getattr(args,'with_mining_feedback',False) else {}),
+                                **({'GMAINCRAFT_MINING_FEEDBACK_ON_DEMAND_V1':'1'} if
+                                getattr(args,'with_mining_on_demand',False) else {})})
     ensure_clean_visual_options(MCIO/'instances'/'DemoInstance')
     launcher = instance.Launcher(opts)
     ctrl = None

@@ -1,5 +1,47 @@
 # Experiment record
 
+## New real mined-drop inventory audit and on-demand crack feedback
+
+See [`COMPOSED_MINE_PICKUP_AUDIT.md`](COMPOSED_MINE_PICKUP_AUDIT.md).
+The previously scratch-trained memory crack motor was composed with an
+older scratch-trained RGB-only frozen pickup controller, but their PHASE
+handoff is **SCRIPTED by evaluator-only actual mined stat**, not learned.
+Controller preaims a disposable oak trunk BETWEEN scored episodes; it
+issues no admin commands and never summons an item DURING scoring. In
+12 independent jittered pre-aimed Minecraft cases, seed 784232:
+learned mine+frozen pickup p02 **12/12 truly mined, 11/12 actually picked
+up into inventory**, always-attack+learned pickup 11/12, learned+forward
+9/12, learned+random7/12, no-movement0/12, no-attack0/12. Independent
+seed784233: learned+p01 7/12 inventory, learned+p02 9/12; forward
+9-10/12, learned+always-hold attack remain competitive; no claim of
+statistically superior neural pickup. All positive inventory cases also
+reported exactly one new vanilla picked_up stat when tracked correctly.
+
+**Invalid earlier pilot event counts:** `composed_pilot_nov03a` had real
+5/5 inventory pickups but cumulative MCio mined/pickup stats were treated
+as per-episode deltas (1,2,3,...). Do not use pilot stat deltas.
+Corrected evaluations persist two `CumulativeMinedTracker` instances
+across fresh episode bridges, verify 0/1 event increments, and score
+real inventory after ordinary player movement. Full ignored JSONs:
+`composed_audit_nov03b`, `composed_p01_nov03c`, `composed_p02_nov03c`.
+
+A new combined memory+surface opt-in live action-request control passed
+**13/13** in `surface_mining_joint_nov03d` (no stale data and both fail
+closed without a request). Original V5 status-only compatibility still
+passed **4/4** in `mining_req_compat_nov03d`, research extensions OFF.
+Synchronous `MiningFeedbackRequest(fresh=True)` now allows mining crack
+observations ONLY on requested last action ticks, never stale on others.
+The old trained checkpoint still froze 12/12 mine controls with this
+request; a distinct **new on-demand trained from scratch** motor ran
+28 Minecraft episodes and mined14/28 (2/14 first,12/14 second), held-out
+frozen 12/12. Its first attempted 28-episode training run aborted on an
+out-of-range crack stage (unresolved rare edge case) and is INVALID;
+the subsequent fully completed run is independently tagged and preserved.
+Same-mod 300-tick no-Torch warm control: mining OFF 0.7527s,
+continuous 0.7915s, requested once per 6 ticks 0.8055s; no lost frames.
+This does NOT demonstrate a speedup. All source/score evidence grounded
+in real Minecraft, with explicitly limited controlled fixture conditions.
+
 ## Latest: read-only mining progress and first learned attack motor (Nov 2–3, 2026)
 
 **See [`MINING_FEEDBACK_AND_ATTACK_LEARNING.md`](MINING_FEEDBACK_AND_ATTACK_LEARNING.md).**

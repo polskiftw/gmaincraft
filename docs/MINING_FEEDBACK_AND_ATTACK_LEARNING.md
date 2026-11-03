@@ -1,5 +1,22 @@
 # Read-only Minecraft mining progress and a learned attack motor skill
 
+## NEWER: real inventory acquisition and on-demand follow-up
+
+The attack motor is now independently combined with the older trained
+pickup controller on **genuine vanilla dropped items from real mined logs**.
+On 12 held-out cases a frozen learned+learned pair picked up **11/12**
+actual inventory logs, with further held-out runs9/12 and7/12 for
+alternate pickup models. This requires an evaluator's SCRIPTED phase
+handoff after a real mined stat and a controller-staged pre-aimed log,
+so is NOT an autonomous first-log finder or end-to-end learned policy.
+See [`COMPOSED_MINE_PICKUP_AUDIT.md`](COMPOSED_MINE_PICKUP_AUDIT.md)
+for all controls, the cumulative-stats bug/repair, independent seeds,
+checkpoint hashes, per-tick performance, and the new synchronous opt-in
+on-demand mining feedback protocol. The older findings below remain
+accurate historical evidence; any claim of **0 pickups** refers to the
+initial attack-only lab, NOT this subsequent composed audit. The current
+on-demand mod JAR has a newer hash than the historical initial v1 build.
+
 **Real Minecraft Java 1.21.3, Fabric/MCio, November 2-3 2026.** This is a
 narrow but **genuine from-scratch learned action-control component**. It is
 not a full V6 speedrunner, a general tree finder, a learned pickup skill, or
