@@ -4,14 +4,18 @@
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
-if (( $# < 3 || $# > 6 )); then
-  echo 'Usage: tools/run-fresh-evaluation.sh TRAIN_RUN|- EVAL_TAG TOTAL_DECISIONS [policy_sampled|policy_greedy|uniform_random|untrained] [EPISODE_DECISIONS] [REWARD_PROFILE]' >&2
+if (( $# < 3 || $# > 7 )); then
+  echo 'Usage: tools/run-fresh-evaluation.sh TRAIN_RUN|- EVAL_TAG TOTAL_DECISIONS [policy_sampled|policy_greedy|uniform_random|untrained] [EPISODE_DECISIONS] [REWARD_PROFILE] [EVAL_SEED_START]' >&2
   exit 2
 fi
 training="$1"; tag="$2"; decisions="$3"; mode="${4:-policy_sampled}"
 horizon="${5:-1200}"
 reward_profile="${6:-wood_discovery_v2}"
-if [[ "$reward_profile" != wood_discovery_v2 && "$reward_profile" != wood_progress_v3 ]]; then echo "Invalid reward profile" >&2; exit 2; fi
+eval_seed_start="${7:-0}"
+if [[ "$reward_profile" != wood_discovery_v2 && "$reward_profile" != wood_progress_v3 && "$reward_profile" != wood_persistence_v4 ]]; then echo "Invalid reward profile" >&2; exit 2; fi
+if [[ ! "$eval_seed_start" =~ ^[0-9]{1,9}$ ]]; then
+  echo "Invalid held-out seed start index" >&2; exit 2
+fi
 if [[ ! "$tag" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,22}$ ]] ||
    [[ "$training" != '-' && ! "$training" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,22}$ ]] ||
    [[ ! "$decisions" =~ ^[1-9][0-9]*$ ]] ||
@@ -31,6 +35,7 @@ journal="logs/fresh_eval_${tag}.jsonl"
 if [[ -e "$journal" ]];then echo 'Refusing to overwrite existing evaluation report' >&2;exit 1;fi
 console="logs/fresh_eval_${tag}_$(date +%Y%m%d_%H%M%S)_$$.console"
 args=(--mode eval --control "$mode" --run-tag "$tag" --decisions "$decisions"
+      --eval-seed-start "$eval_seed_start"
       --episode-decisions "$horizon" --seed-root 917211 --policy-seed 731117
       --reward-profile "$reward_profile" --retain-worlds 2 --device cuda --visible)
 if [[ "$training" != '-' ]];then args+=(--model-run "$training");fi
@@ -53,6 +58,6 @@ except (OSError,ValueError,IndexError) as e:
     sys.exit('FAILED: Missing or invalid frozen-eval journal: '+str(e))
 if last.get('stage')!='completed' or last['decisions']!=int(sys.argv[2]) or last['mode']!='eval':
     sys.exit('FAILED: Frozen evaluation did not complete')
-print('VERIFIED frozen holdout:',last['episodes'],'fresh seeds,',last['decisions'],
+print('VERIFIED frozen holdout:',last.get('evaluated_episodes',last['episodes']),'fresh seeds,',last['decisions'],
       'decisions, wood inventory events:',last['totals'].get('wood_inventory_gain',0))
 PY

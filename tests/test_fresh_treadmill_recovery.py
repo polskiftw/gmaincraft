@@ -13,7 +13,7 @@ sys.path.insert(0,str(ROOT/'src'))
 sys.path.insert(0,str(ROOT/'experiments'))
 from gmaincraft.fresh_seed_schedule import SeedSchedule
 from gmaincraft.fresh_world_manager import FreshWorldManager,names
-from gmaincraft.natural_online_policy import NaturalPPO
+from gmaincraft.natural_online_policy import NaturalPPO,PERSISTENCE_SCHEMA,PERSISTENCE_HEAD_SIZES
 from fresh_seed_treadmill import (parse_args,metadata,save_json_atomic,
     save_model,restore,recover_inflight,repair_jsonl_tail,quarantine_pending_file)
 
@@ -50,6 +50,41 @@ class StreamRecoveryTests(unittest.TestCase):
         self.assertNotEqual(metadata(old),metadata(new))
         self.assertEqual(NaturalPPO(device='cpu').entropy_coef,.014)
         self.assertEqual(NaturalPPO(device='cpu',entropy_coef=.04).entropy_coef,.04)
+
+    def test_v4_has_new_policy_schema_and_strict_versioned_resume(self):
+        old=parse_args(['--run-tag','v2safe','--decisions','240'])
+        args=parse_args(['--run-tag','newv4','--decisions','240',
+                         '--reward-profile','wood_persistence_v4',
+                         '--episode-decisions','240','--update-every','32'])
+        meta=metadata(args)
+        self.assertEqual(meta['policy_schema'],PERSISTENCE_SCHEMA)
+        self.assertEqual(tuple(meta['duration_ticks']),(6,24,72))
+        self.assertNotIn('duration_ticks',metadata(old))
+        with tempfile.TemporaryDirectory() as td:
+            path=pathlib.Path(td)/'v4.pt'
+            model=NaturalPPO(device='cpu',schema=PERSISTENCE_SCHEMA,
+                             action_sizes=PERSISTENCE_HEAD_SIZES)
+            save_model(path,model,meta,4,960,{'new_mined_blocks':3})
+            restored=NaturalPPO(device='cpu',schema=PERSISTENCE_SCHEMA,
+                                action_sizes=PERSISTENCE_HEAD_SIZES)
+            self.assertEqual(restore(path,restored,meta),(4,960,{'new_mined_blocks':3}))
+            with self.assertRaises(ValueError):restore(path,restored,metadata(old))
+            with self.assertRaises(ValueError):restore(path,NaturalPPO(device='cpu'),meta)
+
+    def test_heldout_seed_offset_cannot_contaminate_training(self):
+        eval_args=parse_args(['--run-tag','holdout2','--mode','eval','--control','uniform_random',
+                              '--decisions','24','--episode-decisions','12',
+                              '--eval-seed-start','2'])
+        self.assertEqual(eval_args.eval_seed_start,2)
+        self.assertEqual(metadata(eval_args)['seed_root'],917211)
+        schedule=SeedSchedule(eval_args.seed_root,'eval')
+        self.assertNotEqual(schedule.seed_at(2),schedule.seed_at(0))
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                parse_args(['--run-tag','trainbad','--decisions','24','--eval-seed-start','2'])
+            with self.assertRaises(SystemExit):
+                parse_args(['--run-tag','evalbad','--mode','eval','--control','untrained',
+                            '--decisions','24','--eval-seed-start','-1'])
 
     def test_checkpoint_tied_to_exact_seed_stream_and_lossless_cursor(self):
         args=parse_args(['--run-tag','safe1','--episode-decisions','12',

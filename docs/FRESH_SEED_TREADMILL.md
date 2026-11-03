@@ -1,5 +1,30 @@
 # Fresh-seed Minecraft survival training treadmill (current primary runner)
 
+**New November 3 milestone:** Read
+[`NATURAL_WOOD_FIRST_LOG_PERSISTENCE_V4.md`](NATURAL_WOOD_FIRST_LOG_PERSISTENCE_V4.md).
+V4 adds a fully learned duration head (6/24/72 ticks) and is now the
+recommended continuation. A from-scratch agent in an unmodified vanilla
+noise survival world **genuinely mined one wood block and picked up its
+drop into inventory**; it also did so on 1 of 4 held-out worlds frozen
+from only four PPO updates (uniform-random same-duration control 0/4).
+Small exploratory evidence, not reliable skill. The initial V4 success
+was preserved as an ignored frozen checkpoint; continue its original
+optimizer and seed stream with:
+
+```bash
+tools/run-fresh-treadmill.sh resume persistpilot1103 24000 600 wood_persistence_v4
+```
+
+V4 target/horizon units continue to mean **six-tick game-time units**:
+a 600-unit episode is always 3,600 Minecraft ticks, but now far fewer
+actual neural choices because a chosen action can hold for 24/72 ticks.
+The per-world horizon600 must not change for that checkpoint. Reported
+`policy_actions` is actual model choices; `decisions` is six-tick units.
+Do not run V4 with a v2/v3 checkpoint or silently change old v2/v3 schema.
+The optional final `EVAL_SEED_START` argument on the frozen evaluator
+can select later unique held-out indices without redoing first worlds.
+
+
 **Latest checked November 3:** The original `speedrun01` completed 24,000
 six-tick decisions / ten seeds and exhibited action collapse: see
 [`SPEEDRUN01_POLICY_COLLAPSE_2026_11_03.md`](SPEEDRUN01_POLICY_COLLAPSE_2026_11_03.md).

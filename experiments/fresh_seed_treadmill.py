@@ -2,8 +2,8 @@
 
 Each episode receives a fresh Minecraft noise-generated world (not one of a
 small rotating cohort). The Minecraft seed is NEVER shown to the policy.
-Training and evaluation seeds are mathematically disjoint by even/odd parity
-of the full signed 64-bit seed; a keyed bijection provides nonrepeating seeds.
+Training and evaluation seeds are disjoint by alternating INTERNAL permutation
+indices; a keyed full-64-bit bijection provides nonrepeating signed seeds.
 
 CURRENT BACKEND: one Minecraft client/integrated server per seed. MCio's
 synchronized client/server semaphores have NO safe world-reload protocol yet;
@@ -39,8 +39,10 @@ from gmaincraft.fresh_world_manager import FreshWorldManager,names
 from gmaincraft.instance_options import temporary_game_options,restore_orphaned_game_options
 from gmaincraft.mcio_process_watchdog import (WatchedControllerSync,MinecraftProcessExited,
                                                MinecraftObservationTimeout)
-from gmaincraft.natural_online_policy import (NaturalPPO,NaturalTransition,SCHEMA,
-                          DECISION_TICKS,HEAD_SIZES,observe,action_from_heads)
+from gmaincraft.natural_online_policy import (NaturalPPO,NaturalTransition,SCHEMA,wood_id,
+                          DECISION_TICKS,HEAD_SIZES,observe,action_from_heads,
+                          PERSISTENCE_SCHEMA,PERSISTENCE_HEAD_SIZES,PERSISTENCE_DURATIONS,
+                          action_from_persistence_heads)
 from gmaincraft.natural_online_session import NaturalSessionMemory
 from gmaincraft.natural_diagnostics import NaturalActionAudit,WoodCrackProgress
 from gmaincraft.vision_settings import ensure_clean_visual_options
@@ -48,7 +50,12 @@ from natural_online_train import (MCIO,INSTANCE,ENV_EXTRA,OVERRIDES,REWARDS,
                                    read_step,log_row)
 
 RUN_TAG_RE=r'[A-Za-z0-9][A-Za-z0-9_-]{0,22}'
-FRESH_REWARDS={**REWARDS,'wood_progress_v3':'wood_discovery_v2+nonrepeatable_own_wood_crack_stage_progress'}
+FRESH_REWARDS={**REWARDS,'wood_progress_v3':'wood_discovery_v2+nonrepeatable_own_wood_crack_stage_progress',
+    'wood_persistence_v4':'wood_progress_v3+learned_normal_action_hold_duration_6_24_72_ticks'}
+
+
+def variable_motor(args):
+    return args.reward_profile=='wood_persistence_v4'
 
 
 def parse_args(argv=None):
@@ -60,15 +67,17 @@ def parse_args(argv=None):
     ap.add_argument('--model-run',help='train run whose frozen checkpoint is evaluated')
     ap.add_argument('--resume',action='store_true')
     cap=ap.add_mutually_exclusive_group()
-    cap.add_argument('--decisions',type=int,default=None,help='TOTAL decisions, including resume')
+    cap.add_argument('--decisions',type=int,default=None,help='TOTAL six-tick gameplay units (v4 may hold actions for multiple units), including resume')
     cap.add_argument('--until-stopped',action='store_true',help='train until stop file or Ctrl-C')
     ap.add_argument('--episode-decisions',type=int,default=2400,
-                    help='maximum six-tick decisions spent per never-before-trained seed')
+                    help='maximum six-tick gameplay units per unique seed; v4 holds may span multiple units')
     ap.add_argument('--update-every',type=int,default=96)
     ap.add_argument('--report-every',type=int,default=60)
     ap.add_argument('--seed-root',type=int,default=917211,
                     help='deterministic fresh-seed stream (not a policy feature)')
     ap.add_argument('--policy-seed',type=int,default=731117)
+    ap.add_argument('--eval-seed-start',type=int,default=0,
+                    help='eval-only starting unique held-out seed index; never a policy feature')
     ap.add_argument('--reward-profile',choices=tuple(FRESH_REWARDS),default='wood_discovery_v2')
     ap.add_argument('--device',choices=('auto','cuda','cpu'),default='auto')
     ap.add_argument('--retain-worlds',type=int,default=2,
@@ -90,6 +99,9 @@ def parse_args(argv=None):
         not 1<=args.slow_ms<=1000 or not 0<=args.max_crash_retries<=5 or
         (args.decisions is not None and not 1<=args.decisions<=10**10)):
         ap.error('Invalid episode, update, retention, performance or decision bound')
+    if (type(args.eval_seed_start) is not int or not 0<=args.eval_seed_start<2**63 or
+        (args.mode=='train' and args.eval_seed_start!=0)):
+        ap.error('Held-out seed index must be 0 for training and within the eval stream')
     if args.mode=='train' and (args.model_run or args.control!='policy_sampled'):
         ap.error('Train has no model import and uses sampled PPO actions')
     if args.mode=='eval' and (args.resume or args.until_stopped or
@@ -112,7 +124,8 @@ def paths(tag,mode):
 
 
 def metadata(args):
-    return dict(kind='gmaincraft_fresh_stream_v2_fixed_spawn',policy_schema=SCHEMA,
+    return dict(kind='gmaincraft_fresh_stream_v2_fixed_spawn',policy_schema=PERSISTENCE_SCHEMA if variable_motor(args) else SCHEMA,
+                **({'duration_ticks':PERSISTENCE_DURATIONS,'horizon_unit_ticks':DECISION_TICKS} if variable_motor(args) else {}),
                 seed_schedule=STREAM_SCHEMA,seed_root=args.seed_root,
                 episode_decisions=args.episode_decisions,
                 update_every=args.update_every,
@@ -140,7 +153,7 @@ def save_model(path,model,meta,cursor,decisions,totals):
     # Model/optimizer and all PyTorch CPU/CUDA RNG state are committed
     # together only after a verified Minecraft shutdown. This checkpoint
     # starts the NEXT fresh episode, never an ambiguous partially saved one.
-    data=dict(schema=SCHEMA,stream=STREAM_SCHEMA,metadata=meta,
+    data=dict(schema=model.schema,stream=STREAM_SCHEMA,metadata=meta,
               model=model.state(),next_episode=int(cursor),decisions=int(decisions),
               totals=dict(totals))
     temp=path.with_suffix('.pt.pending')
@@ -154,7 +167,7 @@ def save_model(path,model,meta,cursor,decisions,totals):
 
 def restore(path,model,meta):
     data=model.torch.load(path,map_location=model.device,weights_only=True)
-    if data['schema']!=SCHEMA or data['stream']!=STREAM_SCHEMA or data['metadata']!=meta:
+    if data['schema']!=model.schema or data['stream']!=STREAM_SCHEMA or data['metadata']!=meta:
         raise ValueError('Unsafe checkpoint drift; use same run settings, not a silently different experiment')
     model.restore(data['model'])
     return int(data['next_episode']),int(data['decisions']),Counter(data['totals'])
@@ -255,7 +268,9 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     crack_progress=WoodCrackProgress()
     elapsed_io=0.
     trained=0
-    decisions=0
+    decisions=0  # Six-tick gameplay budget units; equal to game_ticks / 6.
+    policy_actions=0  # Actual neural choices; v4 options may span 1, 4 or 12 budget units.
+    last_report_bucket=0
     previous_frame=None
     control_rng=random.Random(args.policy_seed ^ (episode*0x9E3779B97F4A7C15))
     launch_started=time.perf_counter()
@@ -285,55 +300,88 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                     max_decisions=budget,
                     nvidia_gl_threading=args.nvidia_gl_threading,
                     first_xyz=[round(float(x),2) for x in player.player_xyz])),flush=True)
-            for i in range(budget):
+            while decisions<budget:
                 if stop_requested():break
+                is_v4=variable_motor(args)
+                action_sizes=PERSISTENCE_HEAD_SIZES if is_v4 else HEAD_SIZES
                 if args.mode=='eval' and args.control=='uniform_random':
-                    heads=tuple(control_rng.randrange(n) for n in HEAD_SIZES)
+                    heads=tuple(control_rng.randrange(n) for n in action_sizes)
                     logp=value=0.
                 else:
                     heads,logp,value=model.act(state,greedy=(args.mode=='eval' and
                                                            args.control=='policy_greedy'))
-                action=action_from_heads(heads)
-                audit.observe(heads,state,bridge.player_status().crosshair_block)
-                before=time.perf_counter()
-                bridge.apply(action,request_surface_objects=True,request_mining_feedback=True)
-                elapsed_io+=time.perf_counter()-before
-                current_frame=bridge.packet.frame_sequence
-                if previous_frame is not None and current_frame<=previous_frame:
-                    raise AssertionError('Minecraft observation sequence stopped advancing')
-                previous_frame=current_frame
-                next_state,next_player,next_surfaces=read_step(bridge,memory,0,bad_counter=bad_counter)
-                died=next_player.health<=0
-                record=memory.accrue(0,next_player,next_surfaces,bridge._stats,heads,
-                                     action.ticks,death=died,reward_profile=(
-                                         'wood_discovery_v2' if args.reward_profile=='wood_progress_v3'
-                                         else args.reward_profile))
-                progress_bonus=(crack_progress.observe(next_state,bridge.player_status().crosshair_block)
-                                if args.reward_profile=='wood_progress_v3' else 0.)
-                record['wood_crack_progress_reward']=progress_bonus
-                record['reward']=round(record['reward']+progress_bonus,5)
-                if progress_bonus:events['wood_crack_progress_reward']+=progress_bonus
-                for key in ('fresh_cell','new_visible_surfaces','new_visible_wood',
-                            'new_mined_blocks','new_wood_mined','wood_inventory_gain','death'):
-                    events[key]+=record[key]
+                action=(action_from_persistence_heads(heads,(budget-decisions)*DECISION_TICKS)
+                        if is_v4 else action_from_heads(heads))
+                target_before=bridge.player_status().crosshair_block
+                audit.observe(heads[:3],state,target_before)
+                spent_ticks=0
+                macro_reward=0.
+                current_state=state
+                died=False
+                # Long v4 actions are ONE neural selection, ordinary vanilla
+                # held controls and read-only fresh observations every 6 ticks.
+                # Intermediate samples are reward/evaluation-only, NOT an
+                # opportunity for a scripted controller to choose a new action.
+                while spent_ticks<action.ticks:
+                    chunk_ticks=min(DECISION_TICKS,action.ticks-spent_ticks)
+                    chunk=AgentAction(keys=action.keys,
+                        look_dx=action.look_dx if spent_ticks==0 else 0.,
+                        look_dy=action.look_dy if spent_ticks==0 else 0.,
+                        ticks=chunk_ticks)
+                    before=time.perf_counter()
+                    bridge.apply(chunk,request_surface_objects=True,request_mining_feedback=True)
+                    elapsed_io+=time.perf_counter()-before
+                    current_frame=bridge.packet.frame_sequence
+                    if previous_frame is not None and current_frame<=previous_frame:
+                        raise AssertionError('Minecraft observation sequence stopped advancing')
+                    previous_frame=current_frame
+                    next_state,next_player,next_surfaces=read_step(bridge,memory,0,bad_counter=bad_counter)
+                    died=next_player.health<=0
+                    record=memory.accrue(0,next_player,next_surfaces,bridge._stats,heads[:3],
+                                         chunk_ticks,death=died,reward_profile=(
+                                             'wood_discovery_v2' if args.reward_profile in
+                                             ('wood_progress_v3','wood_persistence_v4')
+                                             else args.reward_profile))
+                    progress_bonus=(crack_progress.observe(next_state,bridge.player_status().crosshair_block)
+                                    if args.reward_profile in ('wood_progress_v3','wood_persistence_v4')
+                                    else 0.)
+                    record['wood_crack_progress_reward']=progress_bonus
+                    record['reward']=round(record['reward']+progress_bonus,5)
+                    if progress_bonus:events['wood_crack_progress_reward']+=progress_bonus
+                    for key in ('fresh_cell','new_visible_surfaces','new_visible_wood',
+                                'new_mined_blocks','new_wood_mined','wood_inventory_gain','death'):
+                        events[key]+=record[key]
+                    # Semi-Markov transition: discount intermediate rewards
+                    # within one motor hold by their true game-tick offsets.
+                    macro_reward+=(.9995**spent_ticks)*record['reward']
+                    spent_ticks+=chunk_ticks
+                    current_state=next_state
+                    if record['new_mined_blocks'] or record['wood_inventory_gain'] or died:
+                        log_row(log,dict(stage='uncommitted_game_event',episode=episode,
+                             seed=seed,step=decisions+spent_ticks//DECISION_TICKS,**record))
+                    if died or stop_requested():break
+                audit.record_duration(heads[3] if is_v4 else 0,spent_ticks,attack=heads[2]==1,
+                        wood_crosshair=target_before is not None and
+                        wood_id(target_before.block_id))
                 if args.mode=='train':
-                    trajectory.append(NaturalTransition(state,heads,record['reward'],
-                                         value,logp,action.ticks,died))
-                decisions+=1
-                state=next_state
-                if record['new_mined_blocks'] or record['wood_inventory_gain'] or died:
-                    log_row(log,dict(stage='uncommitted_game_event',episode=episode,
-                         seed=seed,step=decisions,**record))
+                    trajectory.append(NaturalTransition(state,heads,macro_reward,
+                                         value,logp,spent_ticks,died))
+                decisions+=spent_ticks//DECISION_TICKS
+                policy_actions+=1
+                state=current_state
                 if args.mode=='train' and len(trajectory)>=args.update_every:
                     bootstrap=0. if died else model.act(state,greedy=True)[2]
                     metrics=model.update(trajectory,bootstrap_value=bootstrap)
                     trained+=1
                     trajectory.clear()
                     log_row(log,dict(stage='uncommitted_update',episode=episode,
-                                 step=decisions,**metrics))
-                if decisions%args.report_every==0:
+                                 step=decisions,policy_actions=policy_actions,**metrics))
+                report_bucket=decisions//args.report_every
+                if report_bucket>last_report_bucket or decisions==budget:
+                    last_report_bucket=report_bucket
                     pulse=dict(stage='uncommitted_pulse',episode=episode,seed=seed,
-                               decisions=decisions,game_ticks=decisions*DECISION_TICKS,
+                               decisions=decisions,policy_actions=policy_actions,
+                               game_ticks=decisions*DECISION_TICKS,
                                game_io_s=round(elapsed_io,3),
                                game_io_ms_per_tick=round(1000*elapsed_io/(decisions*DECISION_TICKS),3),
                                totals=dict(events),action_audit=audit.summary(),
@@ -363,7 +411,7 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     # escapes, its in-flight marker is left for quarantine on resume.
     from gmaincraft.fresh_world_manager import verify_noise_world
     verify_noise_world(manager.paths(episode)[1],seed,require_fixed_spawn=True)
-    result=dict(episode=episode,seed=seed,decisions=decisions,
+    result=dict(episode=episode,seed=seed,decisions=decisions,policy_actions=policy_actions,
                 game_ticks=decisions*DECISION_TICKS,
                 updates=trained,worldgen_s=round(worldgen_s,3),
                 client_startup_s=round(client_startup_s,3),
@@ -404,16 +452,18 @@ def main(argv=None):
           inflight.with_suffix('.json.pending').exists()):
         raise FileExistsError('Existing training stream or unfinished stages; use --resume or inspect artifacts')
     model=NaturalPPO(seed=args.policy_seed,device=args.device,
-                     learning_rate=.00015 if args.reward_profile=='wood_progress_v3' else .00035,
-                     entropy_coef=.04 if args.reward_profile=='wood_progress_v3' else .014)
-    cursor=0
+                     learning_rate=.00015 if args.reward_profile in ('wood_progress_v3','wood_persistence_v4') else .00035,
+                     entropy_coef=.04 if args.reward_profile in ('wood_progress_v3','wood_persistence_v4') else .014,
+                     schema=PERSISTENCE_SCHEMA if variable_motor(args) else SCHEMA,
+                     action_sizes=PERSISTENCE_HEAD_SIZES if variable_motor(args) else HEAD_SIZES)
+    cursor=args.eval_seed_start if args.mode=='eval' else 0
     committed_decisions=0
     total=Counter()
     if args.mode=='train' and args.resume:
         cursor,committed_decisions,total=restore(checkpoint,model,meta)
     elif args.mode=='eval' and frozen_checkpoint:
         loaded=model.torch.load(frozen_checkpoint,map_location=model.device,weights_only=True)
-        if loaded['stream']!=STREAM_SCHEMA or loaded['schema']!=SCHEMA:
+        if loaded['stream']!=STREAM_SCHEMA or loaded['schema']!=model.schema:
             raise ValueError('Only checkpoints from the isolated fresh-seed stream can be frozen here')
         train_meta=loaded['metadata']
         if (train_meta.get('kind')!='gmaincraft_fresh_stream_v2_fixed_spawn' or
@@ -464,6 +514,7 @@ def main(argv=None):
             if not args.resume:
                 log_row(log,dict(stage='config',mode=args.mode,metadata=meta,
                       evaluation_control=args.control,
+                      evaluation_seed_start=args.eval_seed_start,
                       frozen_checkpoint=str(frozen_checkpoint) if frozen_checkpoint else None))
             if args.mode=='train' and args.resume:
                 recover_inflight(inflight,cursor,manager,log)
@@ -522,7 +573,10 @@ def main(argv=None):
                 if args.mode=='train' and stop_requested():break
             summary=dict(stage='completed' if args.decisions is not None and
                          committed_decisions>=args.decisions else 'paused',
-                         episodes=cursor,decisions=committed_decisions,
+                         episodes=cursor,
+                         evaluated_episodes=cursor-args.eval_seed_start if args.mode=='eval' else None,
+                         evaluation_seed_start=args.eval_seed_start if args.mode=='eval' else None,
+                         decisions=committed_decisions,
                          mode=args.mode,control=args.control,updates=model.updates,
                          seed_namespace=schedule.namespace,
                          new_optimizer_updates_in_eval=0 if args.mode=='eval' else None,

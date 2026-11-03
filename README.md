@@ -1,5 +1,32 @@
 # gmaincraft
 
+## Current milestone — first autonomous log in natural survival
+
+**November 3, 2026:** The new from-scratch **four-head memory-first V4
+agent** learned to choose ordinary movement, camera, attack AND how long
+to hold each action (6, 24 or 72 game ticks). In a real, entirely
+noise-generated survival world with no placed tree, scripted handoff or
+admin gameplay, it **mined a wood block and actually picked up the drop
+into its inventory**. A frozen four-update checkpoint also collected a
+real log on **1/4 independent held-out seeds**, versus **0/4** for a
+same-action, same-time uniform-random control. This is a promising
+individual success, **not a demonstrated reliable learned wood skill**,
+and Any% is much farther away. Read the complete evidence and constraints:
+[First natural wood inventory + versioned action-duration V4](docs/NATURAL_WOOD_FIRST_LOG_PERSISTENCE_V4.md).
+
+**Next recommended foreground training (continues the successful pilot):**
+
+```bash
+cd "$HOME/Documents/minecraft-discovery"
+tools/run-fresh-treadmill.sh resume persistpilot1103 24000 600 wood_persistence_v4
+```
+
+Its original 600-unit checkpoint has been independently preserved for
+frozen comparisons. All old model families, natural worlds and research
+patches are retained. **134 unit tests pass** and real Minecraft
+start/resume, same-seed evaluation and frozen old-model compatibility
+have been independently exercised.
+
 **NEW PRIMARY TRAINING KIT: [endless nonrepeating random-seed survival treadmill](docs/FRESH_SEED_TREADMILL.md).**
 `tools/run-fresh-treadmill.sh start mytrain01 forever` now automatically
 generates a NEW real vanilla noise Minecraft seed per episode, trains ONE
@@ -10,15 +37,16 @@ training seed. Frozen neural and uniform random baselines use provably
 disjoint held-out seeds and the **same initial spawn location** per seed.
 Real tests covered independent new-world generation, training resume,
 in-game stop, aborted-world quarantine and independent frozen evaluation.
-**118 pure tests passed.** Current MCio still restarts the Minecraft
+**Earlier treadmill launch tests passed; current full suite: 134.** Current MCio still restarts the Minecraft
 client per seed (~7s world generation plus9-14s client startup); hot world
 switching is a future independently tested optimization, not promised.
-The neural policy has **NOT learned real unscripted wood pickup yet**.
-See the linked guide for the exact foreground training commands.
+The subsequent V4 duration-policy pilot HAS now mined and collected one
+real natural-world log, but this remains an early, unproven skill. See the
+linked guides for the current foreground training command.
 
 **Primary development track: [real natural survival online learning](docs/NATURAL_SURVIVAL_ONLINE_TRAINING.md).** The project now has a working, resumable **from-scratch memory-first Minecraft PPO trainer**, running in actual vanilla-noise survival worlds. Movement, camera and attack are all learned actions; no player teleport, preaimed log, world cheat command or scripted mining/pickup handoff occurs during training. The run includes world rotation, local model/optimizer/exploration checkpoints, clean stop/resume and independent frozen/random controls. The first v2 pilot completed 720 normal-world decisions across three seeds and encountered 366 genuinely first-hit visible wood surfaces, but **has not yet mined or collected natural wood**. A held-out random policy still beats the immature learner on short exploration benchmarks; don't conflate a successful training pipeline with a successful speedrunner. To actually train unattended, see the linked guide for `tools/run-long-natural.sh` start/resume/stop commands.
 
-**Newest verified resource-acquisition milestone:** [Frozen learned mining + pickup on genuine Minecraft drops](docs/COMPOSED_MINE_PICKUP_AUDIT.md).
+**Earlier controlled resource-acquisition milestone:** [Frozen learned mining + pickup on genuine Minecraft drops](docs/COMPOSED_MINE_PICKUP_AUDIT.md).
 Two scratch-trained policies have been composed without privileged actions
 while playing: a Minecraft-client mining-progress motor mines an oak log,
 and a separate RGB-only learned movement component walks to pick up its
@@ -40,7 +68,7 @@ held-out real Minecraft pre-aimed oak blocks mined), while untrained and
 random controls broke none. This is NOT tree finding, log pickup or Any%.
 Original V5 trained checkpoints and research modes remain intact.
 
-**Latest research update:** [Real Minecraft visibility calibration](docs/VISIBLE_SURFACE_CALIBRATION_2026_11_03.md)
+**Earlier sensor research:** [Real Minecraft visibility calibration](docs/VISIBLE_SURFACE_CALIBRATION_2026_11_03.md)
 compares memory-derived block-surface candidates with independent actual
 rendered RGB across 23 lab fixtures, three natural survival seeds and
 night/occlusion controls. Fine 25x17 rays are an explicit measured research

@@ -1,5 +1,37 @@
 # Handoff for a brand-new ChatGPT conversation
 
+## Latest milestone: autonomous natural-world wood acquisition with learned action duration
+
+Read [`docs/NATURAL_WOOD_FIRST_LOG_PERSISTENCE_V4.md`](docs/NATURAL_WOOD_FIRST_LOG_PERSISTENCE_V4.md)
+**first**. V3 `woodv3_01` finished24,000 real vanilla game-time decisions,
+338 ordinary blocks mined, 2,895 new wood surface sightings, **0 wood
+mined or inventoried**. A new V4 **four-head** from-scratch memory policy
+lets the actor choose ordinary move/look/attack **and 6/24/72 tick hold**;
+it receives NO scripted target/mining phase and the same bounded train/frozen
+player-visible memory. World budgets still measure six-tick GAME-TIME units;
+long actions use real 6-tick reward sampling and timed PPO discounting.
+In its very first real 600-unit/3,600-tick pilot `persistpilot1103`,
+the actor autonomously mined wood at unit355 and acquired the mined item
+in actual inventory at unit361; one real natural seed, 4 CUDA updates.
+Frozen at these weights on FOUR distinct unseen matched seeds: **1/4 real
+wood inventory** vs 0/4 uniform-random duration control. V3 frozen on
+the first two seeds at equal game-time budget: 0/2. Sample is too small
+to prove reliable learned skill, and random broke more nonwood blocks.
+V4 start + real resume, separate held-out indices2/3, old V3 frozen
+checkpoint, exact schema protection, pure **134 tests** all passed.
+Preserved original successful 600-unit model hash in ignored
+`checkpoints/fresh_stream_holdv4_pilot600.pt`.
+
+**NEXT user training:** `tools/run-fresh-treadmill.sh resume persistpilot1103
+24000 600 wood_persistence_v4` (600 horizon MUST remain; 24,000 is a
+TOTAL target). The original model continues, frozen 600-unit snapshot
+is intact. Compare full V4 learning curve against the historical snapshot
+and same-seed uniform-random controls on several more unseen seeds. Do not
+claim Any% or consistent wood pickup; actual dropped-item entity sensor
+and crafting remain unsolved. Only use `/workspace`, preserve ignored
+checkpoint/world data, update docs/tests and commit/push validated changes.
+
+
 ## November 3 update: speedrun01 completed, mining-action collapse measured
 
 Read [`docs/SPEEDRUN01_POLICY_COLLAPSE_2026_11_03.md`](docs/SPEEDRUN01_POLICY_COLLAPSE_2026_11_03.md)

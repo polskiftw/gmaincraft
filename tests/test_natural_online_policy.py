@@ -4,7 +4,9 @@ import numpy as np
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
 from gmaincraft.natural_online_policy import (NaturalPPO,NaturalTransition,
-     SCHEMA,SELF_FEATURES,MAX_OBJECTS,ID_BYTES,wood_id,observe,action_from_heads)
+     SCHEMA,SELF_FEATURES,MAX_OBJECTS,ID_BYTES,wood_id,observe,action_from_heads,
+     PERSISTENCE_SCHEMA,PERSISTENCE_HEAD_SIZES,PERSISTENCE_DURATIONS,
+     action_from_persistence_heads)
 from gmaincraft.player_knowledge import PlayerKnowledgeV1,OwnedItem
 from gmaincraft.mcio_status import PlayerStatusV1,CrosshairBlock
 from gmaincraft.mcio_surface_objects import SurfaceObjectsV1,ProjectedBlockV1
@@ -101,6 +103,35 @@ class NaturalPolicyTests(unittest.TestCase):
         self.assertEqual(other.act(obs,greedy=True),trainer.act(obs,greedy=True))
         bad=dict(checkpoint,schema='other')
         with self.assertRaises(ValueError):other.restore(bad)
+
+    def test_learned_duration_actions_are_only_vanilla_key_holds(self):
+        self.assertEqual(PERSISTENCE_DURATIONS,(6,24,72))
+        self.assertEqual(PERSISTENCE_HEAD_SIZES,(6,7,2,3))
+        action=action_from_persistence_heads((0,0,1,2))
+        self.assertEqual((action.keys,action.look_dx,action.ticks),(('LEFT_BUTTON',),0.,72))
+        self.assertEqual(action_from_persistence_heads((1,0,1,2),remaining_ticks=18).ticks,18)
+        self.assertEqual(action_from_persistence_heads((1,3,0,1)).look_dx,-200)
+        for invalid in ((1,0,1),(1,0,1,3),(False,0,1,2),(2,7,1,1)):
+            with self.assertRaises(ValueError):action_from_persistence_heads(invalid)
+        with self.assertRaises(ValueError):action_from_persistence_heads((0,0,1,2),remaining_ticks=0)
+
+    def test_v4_model_trains_four_heads_without_loading_old_three_head_checkpoint(self):
+        trainer=NaturalPPO(device='cpu',seed=705,schema=PERSISTENCE_SCHEMA,
+                           action_sizes=PERSISTENCE_HEAD_SIZES,entropy_coef=.04)
+        obs=sample()
+        heads,logp,value=trainer.act(obs)
+        self.assertEqual(len(heads),4)
+        self.assertEqual(trainer.state()['action_sizes'],PERSISTENCE_HEAD_SIZES)
+        traj=[NaturalTransition(obs,heads,.3,value,logp,72,False)]*4
+        self.assertEqual(trainer.update(traj,bootstrap_value=value)['update'],1)
+        other=NaturalPPO(device='cpu',seed=706,schema=PERSISTENCE_SCHEMA,
+                         action_sizes=PERSISTENCE_HEAD_SIZES)
+        other.restore(trainer.state())
+        self.assertEqual(other.act(obs,greedy=True),trainer.act(obs,greedy=True))
+        old=NaturalPPO(device='cpu',seed=705)
+        with self.assertRaises(ValueError):old.restore(trainer.state())
+        with self.assertRaises(ValueError):trainer.restore(old.state())
+        with self.assertRaises(ValueError):NaturalPPO(device='cpu',schema=PERSISTENCE_SCHEMA)
 
     def test_cuda_checkpoint_roundtrip_device_safe(self):
         import torch

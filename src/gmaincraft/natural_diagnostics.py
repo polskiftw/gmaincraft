@@ -10,6 +10,10 @@ from .natural_online_policy import HEAD_SIZES, wood_id
 class NaturalActionAudit:
     def __init__(self):
         self.action_counts = [[0] * n for n in HEAD_SIZES]
+        self.duration_counts = [0,0,0]
+        self.action_elapsed_ticks = 0
+        self.attacking_elapsed_ticks = 0
+        self.wood_crosshair_attack_elapsed_ticks = 0
         self.crosshair_block_decisions = 0
         self.crosshair_wood_decisions = 0
         self.attack_decisions = 0
@@ -46,8 +50,24 @@ class NaturalActionAudit:
         self.max_attack_still_streak = max(self.max_attack_still_streak,
                                            self.attack_still_streak)
 
+    def record_duration(self, duration_index, actual_ticks, *, attack, wood_crosshair):
+        from .natural_online_policy import PERSISTENCE_DURATIONS
+        if (type(duration_index) is not int or
+            not 0<=duration_index<len(PERSISTENCE_DURATIONS) or
+            type(actual_ticks) is not int or
+            not 1<=actual_ticks<=PERSISTENCE_DURATIONS[duration_index]):
+            raise ValueError('Invalid duration audit')
+        self.duration_counts[duration_index]+=1
+        self.action_elapsed_ticks+=actual_ticks
+        self.attacking_elapsed_ticks+=actual_ticks if attack else 0
+        self.wood_crosshair_attack_elapsed_ticks+=actual_ticks if attack and wood_crosshair else 0
+
     def summary(self):
         return dict(action_counts=[list(x) for x in self.action_counts],
+                    duration_counts=list(self.duration_counts),
+                    action_elapsed_ticks=self.action_elapsed_ticks,
+                    attacking_elapsed_ticks=self.attacking_elapsed_ticks,
+                    wood_crosshair_attack_elapsed_ticks=self.wood_crosshair_attack_elapsed_ticks,
                     crosshair_block_decisions=self.crosshair_block_decisions,
                     crosshair_wood_decisions=self.crosshair_wood_decisions,
                     attack_decisions=self.attack_decisions,

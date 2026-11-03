@@ -1,5 +1,42 @@
 # TODO — gmaincraft
 
+## LATEST: verified first genuine autonomous natural wood mined + picked
+
+- [x] Inspect full `woodv3_01`: 24,000 six-tick decisions/10 noise worlds,
+  338 ordinary blocks mined, 2,895 newly visible wood surfaces, but **zero
+  wood mined/inventory**. Action persistence remains inadequate.
+- [x] Versioned new four-head `wood_persistence_v4` neural motor: choose
+  6/24/72 ticks to hold learned ordinary movement/look/attack (no scripted
+  target, commands, handoff, waypoint or pretrained model). Same bounded
+  player-visible memory train/frozen; SMDP game-tick discounting; game
+  horizon measured in constant six-tick units across all policy variants.
+- [x] Real from-scratch vanilla-noise seed `persistpilot1103`, 600 units,
+  115 sampled policy decisions and 4 PPO updates: Minecraft `mined wood`
+  at unit355 and `wood inventory increased 1` at unit361. True mined+
+  picked event; **first autonomous natural inventory log in this project**.
+- [x] Matched frozen V4 versus uniform-random V4 with identical action
+  durations and 3,600 game ticks/seed on four truly unseen Minecraft
+  seeds: frozen wood inventory **1/4** vs random **0/4**; ordinary mined
+  blocks90 vs106. Too small to prove learning advantage. Old V3 frozen
+  on the first two matched seeds mined 15 nonwood and collected 0 wood.
+- [x] Safe start/resume on independent live V4 120->240 units across
+  two different new seeds, saved CUDA/optimizer/RNG. Added optional
+  `EVAL_SEED_START` to evaluate disjoint additional unseen seeds without
+  replaying earlier ones. Original v2/v3 checkpoints remain compatible.
+- [x] Preserve original successful 600-unit V4 pilot model as local ignored
+  immutable-comparison copy `checkpoints/fresh_stream_holdv4_pilot600.pt`,
+  SHA256 in detailed report. **134 pure tests pass.**
+- [ ] NEXT user run: `tools/run-fresh-treadmill.sh resume persistpilot1103
+  24000 600 wood_persistence_v4` in terminal. Keep exact original 600
+  per-world horizon, trained optimizer and full train-seed cursor.
+- [ ] After next long round, compare grown V4 to frozen historical pilot
+  plus uniform-random *same-duration action* control on many disjoint
+  held-out seeds. Track *actual inventory wood*, rate per seed, camera/
+  action persistence, survival, time and learning collapse; avoid overclaim.
+- [ ] Then add calibrated bounded dropped-item entity observations, neural
+  item-use/inventory/crafting and eventually independent normal Any%.
+
+
 ## LATEST: speedrun01 policy-collapse audit and v3 learning experiment
 
 - [x] Validate resumed `speedrun01`: 10 vanilla seeds, 24,000 committed

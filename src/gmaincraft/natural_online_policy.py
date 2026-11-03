@@ -25,6 +25,11 @@ ID_BYTES=48
 MOVE_KEYS=((),('W',),('S',),('A',),('D',),('W','SPACE'))
 LOOK_DELTAS=((0.,0.),(-100.,0.),(100.,0.),(-200.,0.),(200.,0.),(0.,-75.),(0.,75.))
 HEAD_SIZES=(len(MOVE_KEYS),len(LOOK_DELTAS),2)
+# V4 changes the ACTION contract only. Own typed observations remain exactly
+# the same; old three-head v2/v3 checkpoints still require their original schema.
+PERSISTENCE_DURATIONS=(6,24,72)
+PERSISTENCE_HEAD_SIZES=HEAD_SIZES+(len(PERSISTENCE_DURATIONS),)
+PERSISTENCE_SCHEMA='natural_memory_online_v2_first_hit_objects_ppo_variable_duration'
 SELF_FEATURES=(
  'player_x_div_1024','player_y_div_128','player_z_div_1024',
  'relative_x_from_start_div_64','relative_z_from_start_div_64',
@@ -135,6 +140,22 @@ def observe(player,status,surface,mining,*,start_xyz,last_action=(0,0,0),
     return NaturalObservation(*arrays)
 
 
+def action_from_persistence_heads(indices, remaining_ticks=72):
+    """Four learned choices: ordinary move, look, attack and hold duration.
+
+    A duration is NOT a privileged mine command, target lock, or scripted
+    handoff: Minecraft receives only the chosen vanilla key and mouse inputs.
+    """
+    if (not isinstance(indices,(tuple,list)) or len(indices)!=4 or
+        any(type(v) is not int or not 0<=v<PERSISTENCE_HEAD_SIZES[i]
+            for i,v in enumerate(indices)) or
+        type(remaining_ticks) is not int or remaining_ticks<1):
+        raise ValueError('Invalid learned-duration motor action')
+    basic=action_from_heads(indices[:3])
+    return AgentAction(keys=basic.keys,look_dx=basic.look_dx,look_dy=basic.look_dy,
+                       ticks=min(PERSISTENCE_DURATIONS[indices[3]],remaining_ticks))
+
+
 def action_from_heads(indices,remaining_ticks=DECISION_TICKS):
     if (not isinstance(indices,(tuple,list)) or len(indices)!=3 or
             any(type(x) is not int or not 0<=x<HEAD_SIZES[j]
@@ -150,7 +171,7 @@ def action_from_heads(indices,remaining_ticks=DECISION_TICKS):
 @dataclass(frozen=True)
 class NaturalTransition:
     observation: NaturalObservation
-    action: tuple[int,int,int]
+    action: tuple[int,...]
     reward: float
     value: float
     logp: float
@@ -161,14 +182,19 @@ class NaturalTransition:
 class NaturalPPO:
     """Small attention-pooled byte-ID/block-memory actor-critic; no RGB encoder."""
     def __init__(self,*,seed=730011,device='auto',learning_rate=.00035,
-                 epochs=3,minibatch=64,entropy_coef=.014):
+                 epochs=3,minibatch=64,entropy_coef=.014,
+                 schema=SCHEMA,action_sizes=HEAD_SIZES):
         import torch
         from torch import nn
         if device=='auto':device='cuda' if torch.cuda.is_available() else 'cpu'
         if device not in ('cpu','cuda') or device=='cuda' and not torch.cuda.is_available():
             raise RuntimeError('Requested policy accelerator unavailable')
-        if not 1<=epochs<=8 or not 8<=minibatch<=512 or not 0 <= entropy_coef <= .2:
-            raise ValueError('Invalid PPO hyperparameters')
+        if (not 1<=epochs<=8 or not 8<=minibatch<=512 or not 0<=entropy_coef<=.2 or
+            (schema,tuple(action_sizes)) not in ((SCHEMA,HEAD_SIZES),
+                                                 (PERSISTENCE_SCHEMA,PERSISTENCE_HEAD_SIZES))):
+            raise ValueError('Invalid PPO hyperparameters or versioned motor schema')
+        self.schema=schema
+        self.action_sizes=tuple(action_sizes)
         self.torch=torch
         self.device=torch.device(device)
         torch.manual_seed(seed)
@@ -182,7 +208,7 @@ class NaturalPPO:
                 self.attention=nn.Linear(64,1)
                 self.fuse=nn.Sequential(nn.Linear(len(SELF_FEATURES)+16+128,128),nn.Tanh(),
                                          nn.Linear(128,128),nn.Tanh())
-                self.heads=nn.ModuleList([nn.Linear(128,n) for n in HEAD_SIZES])
+                self.heads=nn.ModuleList([nn.Linear(128,n) for n in action_sizes])
                 self.value=nn.Linear(128,1)
 
             def mean_bytes(self,tokens):
@@ -272,16 +298,16 @@ class NaturalPPO:
 
     def state(self):
         torch=self.torch
-        return dict(schema=SCHEMA,feature_order=SELF_FEATURES,object_order=OBJECT_FEATURES,
-                    action_sizes=HEAD_SIZES,net=self.net.state_dict(),
+        return dict(schema=self.schema,feature_order=SELF_FEATURES,object_order=OBJECT_FEATURES,
+                    action_sizes=self.action_sizes,net=self.net.state_dict(),
                     optimizer=self.optimizer.state_dict(),updates=self.updates,
                     torch_rng=torch.get_rng_state(),
                     cuda_rng=torch.cuda.get_rng_state_all() if self.device.type=='cuda' else [],
                     seed=self.seed)
 
     def restore(self,state,*,optimizer=True):
-        if state['schema']!=SCHEMA or tuple(state['feature_order'])!=SELF_FEATURES or \
-                tuple(state['object_order'])!=OBJECT_FEATURES or tuple(state['action_sizes'])!=HEAD_SIZES:
+        if state['schema']!=self.schema or tuple(state['feature_order'])!=SELF_FEATURES or \
+                tuple(state['object_order'])!=OBJECT_FEATURES or tuple(state['action_sizes'])!=self.action_sizes:
             raise ValueError('Incompatible natural-memory PPO schema or action layout')
         self.net.load_state_dict(state['net'])
         self.updates=int(state['updates'])
