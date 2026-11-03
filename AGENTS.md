@@ -2,25 +2,31 @@
 
 This file is the operating contract for anyone (including a future ChatGPT conversation) editing **polskiftw/gmaincraft**. Treat the GitHub repository, not the conversation transcript or an assumed local checkout, as the authoritative codebase.
 
-## Clarification: player-observable inputs, NOT an RGB-only training rule
+## Canonical design: direct Minecraft state, bounded by skilled-player knowledge
 
-**The user's goal does not require all training data or future agent input to
-be RGB pixels.** The CURRENT factorized online policy takes Minecraft RGB
-screenshots (two frames). Training ALSO uses its own chosen actions, action
-durations, per-step scalar rewards/GAE, terminal outcomes, and controller-
-only geometric shaping or real mined/pickup event statistics to calculate
-rewards. Privileged trainer/event data **must not leak into the deployed
-policy's observations**. Inverse-dynamics studies explicitly train from
-RGB frame pairs **and labels of the agent's own actions**.
+**Read [`docs/OBSERVATION_POLICY.md`](docs/OBSERVATION_POLICY.md) before making
+any sensor, agent-input, fairness or training decisions.** The user explicitly
+wants **direct read access to Minecraft memory/engine state during BOTH
+training and gameplay** for facts a skilled player could know. Examples:
+player XYZ and camera direction, health/hunger, inventory, item counts,
+player statistics, and suitably filtered observable block/entity IDs.
+Screenshots and audio are OPTIONAL useful perception, not a required path
+for every fact. **Do not force the project back into RGB-only learning.**
 
-Future sensors may include legitimate **player-perceivable** audio, rendered
-HUD/inventory, own input history and learned memory; RGB-only must NOT be
-imposed as a permanent design restriction. These are possible future
-inputs, not features already implemented. The governing constraint remains
-from-scratch learning with no human demos, external pretrained weights,
-secret world coordinates/hidden state as policy observations, or scripted
-Any% solutions. This clarification DOES NOT change the #1 priority below:
-fix/quantify the MCio performance regression before new training.
+Bound the supplied world information, **not the method of reading it**:
+never give an unobserved hidden ore/stronghold map or unopened container
+contents as an oracle. Determining which blocks are perceptible/actionable
+and calibrating range, occlusion, angle and confidence are EXPLICIT FUTURE
+RESEARCH TASKS, not fixed thresholds to guess today. Structured memory
+observations should be available in the same way during training and scored
+play. The present `AgentView` still returns only pixels: a **legacy
+implementation limitation**, not the project design.
+
+**Priority order unchanged:** fix/quantify MCio tick-throughput regression
+FIRST, then build a versioned structured game-state observation interface,
+then pursue visibility-threshold research and integrate learning toward real
+unrestricted first-log success. Never damage old saved experiments or quietly
+pretend the new sensors are already implemented.
 
 ## MANDATORY FIRST TASK FOR A NEW CHAT: MCio speed regression (highest priority)
 
@@ -36,9 +42,10 @@ did not fix it. The comparisons must be matched before claiming causality.
 **Order of operations:** connect to Gentoo Shell `/workspace` -> inspect
 repo/docs and GPU preflight -> reproduce/trace slow per-tick Minecraft I/O
 with minimal no-ML control -> fix/quantify and rebenchmark under matched
-conditions -> update evidence/docs/tests -> only THEN continue the valid
-from-scratch player-observable-input RL course correction toward unrestricted first-log
-mining + inventory pickup. Do not spend hours on model training first.
+conditions -> update evidence/docs/tests -> only THEN implement player-knowable,
+engine-memory-backed structured observations and investigate perceptible
+block-state thresholds -> resume integrated from-scratch RL toward real
+unrestricted first-log mining + inventory pickup. Do not spend hours on model training first.
 If root cause is unresolved, preserve precise profiler results and request
 a user decision before accepting the slower speed as the new baseline.
 
@@ -50,7 +57,7 @@ claim it is connected if it is not. Update `TODO.md` and `docs/HANDOFF.md`
 with each verified milestone. See `docs/VISUAL_SELF_SUPERVISION.md` for valid
 vs contaminated experiments; **`v3event01` is INVALID evidence**.
 
-## NEWEST — clean visual observations, self-supervision and real events (Nov 2, 2026)
+## Historical November 2 research snapshot — visual experiments and mining events
 
 **Read `docs/VISUAL_SELF_SUPERVISION.md` BEFORE the next feature or training
 run.** Connected Gentoo Shell `/workspace` has GPU CUDA and direct Git;
@@ -115,7 +122,7 @@ natural survival seeds; no infinite PPO blindly. Use own RGB/action data,
 not human/external pretrained models. Document every result in the ledger,
 commit+push code/docs, NEVER Git-add local models or world saves.
 
-## NEWEST — factorized visual policy and real learning-efficiency audit (Nov 2, 2026)
+## Historical November 2 research snapshot — factorized CNN and baselines
 
 **Read `docs/FACTOR_POLICY_REVIEW.md` BEFORE any more training.** V2 is a
 new, checkpoint-INCOMPATIBLE 888,750-weight CUDA RGB PPO actor with 3
@@ -161,7 +168,7 @@ first-log learning fails, DO NOT proceed to piles of crafting subskills.
 Never overwrite existing ignored files; Git fetch/commit/push via isolated
 Gentoo Shell `/workspace`, no GitHub connector necessary.
 
-## Latest: CUDA works after bridge restart (2026-11-02)
+## Historical November 2 snapshot — CUDA bridge restart
 
 User created host NVIDIA UVM device nodes and restarted Gentoo Shell. GPU
 preflight **passed**: `cuInit(0)=0`, CUDA tensor allocation on RTX 4070
@@ -177,7 +184,7 @@ toward the fixed 80-tick mining macro; investigate before expensive long
 training. Current CUDA works but UVM devices may need recreation after
 future host boot. See `docs/GPU_ACCELERATION.md` and `docs/JOINT_LEARNING.md`.
 
-## Freshest improvement: durable learning checkpoints
+## Historical November 2 snapshot — durable checkpoints
 
 `joint_log_ppo.py` now atomically writes local `.pt` checkpoints including
 Adam moments and source metadata. For continuation, use `--init-model` with
@@ -189,7 +196,7 @@ Later code now rejects repeated train/policy RNG seeds. See
 `docs/JOINT_LEARNING.md` for canonical commands. Never delete or overwrite
 older saved checkpoints to make a rerun work.
 
-## 2026-11-02 additional joint PPO + NVIDIA status (latest)
+## Historical November 2 snapshot — joint PPO + NVIDIA
 
 **Read `docs/JOINT_LEARNING.md` and `docs/GPU_ACCELERATION.md` before continuing.**
 A new 2-RGB-frame CNN actor-critic (888,236 parameters) trains random weights
@@ -218,7 +225,7 @@ training worked; use `tools/gpu-preflight.py`, and `--device cuda` for strict
 failure until genuine GPU tensor allocation succeeds. Never widen filesystem
 sandbox to fix CUDA. Original shell already passes UVM devices when available.
 
-## 2026-11-02 priority correction and direct shell/Git
+## Historical November 2 instructions — shell/Git access and first course correction
 
 **Use Gentoo Shell `run_shell` for repository work when connected.** It
 provides scoped `/workspace` access, working `.venv`, MCio, real Minecraft,
@@ -230,17 +237,20 @@ private keys. Push commits normally and verify `git status --short --branch`.
 If shell is disconnected, use GitHub connector only if explicitly available;
 never pretend to have tested a runtime or pushed a commit when unable to do so.
 
-**Read [docs/COURSE_CORRECTION.md](docs/COURSE_CORRECTION.md) before new
-feature work.** Current highest priority is a defensible generalization
-benchmark on independent natural survival worlds, a reusable RGB-only
-observation/action boundary, longer-horizon learning, and contiguous wood-to-
-crafting progression. Do not add narrow skill scaffolding without a clear
+**Read [docs/OBSERVATION_POLICY.md](docs/OBSERVATION_POLICY.md) and
+[docs/NEXT_SESSION.md](docs/NEXT_SESSION.md) before new feature work.** The
+older pixel-only generalization experiments below are historical baselines,
+not the required future agent design. Fix MCio throughput first, implement
+bounded memory-derived player-knowable state next, then resume generalization,
+longer-horizon learning and contiguous wood-to-crafting progression. Do not add narrow skill scaffolding without a clear
 route to a better held-out first-log or end-to-end survival score. Do not
 replace the user's learn-from-random-weights goal with a scripted planner.
 
-**New code:** `src/gmaincraft/agent_interface.py` (only the `AgentView`
-immutable RGB array is passed to visual policies; `AgentAction` contains only
-normal key/button/mouse input), `src/gmaincraft/natural_eval.py`, and
+**Historical prototype code:** `src/gmaincraft/agent_interface.py` (the
+currently deployed `AgentView` passes only immutable RGB to early visual
+policies; this MUST be superseded by the new bounded player-state observation
+contract, not kept as the permanent design; `AgentAction` uses normal
+key/button/mouse input), `src/gmaincraft/natural_eval.py`, and
 `experiments/natural_world_benchmark.py`. The controller may privately inspect
 inventory to score after real gameplay. There is no admin/cheat channel in the
 policy action contract. The interface is not an untrusted-code security
@@ -252,7 +262,7 @@ mode explicitly uses scripted mining timing and phase switching.
 
 ## Start every new task this way
 
-1. Read `README.md`, **`TODO.md`**, `docs/HANDOFF.md`, `docs/ARCHITECTURE.md`, and (for measured claims) `docs/EXPERIMENTS.md` from the current branch. Inspect relevant source files, their imports, and recent commits/PRs before proposing changes. Do not claim to have read them if the connector is unavailable.
+1. Read `README.md`, **`docs/OBSERVATION_POLICY.md`**, `docs/NEXT_SESSION.md`, **`TODO.md`**, `docs/HANDOFF.md`, `docs/ARCHITECTURE.md`, and (for measured claims) `docs/EXPERIMENTS.md` from the current branch. Inspect relevant source files, their imports, and recent commits/PRs before proposing changes. Do not claim to have read them if the connector is unavailable.
 2. Determine the *last verified* milestone, the *current pending* test, and the next unchecked item in `TODO.md`. Distinguish user-supplied actual run output from forecasts, synthetic tests, and code review.
 3. Take user-provided run results seriously; extract meaningful summaries and errors. Do not assume a test passed merely because source exists, syntax compiles, or a toy simulation worked.
 4. Make the smallest coherent code change. Preserve confirmed behavior and keep test worlds, production inputs, and model weights safe.

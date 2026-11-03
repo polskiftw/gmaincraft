@@ -1,21 +1,40 @@
 # gmaincraft
 
-**A Minecraft reinforcement-learning research playground.** The long-term ambition is an agent trained from randomly initialized weights that can complete Minecraft Java Edition Any% (defeat the Ender Dragon and reach the exit) efficiently on unseen random world seeds. It should learn from experience, rather than follow a hand-scripted speedrun or peek at forbidden game state.
+**A Minecraft learning-to-speedrun research project.** The long-term goal is
+an agent that learns from randomly initialized weights to complete Minecraft
+Java Any% on unseen random survival seeds. It can **directly read structured
+Minecraft engine/memory data that a skilled player could know** (player
+position/facing, inventory, health, counters, observable block/entity IDs,
+etc.) during both training and gameplay. A screenshot may help, but should
+not be forced to teach facts Minecraft can provide numerically. Neither
+expert demonstrations nor a scripted speedrun are the intended solution.
 
-**Current reality (2026-11-02):** Minecraft Java 1.21.3 + MCio and three seeded numerical-navigation runs are verified. Two random-initialized, RGB-feature mouse+ATTACK models learn to aim at a controlled oak trunk (audited 15/20 and 18/20 real Minecraft logs). Two independently trained RGB-feature W/A/S/D policies learn to approach a **dropped** oak log: in a fresh 32-case offset-item audit, the best reaches **30/32**, versus **21/32** for just holding W. Combining the learned aiming and collection policies yields **51/56 real mined-log inventory pickups** over two fresh camera-angle sets for pickup model `p02`, versus **49/56** with scripted W. This does **not** establish a meaningful advantage in the centered-tree setup, and it still uses hand-engineered pixel masks, controller-only scalar rewards, fixed 100-tick attack holds, a single flat-world template, and separate training for the two neural stages. No general tree recognition or Any% speedrunning.
+**Design contract:** [docs/OBSERVATION_POLICY.md](docs/OBSERVATION_POLICY.md).
+Visible/actionable-block eligibility and field-of-view/occlusion thresholds
+are future experiments, **not something to guess before measuring**.
+**Execution priority:** fix MCio performance regression first as specified
+in [docs/NEXT_SESSION.md](docs/NEXT_SESSION.md), then implement the bounded
+structured observation interface, then return to the learning course.
 
-## Policy observations vs. training data
+**Historical experiments (2026-11-02; NOT the target sensor design):** Minecraft Java 1.21.3 + MCio and three seeded numerical-navigation runs are verified. Two random-initialized, RGB-feature mouse+ATTACK models learn to aim at a controlled oak trunk (audited 15/20 and 18/20 real Minecraft logs). Two independently trained RGB-feature W/A/S/D policies learn to approach a **dropped** oak log: in a fresh 32-case offset-item audit, the best reaches **30/32**, versus **21/32** for just holding W. Combining the learned aiming and collection policies yields **51/56 real mined-log inventory pickups** over two fresh camera-angle sets for pickup model `p02`, versus **49/56** with scripted W. This does **not** establish a meaningful advantage in the centered-tree setup, and it still uses hand-engineered pixel masks, controller-only scalar rewards, fixed 100-tick attack holds, a single flat-world template, and separate training for the two neural stages. No general tree recognition or Any% speedrunning.
 
-**The project is not RGB-only in its training inputs.** The current online
-model *observes* rendered Minecraft RGB screenshots. Its *training* also
-uses actions the model selected, rewards, simulation time and outcomes;
-privileged controller geometry or mined-item statistics can be used only
-for carefully labeled teacher/evaluator feedback, not leaked into the
-playing model as hidden world knowledge. Possible future sensory inputs
-include normal game audio, visible HUD/inventory, action history and learned
-memory. The stable goal is legitimate player-observable input and learning
-from random initial weights—**not an arbitrary lifelong RGB-only ban**.
-The MCio throughput problem still takes priority over new model work.
+## Sensor intent versus the historical pixel-only prototype
+
+**Actual user intent:** read skilled-player-knowable facts *directly from game
+memory*, not through screenshot reconstruction. For example, full own
+inventory and mined-block counts can be numeric inputs; XYZ/yaw/pitch can be
+used directly. A block list must be limited to what the player could
+reasonably perceive or remember, using visibility research rather than an
+arbitrary fixed radius or free X-ray. Screen images are an optional source
+of additional information.
+
+**Current implementation, not intended final input:** MCio already sends
+player position, yaw/pitch, health, inventory and optional statistics, but
+the early `AgentView` deliberately exposes only RGB frames to the CNN.
+Training also receives scalar feedback and self-generated actions. No new
+memory-based policy is implemented yet. Existing RGB experiments are valid
+historical baselines; they should not monopolize the project's next phase.
+See [docs/OBSERVATION_POLICY.md](docs/OBSERVATION_POLICY.md).
 
 ## Next-session priority: MCio performance first
 
@@ -25,10 +44,11 @@ that the next task is finding/fixing the Minecraft/MCio game-step slowdown
 (~300 ticks took ~0.6-0.8s historically; now ~3.9-4.0s in the learner and
 ~5.0s in a no-Torch control). Only after reliable, matched investigation and
 benchmarking should work return to the updated player-observable-input, from-scratch
-first-log learning course correction. No external pretrained models,
-hidden game state or scripted speedruns in scored policy evaluation.
+first-log learning course correction **using bounded direct game-state
+read access**. No external pretrained models or scripted speedruns; only
+hidden *unobserved* world information is excluded from the playing agent.
 
-## Newest: self-collected vision learning + verified Minecraft events (2026-11-02)
+## Historical November 2 experiment — self-collected RGB learning and mining events
 
 We inspected real policy screenshots and found that MCio reset error chat was
 obscuring the tree. The **dedicated MCio test instance** now uses
@@ -116,8 +136,11 @@ package or driver changes were made by the agent.
 ## Research course correction (2026-11-02)
 
 **Do not equate toy-arena successes with progress toward Any%.** We now have a
-real seeded-survival-world first-log transfer benchmark and a common pixel-only
-policy/action interface. The earlier linear policies are retained as diagnostic
+real seeded-survival-world first-log transfer benchmark and a **historical
+pixel-only prototype** policy/action interface. The target observation model
+is now explicitly structured and memory-derived; see
+[docs/OBSERVATION_POLICY.md](docs/OBSERVATION_POLICY.md).
+The earlier linear policies are retained as diagnostic
 baselines, not the final learning architecture. The initial 100-game-tick
 pilot on natural seed `314159265` produced zero logs for all four controls;
 that pilot used default randomized spawn positions and is **not paired
@@ -134,7 +157,9 @@ gmaincraft/
 ├── AGENTS.md                    Agent workflow and rules for future chats
 ├── TODO.md                      Living, ordered project task list
 ├── docs/
-│   ├── ARCHITECTURE.md          Design, fairness, and research direction
+│   ├── OBSERVATION_POLICY.md    Canonical bounded memory-state observation design
+│   ├── NEXT_SESSION.md         Priority-ordered new-chat performance handoff
+│   ├── ARCHITECTURE.md          Architecture and historical experimental contracts
 │   ├── DEVELOPMENT.md           Installation, commands, testing, migration
 │   ├── EXPERIMENTS.md           Verified experiment history and limitations
 │   └── HANDOFF.md               Copy/paste new-chat resumption guide
@@ -178,7 +203,10 @@ The initial MCio demo provisions `mcio-data/` and creates the `DemoInstance` and
 
 ### Next learning goal: acquire a log, not a human-looking camera
 
-Our camera rule is **functional, not cosmetic**. The agent need not look forward, keep its head level or move its view smoothly. It may face skyward while traveling; it must use legitimate mouse aiming and vanilla reach mechanics when breaking, placing, interacting or fighting. The intended curriculum is rendered-pixel observation → agent-selected camera/movement/attack → actual oak-log pickup. No hidden target coordinates as policy observations.
+Our camera rule is **functional, not cosmetic**. The agent need not look forward, keep its head level or move its view smoothly. It may face skyward while traveling; it must use legitimate mouse aiming and vanilla reach mechanics when breaking, placing, interacting or fighting. That historical experiment used rendered-pixel observation → selected
+camera/movement/attack → actual oak-log pickup. The next generation should
+also read skilled-player-knowable state directly from Minecraft memory;
+undiscovered goal coordinates remain outside its observations.
 
 The **scripted mechanics probe** verified vanilla mouse and log mining. The **learned camera/ATTACK** stage now chooses where to look and when to attack from engineered screenshot features, and a **separately learned pickup** policy chooses W/A/S/D from item-appearance pixels. Both train with controller-only *scalar* shaping while the learned policies see no hidden target positions. In two fresh integrated tests, combining `rgb02` aiming and `p02` pickup obtained **51/56 genuinely mined logs** with *no scripted post-attack movement*; simple always-forward pickup scored **49/56**, so a meaningful improvement for the centered trunk remains unproven. Off-center dropped-log tests show a clearer advantage for learned movement. The camera is free to look bizarre as long as the game rules are followed. See [the experiment ledger](docs/EXPERIMENTS.md); we now have an unproven joint visual PPO prototype varying trunk/starting positions; next verify meaningful learning and natural-world transfer, not merely more toy tasks.
 

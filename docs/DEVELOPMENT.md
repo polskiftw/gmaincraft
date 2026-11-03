@@ -1,5 +1,13 @@
 # Local setup and development
 
+> **Current observation design:** see
+> [OBSERVATION_POLICY.md](OBSERVATION_POLICY.md). The present RGB-only
+> `AgentView` is a legacy prototype. Future policies are intended to read
+> player-knowable stats, coordinates, inventory and filtered visible blocks
+> **directly from Minecraft memory in both training and gameplay**. This
+> requires a new versioned observation adapter; it has NOT been implemented.
+> **First fix/quantify MCio game-step throughput** per `NEXT_SESSION.md`.
+
 ## Supported baseline
 
 The user has Gentoo Linux with OpenRC, Plasma Wayland, NVIDIA RTX 4070 SUPER (12GB), i7-14700KF, Python 3.14.10, and an existing `~/Documents/minecraft-discovery` directory. All tools run explicitly in the foreground unless the user asks otherwise. Avoid `sudo`, Portage changes, system services, network or desktop integration.

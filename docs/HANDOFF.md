@@ -2,20 +2,31 @@
 
 **Last verified: 2026-11-02.** Canonical code: [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. **Historical early milestone (superseded by the sections below):** learn movement W/A/S/D from real RGB features (2 independently trained models; fresh fixture audit p01 **30/32**, p02 **24/32**, always-W 21/32); then **combine frozen RGB aim/ATTACK and pickup policies** on *real mined logs* (two independent camera-angle sets, trained p02 **51/56**, hardcoded W **49/56**, untrained movement 21/56). Earlier numerical-navigation and RGB log-aiming milestones remain preserved; `docs/EXPERIMENTS.md` records all results. The initial uncleaned aim 12/14 and aborted first drop-distance audits are **invalid evidence**. No general world-seed Minecraft speedrunning. Do not ask for old test logs.
 
-## Clarification before the next context reset: RGB is one source, not all training
+## Canonical user intent: direct bounded Minecraft memory observations
 
-The user correctly challenged the shorthand **"RGB-only"**. The present
-visual PPO policy's observation is rendered RGB screenshots, but training
-also uses self-generated action labels, rewards, ticks, outcomes, and
-privileged trainer-only measured progress/events for scalar feedback.
-These are distinct data paths. Do **NOT** insist that all training or future
-agent perception must use RGB alone; legitimate player-accessible signals
-such as game audio, visible HUD/inventory, own action history and learned
-memory are allowed if explicitly designed and validated. Never inject
-hidden Minecraft internals/target coordinates into the *playing policy* or
-replace learning with scripted speedrun logic. None of the extra modalities
-should be described as already implemented. **Priority zero remains the
-MCio throughput regression**; modality expansion is later.
+**Read [OBSERVATION_POLICY.md](OBSERVATION_POLICY.md).** The user corrected
+our interpretation: the learner SHOULD receive **game-engine/memory-derived
+stats and counters directly during both training and gameplay**—including
+player position/facing, health, own inventory, progress and bounded visible
+block/entity state. A skilled player could know these facts; the agent
+should not have to infer them all from RGB pixels. Optional video/audio
+remain useful but are not the primary required input. The CURRENT RGB-only
+`AgentView` is a historical assistant choice, **not desired final design**.
+
+Memory reads are expressly allowed; the scope boundary is what a player
+could perceive or remember, not whether information came from game memory.
+Unobserved hidden ore/structure maps and unvisited goal coordinates remain
+outside the agent's knowledge budget. Visible/actionable-block eligibility
+(FOV, range, occlusion, size, lighting, reach) is a FUTURE calibrated research
+task; do not choose arbitrary thresholds now. The game controller may still
+use hidden state for fixture reset and scalar training rewards. Scored
+policy gameplay must use ordinary Minecraft actions, with the same bounded
+structured observations it had during training.
+
+**User's retained work order:** first diagnose/repair MCio throughput;
+next expose player-knowable memory state and calibrate block visibility;
+then resume from-scratch learning of unrestricted first-log acquisition,
+followed by eventual Any%. Preserve old RGB results as diagnostics.
 
 ## FIRST ACTION FOR NEW CHAT — explicit user priority (Nov 2, 2026)
 
@@ -30,7 +41,8 @@ not yet known, and historical comparisons require matched reruns. Trace
 and reproduce the bottleneck first, report grounded before/after metrics,
 preserve normal Minecraft sync and safe restricted sandbox. Use Git directly
 from connected Gentoo Shell `/workspace`; code, docs and files are already
-pushed in prior work. Then resume the **corrected** from-scratch player-observable-input
+pushed in prior work. Then build **bounded, direct memory-derived** player-state
+observations for training and gameplay and resume the corrected from-scratch
 Any% course and real unrestricted first-log acquisition; details below.
 
 The very first `## Newest milestone` paragraph above is **historical** and

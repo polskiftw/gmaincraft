@@ -4,10 +4,25 @@
 
 Create a from-scratch reinforcement-learning agent that eventually completes Minecraft Java Any% (Ender Dragon defeated and exit achieved) on **unseen random seeds**. This is a long-term research target, not a promised deliverable or a claim of present capability.
 
+**Current design authority:** [OBSERVATION_POLICY.md](OBSERVATION_POLICY.md).
+The project **intends to use direct read access to Minecraft state in both
+training and scored gameplay** for player-knowable facts. RGB-only was
+an earlier prototype convenience. Visibility-filtered block/entity IDs,
+player stats/counters, coordinates and inventory are intended inputs; do
+not make pixel reconstruction a mandatory bottleneck. **These features are
+not yet implemented in the current `AgentView`.** Priority zero is still
+MCio game-step throughput recovery.
+
 There are two separate roles:
 
 - **Experiment controller (privileged):** starts or restores worlds; sets up controlled curriculum arenas; applies resets, time limits and scoring; extracts results and holds experimental labels. It may issue administrative commands only in this role.
-- **Learning policy (restricted):** receives an explicitly documented observation vector or image and numerical reward, chooses allowed Minecraft keyboard/mouse actions, and updates random-initialized weights from experience. It must not see cheat commands, world seeds, arbitrary hidden blocks, goals read from world internals, or direct labels of the right action during normal speedrun evaluation.
+- **Learning policy (bounded player-knowledge observation):** receives an
+  explicitly documented mix of structured memory-derived information and
+  optional images/audio, plus scalar training rewards. It chooses ordinary
+  Minecraft keyboard/mouse actions and learns from random weights. It **may
+  directly read Minecraft engine memory** for facts a skilled player could
+  know. This is distinct from giving it unobserved world seeds, hidden ore
+  locations or oracle goals. No admin commands as scored gameplay actions.
 
 ## Current prototype data flow
 
@@ -32,15 +47,30 @@ Prototypes are each self-contained in `experiments/`. Later, extract reusable en
 
 The agent does **not** have to keep its head level, appear human, point the camera along the travel direction, or make smooth-looking movements. It may walk sideways while facing the sky if that is useful. Camera actions are available as needed for pixel observations, raycast targeting, mining, placing, interacting or combat. **The game engine's normal crosshair/reach/survival limits still apply.** Never teleport camera orientation as a learned action, directly edit blocks for the agent, grant inventory items, or hand the agent unseen-world coordinates. During research, the privileged controller may build a simple arena and assign scalar feedback, but the policy's input and outputs must be logged explicitly.
 
-## Fairness and leakage
+## Memory readings, observability and evaluation integrity
 
-The existing navigation experiments pass the exact target direction to the policy as a numeric vector (absolute or camera-relative). This is a **teaching shortcut**, legitimate for learning game control, but impossible to assume for arbitrary hidden Minecraft objectives. The 2026-11-02 orientation success demonstrates handling a controller-randomized **initial** yaw, not camera turning chosen by the agent. Do not claim it learned to recognize a block or navigate from pixels.
+The original numeric navigation experiment passed a hidden goal vector; that
+is a clearly labeled historical teaching shortcut, **not** the intended
+future policy interface. The early RGB CNN explicitly omitted XYZ/inventory
+and other state, but that omission is now recognized as **over-restrictive
+for the user's project**. Treat those benchmarks as historical baselines.
 
-A later configurable observation contract should distinguish:
-- Human-equivalent: RGB video, visible HUD, visible GUI, inventory contents available by opening it, and self-state data that a player can directly obtain under chosen rules.
-- Privileged controller-only: complete block layout, hidden inventories/entities, ore distribution, seed, stronghold coordinates, direct unseen target coordinates, internal success flags except for reward and termination.
+Future policies should receive player-knowable numeric state **directly from
+the Minecraft game engine**, not necessarily parsed from HUD or screenshots:
+position, yaw/pitch, survival state, own inventory, stats/counters, and a
+bounded set of observable blocks/entities with names/properties. The engine
+might know every loaded block, but the agent should only receive things it
+can see or already learned. **The actual FOV, occlusion, visibility, range,
+entity and interaction threshold selection is a research question**; see
+[OBSERVATION_POLICY.md](OBSERVATION_POLICY.md) for the planned validation
+method. Never invent final visibility constants without test evidence.
 
-Define this contract *before* comparing curriculum scores to open-world speedrun results.
+Game-state memory access itself is allowed in **both training and scored
+play**. Keep a versioned observation schema and matched train/evaluation
+knowledge filter. The privileged controller may privately use extra data
+for controlled resets, scalar shaping and scoring. Avoid granting unseen
+ore/stronghold maps, oracle routes, or unopened containers to the policy;
+this is about skilled-player-equivalent *knowledge*, not mandatory pixels.
 
 ## Learning stages
 
@@ -52,7 +82,7 @@ Define this contract *before* comparing curriculum scores to open-world speedrun
 
 Success requires measuring completed runs on seeds never used for training, with clear criteria for timeouts/deaths, in-game ticks, wall-clock resources and confidence intervals. Catastrophic failures and reward hacking count as findings.
 
-## Log curriculum observation and reset contract
+## Historical RGB-only log curriculum observation and reset contract
 
 - **Policy input:** only 12 engineered pixel features from the current RGB screenshot (five horizontal and three vertical color-mask bins, pixel centroid X/Y, mask fraction, constant bias). No player coordinates, yaw/pitch, Minecraft block IDs or hidden target coordinates are passed to the learned policy.
 - **Aim-policy actions:** choose look left/right/up/down via MCio cursor pixels (45 pixels, approximately 6.75° per action) or choose ATTACK. The test harness then holds vanilla left button for a fixed 100 game ticks to complete a mine; this timing is still scripted.
@@ -72,11 +102,12 @@ Separate active simulation throughput from end-to-end throughput and from neural
 
 MCio controller `mcio_ctrl==1.5.2`, Minecraft Java 1.21.3 Fabric/MCio, Python 3.14 tested. The `cbor2<6` override is essential on the current released controller because newer CBOR decoding caused blank viewer observations. The GitHub project is its own research harness; it does not vendor Minecraft, Fabric, MCio, Mojang runtimes or user saves.
 
-## Course-corrected architecture (2026-11-02)
+## Historical first course correction (2026-11-02; sensor contract superseded)
 
-See [COURSE_CORRECTION.md](COURSE_CORRECTION.md). The **new** common policy
-boundary is an immutable copy of rendered RGB (`AgentView`), and an explicit
-bounded normal Minecraft input (`AgentAction`) via `MCioAgentBridge`.
+See [COURSE_CORRECTION.md](COURSE_CORRECTION.md). The **historical V1/V2 prototype** policy boundary is an immutable copy of
+rendered RGB (`AgentView`) and normal Minecraft input (`AgentAction`) via
+`MCioAgentBridge`. **This policy observation restriction is superseded by
+[OBSERVATION_POLICY.md](OBSERVATION_POLICY.md) as the future design.**
 `natural_world_benchmark.py` now evaluates actual natural Minecraft survival
 worlds rather than planted toy objectives. Privileged worldgen/NBT/seed/
 health/inventory fields remain evaluator-side; policies receive only `view`.
@@ -87,7 +118,7 @@ long-horizon credit assignment and periodic true-world evaluation. The old
 stage table above documents history, not a promise that stacking the stages
 will produce an Any% agent.
 
-## New experimental shared visual learner (2026-11-02)
+## Historical visual-PPO prototype (2026-11-02)
 
 [JOINT_LEARNING.md](JOINT_LEARNING.md) documents the implemented two-RGB-frame
 convolutional actor-critic, 11 joint Minecraft control macros, full
@@ -102,7 +133,7 @@ fixed 80-tick mining action, and no demonstrated success on first-log
 retrieval. NVIDIA GPU/OpenGL and CUDA distinctions are in
 [GPU_ACCELERATION.md](GPU_ACCELERATION.md).
 
-## V2 factorized action head and experience capture (2026-11-02)
+## Historical V2 factorized RGB action head and experience capture (2026-11-02)
 
 `src/gmaincraft/vision_factorized.py` is a **separate** 888,750-parameter
 RGB CNN actor-critic with independent discrete movement (6), camera (5),
@@ -114,14 +145,16 @@ likelihood, but **frozen unrestricted scores enable all heads**. Existing
 V1 model/code remains independently loadable; its checkpoint is NOT weight
 compatible. `src/gmaincraft/rollout_store.py` can capture opt-in versioned
 compressed RGB history/action/reward/duration and terminal transitions;
-no privileged world-state tensors are stored.
+no privileged world-state tensors were stored **in those historical RGB
+rollouts**; future policy datasets should version the permitted structured
+memory-derived observations as well.
 
 This is a functional architecture/science scaffold, NOT successful general
 visual control: repeated real Minecraft experiments reported 0/12
 unrestricted near-log successes for all three evaluated V2 checkpoints.
 See `docs/FACTOR_POLICY_REVIEW.md` before tuning or stacking extra stages.
 
-## Latest research additions: RGB learning, event reliability and V3
+## Historical V3 research additions: RGB learning and event reliability
 
 See [`VISUAL_SELF_SUPERVISION.md`](VISUAL_SELF_SUPERVISION.md) for the
 scientific ledger and measurable limits. The dedicated MCio instance now
@@ -145,7 +178,8 @@ models remain intact. `MCioAgentBridge` privately accumulates Minecraft
 actual mined/picked-up stats on EVERY game tick, and arena-scoped
 `CumulativeMinedTracker` corrects newly observed cumulative stat values
 across per-episode cache resets. This fixed a major experiment-invalidating
-mined-block reward bug; no stats are ever policy inputs. Corrected real
+mined-block reward bug; stats were evaluator-only in the historical prototype; the new design
+permits skilled-player-knowable counters directly as policy inputs. Corrected real
 Minecraft test mine/no-attack/mine=1/0/1; frozen V3 can mine placed logs
 with camera/movement locked, but unrestricted first-log acquisition is
 still zero in measured tests. Model weight size/architecture alone is not

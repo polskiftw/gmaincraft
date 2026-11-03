@@ -2,18 +2,22 @@
 
 **Last curated:** 2026-11-02. This is the live source of truth for project status. **All agents must read and update this file alongside substantive changes** (see [AGENTS.md](AGENTS.md)). Never mark a task done from source code alone; require actual run evidence where appropriate.
 
-## Input/reward clarification for future development
+## Current design decision — structured Minecraft state, not RGB-only
 
-- [x] Clarify the instructions: **training data are NOT RGB-only**. The
-  current agent's sensory observation uses screenshots, but training also
-  uses self-generated actions, rewards, action durations, outcomes and
-  teacher/evaluator-only event/geometry feedback. Future policies may add
-  legitimate human-player-observable information (e.g., game audio, visible
-  inventory/HUD, self-action history and learned memory). **Never pass
-  privileged world coordinates or Minecraft hidden state to the playing
-  policy as a shortcut.** Preserve from-scratch random-weight learning.
-- [ ] Keep prioritizing the MCio performance regression below, **ahead of**
-  adding sensor modalities, changing algorithms or training more models.
+- [x] Record the user's requested **direct game-engine/memory reads during
+  both gameplay AND training** for information a skilled Minecraft player
+  could know: own XYZ/yaw/pitch, inventory, status, stats/counters and
+  eligibility-filtered observable blocks/entities. RGB can supplement this
+  state, not replace it. Canonical spec: `docs/OBSERVATION_POLICY.md`.
+- [x] Make visible/actionable block-data eligibility a **future empirical
+  research task**: calibrate FOV, projected size, range, occlusion,
+  transparency, lighting and vanilla interaction reach. Do NOT choose
+  arbitrary cutoffs, feed hidden ore maps or claim a detector exists yet.
+- [ ] AFTER fixing MCio throughput, implement a **versioned player-knowledge
+  observation adapter** exposing existing MCio memory state to the policy in
+  BOTH training and normal evaluation. Add structured visible-block support
+  as experiments justify it; train/eval observation parity is required.
+  Preserve old RGB CNN and earlier saved artifacts as baselines.
 
 ## NEXT SESSION — PRIORITY 0: recover MCio throughput BEFORE any more AI training
 
@@ -38,13 +42,15 @@ contain completed learning milestones.**
   before deprioritizing it. No host driver/sandbox changes without approval.
 - [ ] Update performance results, `docs/NEXT_SESSION.md`, AGENTS/HANDOFF/TODO,
   tests, commit and push through connected Gentoo Shell `/workspace`.
-- [ ] **ONLY AFTER PRIORITY 0:** resume player-observable-input, from-scratch Minecraft
-  speedrunning course correction. Focus on learning simultaneous visual
-  camera/movement and real **unrestricted** log mining + item pickup,
-  evaluating against the unchanged held-out baselines and real world seeds.
-  Keep contaminated `v3event01` excluded and all local checkpoints preserved.
+- [ ] **ONLY AFTER PRIORITY 0:** implement bounded, **direct memory-derived
+  player-knowable state** as policy input in training AND evaluation; then
+  research actual visible/actionable block thresholds and integrate it into
+  from-scratch learning of real unrestricted log mining and item pickup.
+  Screenshots may supplement state, not substitute for required numeric
+  observations. Compare unchanged RGB historical baselines on held-out seeds.
+  Keep contaminated `v3event01` excluded and all local models preserved.
 
-## Current priority: perception and authentic mining events (2026-11-02)
+## Historical November 2 research snapshot — RGB perception and mining events
 
 - [x] Inspect actual policy RGB screenshots; confirm command error overlays
   obscure much of 84x84 scene. Add dedicated MCio `chatScale:0.0` option fix;
@@ -93,7 +99,7 @@ contain completed learning milestones.**
 See `docs/VISUAL_SELF_SUPERVISION.md` and `docs/FACTOR_POLICY_REVIEW.md`.
 All local world saves/checkpoints/datasets/frames are Git-ignored.
 
-## Current priority: V2 learning-efficiency gate (2026-11-02)
+## Historical November 2 research snapshot — V2 learning-efficiency gate
 
 - [x] Replace V1's dominating 80-tick attack-only macro with **3 simultaneous
   6-tick movement/look/attack channels** in a separate 888,750-parameter CNN
@@ -166,7 +172,7 @@ commands. Local runs/checkpoints/worlds stay protected and ignored.
   RNG, active episodes/world reset state, optimizer and trajectory batch;
   current warm-start starts a *new* research run, not exact episode resume.
 
-## Latest work — joint visual learner / GPU (2026-11-02)
+## Historical November 2 research snapshot — joint visual learner / GPU
 
 - [x] Prove nested GLX hardware renderer: `NVIDIA GeForce RTX 4070 SUPER`,
   NVIDIA OpenGL 4.6 driver 595.104.02 (NOT llvmpipe). Do not mistake
@@ -198,7 +204,7 @@ See [docs/JOINT_LEARNING.md](docs/JOINT_LEARNING.md) and
 [docs/GPU_ACCELERATION.md](docs/GPU_ACCELERATION.md). Existing checkpoints,
 flat-arena source, real-world source saves and prior results remain preserved.
 
-## Highest priority — speedrunner course correction (2026-11-02)
+## Historical November 2 research snapshot — old course correction
 
 - [x] Audit existing learning milestones: useful instrumented prototypes,
   **not** proven general speedrunning or a scalable final RL architecture.

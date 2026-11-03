@@ -1,9 +1,12 @@
-"""Fair pixel-only Minecraft policy boundary and normal-action adapter.
+"""Legacy RGB-only policy adapter used by the existing experiments.
 
-A policy sees AgentView (rendered pixels) and may return AgentAction.
-Only the evaluator may read an underlying MCio observation packet for scoring.
-The adapter never sends Minecraft commands, player teleportation, or world edits.
-This is a software contract, not a security sandbox for arbitrary Python code.
+**Not the future project's observation requirement:** see
+`docs/OBSERVATION_POLICY.md`. The user wants direct game-engine memory-derived
+skilled-player-knowable statistics, inventory, coordinates and eligible visible
+blocks in BOTH training and gameplay. The CURRENT AgentView is RGB-only solely
+to keep old experiments reproducible. Do not inject hidden world info or
+administrative commands into scored actions. This is a software contract,
+not a security sandbox for arbitrary Python code.
 """
 from dataclasses import dataclass
 from math import isfinite
@@ -44,11 +47,12 @@ class AgentAction:
 
 @dataclass(frozen=True)
 class AgentView:
-    """Exactly one thing a visual learner can inspect: rendered RGB pixels.
+    """Historical RGB-only view for the original CNN baselines, not new design.
 
-    Intentionally NO player coordinates, orientation, inventories, world seed,
-    admin commands, block ids or target positions. Hidden/privileged state
-    stays outside this policy-facing object.
+    The planned, versioned policy observation should expose bounded Minecraft
+    memory-derived player-knowable fields (including own coordinates, status,
+    inventory, counters, and perceptible block IDs). Do not add them here
+    silently because that would invalidate comparisons with legacy models.
     """
     pixels: np.ndarray
 
@@ -66,8 +70,9 @@ class MCioAgentBridge:
     """Turn AgentAction into synchronized MCio input, NEVER admin commands.
 
     MCio imports are delayed so pure policy/unit tests do not download or
-    install Minecraft. The evaluator owns this bridge and can inspect .packet
-    for scoring; policy functions should receive only .view().
+    install Minecraft. The evaluator owns this bridge. Legacy experiments
+    pass only .view() (RGB) to policies; a future adapter should expose
+    explicitly filtered engine-derived player knowledge in train AND eval.
     """
     def __init__(self, controller, initial_packet):
         from mcio_ctrl.envs import env_util, mcio_env

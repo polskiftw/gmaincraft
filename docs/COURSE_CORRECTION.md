@@ -1,12 +1,20 @@
 # Course correction: toward an actual from-scratch Any% agent
 
-**2026-11-02 decision:** preserve all earlier learning experiments and their
-checkpoints, but do not extrapolate toy-arena success into general Minecraft
-skill. Make transfer into untouched, naturally generated survival worlds the
+**Current user intent is clarified in
+[OBSERVATION_POLICY.md](OBSERVATION_POLICY.md):** a speedrunner learning from
+random initialization with **direct engine-memory reads of player-knowable
+stats, inventory, position, and calibrated visible blocks during training
+AND gameplay**. RGB may supplement that state; it is not a project-wide
+requirement. The following experiments document the earlier RGB-only
+prototype, which was an assistant-imposed restriction, NOT user intent.
+
+**2026-11-02 research decision:** preserve all earlier learning experiments
+and their checkpoints, but do not extrapolate toy-arena success into general
+Minecraft skill. Make transfer into untouched, naturally generated survival worlds the
 primary external benchmark. Every future curriculum improvement must be
 compared against this benchmark at explicit fixed evaluation intervals.
 
-## What has been implemented
+## Historical pixel-only prototype: what was implemented
 
 1. `src/gmaincraft/agent_interface.py` supplies a consistent, narrow policy
    contract: an immutable copy of the actual RGB screenshot (`AgentView`) and
@@ -162,8 +170,8 @@ These parts are **NOT** implemented:
   confidence intervals, much less a complete Any% speedrun.
 
 Design the next learner around one common policy boundary and trajectory data:
-`RGB frames -> learned encoder -> memory/state -> policy/value or world model
--> Minecraft actions`, with full episode experience, reward/termination events
+`bounded Minecraft memory state + optionally RGB/audio + learned history
+-> encoder/state -> policy/value or world model -> vanilla Minecraft actions`, with full episode experience, reward/termination events
 and training/evaluation isolation. Benchmark simple actor-critic/PPO versus a
 world-model family **based on measured environment throughput and available
 single-GPU memory**, rather than implementing a large algorithm on faith.
@@ -189,7 +197,7 @@ single-GPU memory**, rather than implementing a large algorithm on faith.
 - Always distinguish instrumentation, scripted diagnostics, teacher-shaped
   learning and fair held-out world evaluation.
 
-## Next work, in order
+## Historical next-work list (superseded by NEXT_SESSION and OBSERVATION_POLICY)
 
 1. [DONE, limited two-mode pilot] Verify a freshly prepared **spawnRadius=0**
    world in actual game with matching starting coordinates and record observed
@@ -202,8 +210,11 @@ single-GPU memory**, rather than implementing a large algorithm on faith.
 3. Extract reusable episode recording and reward bookkeeping, including
    full trajectories, step/event timestamps, world-seed partitions, checkpoint
    metadata and outcome guards. Include event reward only from the evaluator.
-4. Build a minimal **joint pixel-driven** look/move/attack policy with real
-   trajectory-level credit assignment; vary natural scenes early. Keep
+4. **After addressing MCio throughput**, integrate skilled-player-knowable
+   memory-derived numeric/player/inventory state into the policy and measure
+   calibrated visible-block/entity thresholds. Then build a joint learned
+   look/move/attack/pickup policy with real trajectory-level credit assignment,
+   and vary natural scenes early. Keep
    independent untouched-world evaluation on every milestone.
 5. Extend one continuous run from wood acquisition to crafting before adding
    isolated sophisticated subskill suites. Keep uncertainty and single-GPU

@@ -1,6 +1,10 @@
 # START HERE — next ChatGPT/Gentoo Shell session
 
-**Priority order is intentional.** Updated November 2, 2026. This document is the explicit continuation contract for the next conversation, not a claim that any unrun experiment has succeeded.
+**Priority order is intentional.** Updated November 2, 2026. This document
+is the continuation contract for the next conversation. **The user wants
+memory-derived structured game state**, not a permanently screenshot-only
+agent; read [OBSERVATION_POLICY.md](OBSERVATION_POLICY.md). The memory-state
+work follows **after** the performance regression investigation.
 
 ## FIRST: diagnose and restore MCio simulation throughput
 
@@ -20,7 +24,7 @@ Historical and current runs are **not necessarily a strictly matched A/B compari
 ### Immediate operating procedure for the assistant
 
 1. Confirm the user enabled **Gentoo Shell** for this conversation. Work only in its isolated `/workspace` filesystem. Run `pwd`, `git status --short --branch`, `git log -1 --oneline`, and optionally `git pull --ff-only` if clean and remotes are accessible. Git works **directly in the bridge** (including push); the GitHub connector is unnecessary for normal repo tasks. If the bridge is not connected, explain it plainly instead of pretending to access the computer.
-2. Read `AGENTS.md`, `TODO.md`, `docs/HANDOFF.md`, **this file**, `docs/VISUAL_SELF_SUPERVISION.md`, `docs/COURSE_CORRECTION.md`, and `docs/FACTOR_POLICY_REVIEW.md`. Respect the newer instructions even if older headings below describe historical priorities.
+2. Read `AGENTS.md`, **`docs/OBSERVATION_POLICY.md`**, `TODO.md`, `docs/HANDOFF.md`, **this file**, `docs/VISUAL_SELF_SUPERVISION.md`, `docs/COURSE_CORRECTION.md`, and `docs/FACTOR_POLICY_REVIEW.md`. Respect the newer instructions even if older headings below describe historical priorities.
 3. Verify the supported graphics compute stack with `.venv/bin/python tools/gpu-preflight.py`. NVIDIA hardware OpenGL and CUDA were already working on an RTX 4070 SUPER; **don't reinstall Gentoo drivers or widen the Bubblewrap sandbox** based on an untested hypothesis.
 4. **First new technical work:** isolate where per-game-tick time is spent, using small fresh-tagged no-neural Minecraft tests. The existing `MCioAgentBridge.apply` loops one send/receive per tick. Compare time in `send_action`, `recv_observation`, server synchronization, rendering, Python frame decode, and between-run startup/warmup as instrumentation permits. Sample the same world/viewport/action sequence across conditions. Review `tools/run-mcio-viewer.sh`, `src/gmaincraft/agent_interface.py`, `experiments/joint_log_factorized.py`, `experiments/factorized_controls.py` and MCio runtime logs. Do **not** assume Minecraft is CPU-rendering: NVIDIA GLX hardware rendering has already been verified.
 5. Reproduce the slowdown **without PyTorch**. Confirm effect of launching through the nested Gamescope viewer vs a safe comparable configuration, and isolate Minecraft-versus-client/server pacing. Do not confuse a 90-second outer shell timeout or Gamescope's occasional post-child **139** with an unsuccessful Python experiment; inspect the child logs and durable outputs. Cleanup **only child processes owned by the experiment**.
@@ -33,8 +37,24 @@ Historical and current runs are **not necessarily a strictly matched A/B compari
 
 After the throughput issue has been diagnosed and fixed or clearly quantified with the user deciding to proceed:
 
-- Preserve the goal: a **from-scratch learning agent using legitimate player-observable information** to complete Minecraft Java Any% on **unseen genuinely random survival seeds**. Its **current** deployed policy consumes RGB Minecraft screenshots; **RGB-only is NOT a permanent restriction on the project**. A future model may also use ordinary player-accessible game audio, rendered HUD and inventory UI, its own input/action history, elapsed action durations and learned/recurrent memory when implemented and verified. Do not assume these extra modalities have already been wired in.
-- **Training is not RGB-only.** Valid learning feedback includes the chosen actions, rewards, game tick durations, episode outcomes, self-collected trajectories, and privately measured Minecraft mined/picked-up stats or controller-only distances for clearly labeled training rewards. Distinguish this privileged *trainer/evaluator feedback* from the observations supplied to the playing policy. No human demonstration data, external pretrained model, hidden world coordinates/target or inventory internals supplied directly as policy observations, or scripted speedrun substitutions unless the user explicitly revises this rule.
+- Preserve the goal: a **from-scratch learning agent on unseen random
+  Minecraft Java survival seeds**, using direct **player-knowable game-state
+  memory reads in BOTH training and gameplay**. Numeric position, facing,
+  health, inventory and stat counters are intended policy inputs; screen
+  RGB/audio can supplement them, not replace them. See
+  [OBSERVATION_POLICY.md](OBSERVATION_POLICY.md). The existing RGB-only
+  `AgentView` is a **legacy prototype**, not permanent project policy.
+- Engine-derived block/entity IDs and positions may be fed directly when
+  **visible or legitimately remembered**. Research/calibrate eligibility
+  thresholds (FOV, range, projected size, occlusion, lighting, raycast,
+  interaction/reach) after the throughput issue; do not invent fixed numbers
+  or expose a complete hidden map. Normal Minecraft actions and survival
+  rules still apply.
+- In training and scored play, the policy sees the SAME versioned bounded
+  observation fields. Controller-only hidden state may separately calculate
+  scalar rewards, reset worlds or score outcomes, but not become an oracle
+  destination/secret world-state feature. No human demonstrations, externally
+  pretrained models, or scripted speedrun standing in for a learned policy.
 - The **first functional milestone** is actual unrestricted finding, mining **and collecting** a log, judged by normal Minecraft inventory. Do not rush to separate crafting/Nether/dragon subsystems while unrestricted first-log collection still fails.
 - The current factorized policy has separate **6-tick V2** and **12-tick V3** schemas; real vanilla-mine event stats are evaluator-only, and `CumulativeMinedTracker` persists across resets. **Never** use contaminated `v3event01` as a valid checkpoint or evidence: cumulative stat reset falsely awarded multiple blocks. `v3eventfixed01` is the clean follow-up (10 training episodes; 3 truly mined; 0 inventory pickups in training). In frozen restricted stationary audit, old/new mined 4/4 with 0/4 vs 2/4 inventory pickups; both failed 0/4 fully unrestricted. New survival seed 31415927: 0/240-tick wood for random and V3.
 - `docs/VISUAL_SELF_SUPERVISION.md`: own random-action screenshots + CUDA inverse dynamics learned to predict camera and attack, but not movement reliably when simultaneously turning. Camera-locked movement recovered ~38.5% vs a ~14.7% baseline. Causal GRU and frame-delta encodings exist as **offline diagnostics**, not working online memory. Test action disentanglement/history and sample-efficient learning against **same held-out real Minecraft cases**, not merely offline accuracy. Self-collected datasets, local `.pt` weights and world files are **Git-ignored**; do not regenerate/overwrite without need.
@@ -43,6 +63,9 @@ After the throughput issue has been diagnosed and fixed or clearly quantified wi
 
 ## Fresh chat starter (copy-paste into a new conversation)
 
-> Please connect to my **Gentoo Shell** and continue `polskiftw/gmaincraft` in `/workspace` directly. Read `AGENTS.md`, `docs/NEXT_SESSION.md`, `TODO.md`, `docs/HANDOFF.md`, and `docs/VISUAL_SELF_SUPERVISION.md`. **First priority: investigate and fix/quantify the MCio game-step throughput regression (~300 ticks / 0.6-0.8 s before versus ~3.9-4.0 s now), using a controlled no-Torch benchmark. Do not start more agent training until this is addressed.** Once fixed or explicitly triaged, continue the current from-scratch, player-observable-input speedrunning course correction toward real unrestricted first-log acquisition. Preserve all local worlds/weights, use direct Git in the shell, update docs/TODO/AGENTS, run tests, and commit/push validated changes. Please execute rather than merely explain a plan.
+> Please connect to my **Gentoo Shell** and continue `polskiftw/gmaincraft` in `/workspace` directly. Read `AGENTS.md`, `docs/NEXT_SESSION.md`, `docs/OBSERVATION_POLICY.md`, `TODO.md`, `docs/HANDOFF.md`, and `docs/VISUAL_SELF_SUPERVISION.md`. **First priority: investigate and fix/quantify the MCio game-step throughput regression (~300 ticks / 0.6-0.8 s before versus ~3.9-4.0 s now), using a controlled no-Torch benchmark. Do not start more agent training until this is addressed.** Once fixed or explicitly triaged, implement **direct, bounded Minecraft
+memory-derived observations** for player stats, inventory and eligible visible
+blocks in both training and gameplay, investigate the visibility thresholds,
+then continue learned unrestricted first-log acquisition. Preserve all local worlds/weights, use direct Git in the shell, update docs/TODO/AGENTS, run tests, and commit/push validated changes. Please execute rather than merely explain a plan.
 
 **Bridge availability is per conversation:** a new chat does not automatically inherit tool authorization or the old chat's detailed working context. The repository records the project decisions; give the new chat the starter text and enable Gentoo Shell when needed.
