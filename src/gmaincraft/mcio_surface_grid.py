@@ -66,7 +66,7 @@ class SurfaceGridV0:
             raise ValueError('Unknown surface ray observation schema')
         cols, rows = option.columns, option.rows
         if (type(cols) is not int or type(rows) is not int or
-                not (1 <= cols <= 31 and 1 <= rows <= 31) or cols*rows > 256):
+                not (1 <= cols <= 31 and 1 <= rows <= 31) or cols*rows > 512):
             raise ValueError('Invalid sample grid shape')
         fov, limit = float(option.vertical_fov_degrees), float(option.max_distance)
         if not (isfinite(fov) and 1 <= fov < 180 and

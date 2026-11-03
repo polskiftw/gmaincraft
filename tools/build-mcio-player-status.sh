@@ -16,6 +16,10 @@ grid_v0_hash='9ff0456aa6e37d7201477466eb97581ba31ddc5974e4358dbf3aeb7b06f245fc'
 grid_v0_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.surface-grid-v0.jar"
 group_v1_hash="8d1152104e6646c59f963456b2d3c243b6c87b0e4b6d2ca9773b8fbb88a34fb3"
 group_v1_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.grouped-v1.jar"
+ondemand_hash="7e89d4d7475e255ba48df70ba688ad7205dab3e96c5bbf2008c35ea4116e618b"
+ondemand_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.ondemand-v1.jar"
+fine_before_vertical_hash="887cbc6efcd0813d5c321006fa053c18f7fa00a4c78dfefb0ab2b02d16a19d37"
+fine_before_vertical_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.fine-pre-vertical.jar"
 if [[ "$mode" == '--restore' ]]; then
   [[ -f "$backup" ]] || { echo "No backed-up original mod at $backup" >&2; exit 1; }
   tmp="${mod}.gmaincraft.$$.tmp"
@@ -77,6 +81,10 @@ if [[ "$mode" == '--install' ]]; then
         previous_backup="$grid_v0_backup"
       elif [[ "$actual_hash" == "$group_v1_hash" ]]; then
         previous_backup="$group_v1_backup"
+      elif [[ "$actual_hash" == "$ondemand_hash" ]]; then
+        previous_backup="$ondemand_backup"
+      elif [[ "$actual_hash" == "$fine_before_vertical_hash" ]]; then
+        previous_backup="$fine_before_vertical_backup"
       else
         echo 'Unknown mod jar differs from all verified previous builds; aborting' >&2
         exit 1

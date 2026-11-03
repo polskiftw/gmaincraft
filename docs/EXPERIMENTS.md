@@ -1,5 +1,27 @@
 # Experiment record
 
+## Verified rendered-screen / direct-memory sensor calibration (Nov 2–3, 2026)
+
+See **[`VISIBLE_SURFACE_CALIBRATION_2026_11_03.md`](VISIBLE_SURFACE_CALIBRATION_2026_11_03.md)**
+for run tags, paired screenshots, per-scene outcomes and actual speed.
+The first naive geometry run `visgeom_1103a` is explicitly INVALID:
+Minecraft server changes were not yet visible to MCio client observations.
+The corrected controller fixture stabilizes for 150ms wall-clock, and
+`visstable_1103a` confirmed 4/4 unchanged post-placement frames.
+On 23 correctly staged lab positions, coarse 13x9 rays detected 16 blocks,
+fine25x17 detected18, with 13/14 vs14/14 on a stronger 80-pixel
+render-difference diagnostic slice (not a human-visible threshold).
+Stone prevented hidden hits; glass and leaves caused missed visible blocks.
+Three verified natural noise source seeds (31415927, 271828183,161803398)
+each ran sensor-off/coarse/fine normal 300-tick pairs, no frame/action gaps;
+throughput cost varies by scene, no training or user-world modifications.
+Real Java pitch +/-90 off-center/floor tests passed 12/12 after a camera
+basis singularity fix. On the final JAR, an older status-v1 crosshair-only smoke
+`statuscompat_1103a` passed 4/4 independently, with the new surface
+features OFF; it does not establish a learned V5 skill.
+Exactly 92 pure Python tests passed. All data in
+ignored local `logs/` and every model remains unchanged.
+
 This is the **verified evidence ledger**, not a roadmap. Add measured results here only after reading actual runtime output and identify evaluation conditions. Initial records were obtained on 2026-11-01, and subsequent experiments were executed in the user's isolated Gentoo Shell MCP workspace on 2026-11-02. Retain caveats and avoid converting synthetic tests into Minecraft evidence.
 
 ## New verified off-center sensor and on-demand schedule (Nov 2-3, 2026)

@@ -219,6 +219,8 @@ def main():
                     help='use the same fixed anchor (-82,64,-9) as the camera-ray live probe')
     ap.add_argument('--fixture-xyz',type=int,nargs=3,metavar=('X','Y','Z'),
                     help='pin same lab terrain and height across independent launches')
+    ap.add_argument('--ray-profile',choices=('coarse','fine'),default='coarse',
+                    help='experimental 13x9 or 25x17 bounded first-hit ray profile')
     ap.add_argument('--surface-on-demand',action='store_true',
                     help='explicit fresh grouped sample only every sixth sync tick')
     ap.add_argument('--surface-objects',action='store_true',
@@ -234,6 +236,8 @@ def main():
         ap.error('Invalid ticks/repeats')
     if not 96 <= min(args.frame_width,args.frame_height) and max(args.frame_width,args.frame_height) <= 1920:
         ap.error('Invalid frame width/height')
+    if args.ray_profile=='fine' and not (args.surface_grid or args.surface_objects):
+        ap.error('--ray-profile fine requires a surface sensor')
     if args.surface_on_demand and not args.surface_objects:
         ap.error('--surface-on-demand requires --surface-objects')
     if args.surface_grid and args.surface_objects:
@@ -255,7 +259,8 @@ def main():
                             env_extra={**({ENV_NAME:'1'} if args.status_v1 else {}),
                                        **({SURFACE_GRID_ENV:'1'} if args.surface_grid else {}),
                                        **({SURFACE_OBJECTS_ENV:'1'} if args.surface_objects else {}),
-                                       **({ON_DEMAND_ENV:'1'} if args.surface_on_demand else {})})
+                                       **({ON_DEMAND_ENV:'1'} if args.surface_on_demand else {}),
+                                       **({'GMAINCRAFT_SURFACE_RAY_PROFILE':'fine'} if args.ray_profile=='fine' else {})})
     with temporary_options(args.vsync,args.max_fps,args.run_tag):
         launcher=instance.Launcher(opts)
         ctrl=None

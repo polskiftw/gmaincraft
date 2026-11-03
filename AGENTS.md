@@ -1,6 +1,27 @@
 # AGENTS.md — project instructions for coding assistants
 
-## NEWEST: synced on-demand grouped first-hit surface samples
+## NEWEST verified milestone: independent rendered-image surface calibration
+
+Read **`docs/VISIBLE_SURFACE_CALIBRATION_2026_11_03.md`** and
+`docs/OBSERVATION_POLICY.md` FIRST. A real Minecraft evaluator-only
+paired-RGB/engine-ray test uncovered and fixed asynchronous server fixture
+updates (earlier no-detection data invalid). **23 settled positions**
+confirmed that the 13x9 ray sensor missed visible off-center blocks;
+explicit 25x17 fine samples improved strong changed-pixel recall from
+13/14 to 14/14 in one lab sweep but STILL misses smaller candidates.
+Stone occludes targets, glass/leaves create visible false negatives.
+Three distinct natural noise seed sources were checked with matching
+300-tick RGB and no admin play actions, all frame/action sequences correct;
+fine throughput is scene-dependent. The Java vertical camera basis was
+fixed for pitch +/-90 and passed 12/12 actual bridge/surface controls.
+**92 pure tests pass.** The new full study and original ignored run tags
+are documented; NONE of these scene samples are yet train/frozen policy
+inputs. Default remains backward-compatible 13x9; 25x17 is research-only.
+NEXT: natural FOV/lighting/occlusion/entity calibration, exact same bounded
+memory in future V6 train/frozen, action-duration and mining progress, real
+first-log inventory success. Preserve old binary backups, worlds, models.
+
+## Earlier milestone: synced on-demand grouped first-hit surface samples
 
 See [`docs/SURFACE_REQUEST_V1.md`](docs/SURFACE_REQUEST_V1.md). The opt-in
 Fabric patch supports request-on-final-normal-action-tick samples, with
@@ -32,7 +53,7 @@ current ignored runs and weights; real test outputs in local `logs/`.
 
 This file is the operating contract for anyone (including a future ChatGPT conversation) editing **polskiftw/gmaincraft**. Treat the GitHub repository, not the conversation transcript or an assumed local checkout, as the authoritative codebase.
 
-## NEWEST verified milestone: V5 patched MCio, true crosshair/player status and headless speed
+## Historical verified milestone: V5 patched MCio, true crosshair/player status and headless speed
 
 **Read `docs/MCIO_PLAYER_SENSOR.md` and `docs/NEXT_SESSION.md` FIRST.**
 The user explicitly permitted changing the isolated, disposable MCio game

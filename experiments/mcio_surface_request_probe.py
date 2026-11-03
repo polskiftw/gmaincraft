@@ -32,6 +32,8 @@ def main():
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--run-tag',required=True)
     ap.add_argument('--visible',action='store_true')
+    ap.add_argument('--vertical-extremes',action='store_true',
+                    help='real-game ray camera-basis test at +/-90 degree pitch')
     args=ap.parse_args()
     if not re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,31}',args.run_tag):
         ap.error('Invalid unique tag')
@@ -44,7 +46,8 @@ def main():
     options=types.RunOptions(mcio_dir=MCIO,instance_name='DemoInstance',world_name=world_name,
                  mcio_mode=types.MCioMode.SYNC,hide_window=not args.visible,
                  gpu_lib=None if args.visible else 'nvidia',width=320,height=180,
-                 env_extra={STATUS_ENV:'1',OBJECTS_ENV:'1',ON_DEMAND_ENV:'1'})
+                 env_extra={STATUS_ENV:'1',OBJECTS_ENV:'1',ON_DEMAND_ENV:'1',
+                            **({'GMAINCRAFT_SURFACE_RAY_PROFILE':'fine'} if args.vertical_extremes else {})})
     profile={'renderDistance':'4','enableVsync':'false','maxFps':'260'}
     with temporary_game_options(INSTANCE,profile,run_tag=args.run_tag):
         launcher=instance.Launcher(options)
@@ -86,7 +89,40 @@ def main():
             instant=bridge.surface_objects()
             checks['single_tick_fresh_request']=bool(instant.objects)
             checks['valid_sequential_packets']=bridge.packet.last_action_sequence>first_seq
+            vertical=None
+            if args.vertical_extremes:
+                # Stage off-center overhead oak OUTSIDE scored policy actions,
+                # then use real mouse movement and the actual memory hit grid.
+                reset(ctrl,xyz)
+                manager=env_util.InputStateManager()
+                x,y,z=xyz
+                staged,_,_=action(ctrl,manager,commands=(
+                    f'setblock {x+2} {y+7} {z} minecraft:oak_log replace',),clear=True)
+                time.sleep(.2)  # server block update needs real wall-clock time
+                for _ in range(20): staged,_,_=action(ctrl,manager)
+                bridge=MCioAgentBridge(ctrl,staged)
+                bridge.apply(AgentAction(look_dy=-1050,ticks=6),request_surface_objects=True)
+                up_view=bridge.surface_objects()
+                pitch_up=bridge.packet.player_pitch
+                expected=(x+2,y+7,z)
+                upper=next((o for o in up_view.objects if o.xyz==expected and
+                            o.block_id=='minecraft:oak_log'),None)
+                checks['vertical_up_pitch']=abs(pitch_up+90)<1
+                checks['vertical_up_offcenter_hit']=upper is not None
+                bridge.apply(AgentAction(look_dy=1200,ticks=6),request_surface_objects=True)
+                down_view=bridge.surface_objects()
+                pitch_down=bridge.packet.player_pitch
+                checks['vertical_down_pitch']=abs(pitch_down-90)<1
+                checks['vertical_down_noncollapsed_grid']=len(down_view.objects)>1
+                vertical=dict(pitch_up=pitch_up,pitch_down=pitch_down,
+                              up_hit_position=upper.xyz if upper else None,
+                              up_hit_rays=upper.ray_indices if upper else [],
+                              up_object_count=len(up_view.objects),
+                              down_object_count=len(down_view.objects),
+                              fine_grid=[up_view.columns,up_view.rows])
+                print('VERTICAL SENSOR',json.dumps(vertical),flush=True)
             report=dict(tag=args.run_tag,fixture=xyz,profile=profile,checks=checks,
+                        vertical=vertical,
                         first=dict(objects=len(first.objects),oak=len(first.matching('minecraft:oak_log')),
                                    game_io_s=round(elapsed,4)),
                         turned_away=dict(objects=len(away.objects),

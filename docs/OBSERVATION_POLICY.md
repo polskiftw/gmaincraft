@@ -1,5 +1,19 @@
 # What the Minecraft speedrunner is allowed to know
 
+## Current visibility research evidence (NOT trained policy inputs)
+
+Independent real-game screenshot/memory comparisons, a valid multi-seed
+sensor throughput study and a Java exact-vertical-camera fix are reported
+in [`VISIBLE_SURFACE_CALIBRATION_2026_11_03.md`](VISIBLE_SURFACE_CALIBRATION_2026_11_03.md).
+The earlier apparent total loss of visibility was a lab synchronization
+error (server block updates lagged MCio frame samples); its results are
+invalid. The opt-in 25x17 first-hit ray profile improves some small or
+off-center object recall but still misses truly rendered surfaces, especially
+behind glass/leaves. The sensor is **not yet a calibrated recognizability
+boundary** and MUST NOT silently become the player's oracle for small,
+dark, unrendered, hidden or occluded blocks. Structured game-memory policy
+inputs remain the goal in both training and scored gameplay once validated.
+
 **Authoritative design intent, clarified by the user on November 2, 2026.**
 This document supersedes older blanket phrases such as "RGB-only", "pixel-only
 fairness", "no memory reads", or "all Minecraft stats are privileged". Older

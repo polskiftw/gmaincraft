@@ -1,5 +1,16 @@
 # MCio/Fabric opt-in memory sensor: own status and actual crosshair target
 
+## Later read-only camera-surface calibration (V5 itself unchanged)
+
+The experimental ray sensor has now been tested against actual Minecraft
+rendered RGB in 23 paired positions, occlusion/transparency/night scenes,
+and three independent pre-generated natural noise sources, with on-demand
+13x9 default and 25x17 explicit research profiles. Exact +/-90 camera
+pitch was fixed and validated. Details:
+[`VISIBLE_SURFACE_CALIBRATION_2026_11_03.md`](VISIBLE_SURFACE_CALIBRATION_2026_11_03.md).
+V5 still consumes ONLY the older opt-in crosshair/status and does not
+receive the new experimental object list in training or frozen gameplay.
+
 **Verified live on Minecraft Java 1.21.3, Fabric MCio 1.6.1 + gmaincraft patch, November 2–3 2026.** This is a read-only *player-knowledge* extension, NOT an X-ray map. V5 from-scratch CUDA training and normal frozen Minecraft gameplay both consume it; none of the earlier V1–V4 policy/checkpoint formats were rewritten. Scored gameplay continues to use ordinary vanilla mouse/keyboard input, inventory and world rules.
 
 ## Later research extension (experimental; not V5 policy input)

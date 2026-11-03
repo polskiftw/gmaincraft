@@ -1,6 +1,23 @@
 # START HERE — next ChatGPT/Gentoo Shell session
 
-## NEWEST NEXT: calibrate view-eligible objects; on-demand solved
+## NEWEST handoff: robust visible-block calibration and three natural seeds
+
+Read `VISIBLE_SURFACE_CALIBRATION_2026_11_03.md` and
+`SURFACE_REQUEST_V1.md`. The first visibility experiment without a
+server-settlement delay was INVALID; the later 23-scene paired rendered-RGB
+comparison and three natural Minecraft noise seed controls are the
+verified evidence. 13x9 default vs 25x17 research fine: coarse 13/14
+strong image controls detected, fine 14/14, while fine STILL misses
+some small visible blocks and can cost more on dense terrain. Exact
+camera pitch +/-90 ray basis bug fixed, tested in live Minecraft.
+Current independent tests: **92 pass**. Every new test/temporary world
+was confined to the disposable isolated DemoInstance, preserved previous
+JARs/checkpoints, no changed user world. The next substantial work is
+FOV/projection/lighting/transparency/entity validation on natural scenes;
+then bounded versioned policy features with identical train/frozen inputs
+and renewed learned mining/pickup research. Do not blindly scale PPO.
+
+## Earlier NEXT: calibrate view-eligible objects; on-demand solved
 
 See `SURFACE_REQUEST_V1.md`. A fresh grouped camera-ray object sample is
 now requestable on the last normal MCio action tick and absent otherwise.
@@ -33,7 +50,7 @@ memory-derived structured game state**, not a permanently screenshot-only
 agent; read [OBSERVATION_POLICY.md](OBSERVATION_POLICY.md). The memory-state
 work follows **after** the performance regression investigation.
 
-## NEWEST continuation point — V5 real crosshair status and independent performance causes
+## Historical continuation point — V5 real crosshair status and independent performance causes
 
 **This is the active priority for the next chat; older V4 and pre-V4 FIRST
 sections below are historical.** The user wants a from-scratch Minecraft

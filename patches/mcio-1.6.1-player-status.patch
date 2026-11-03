@@ -67,7 +67,7 @@ index 92d6661..2225344 100644
  class ObservationPacketPacker {
    private static final Logger LOGGER = LogUtils.getLogger();
 diff --git a/src/client/java/net/twoturtles/MCioObservationHandler.java b/src/client/java/net/twoturtles/MCioObservationHandler.java
-index 1e0d5f2..ed98172 100644
+index 1e0d5f2..4e5151a 100644
 --- a/src/client/java/net/twoturtles/MCioObservationHandler.java
 +++ b/src/client/java/net/twoturtles/MCioObservationHandler.java
 @@ -5,15 +5,21 @@ import com.mojang.logging.LogUtils;
@@ -132,7 +132,7 @@ index 1e0d5f2..ed98172 100644
      //        options.add(getStatsFull());
  
      getCursorPosRV cursorPosRV = getCursorPos(client);
-@@ -126,6 +158,139 @@ public class MCioObservationHandler {
+@@ -126,6 +158,152 @@ public class MCioObservationHandler {
      return new StatsFullOption(updates);
    }
  
@@ -174,8 +174,12 @@ index 1e0d5f2..ed98172 100644
 +   *  an approximation of projection, NOT a validated visual detector.
 +   */
 +  SurfaceGridOption getGmaincraftSurfaceGrid(LocalPlayer player) {
-+    final int columns = 13;
-+    final int rows = 9;
++    // Research profile is a bounded, explicit experimental setting. Stable
++    // default stays 13x9. "fine" increases sampling to 25x17 (425 rays),
++    // not a free-form radius or loaded-chunk scan. The packet carries shape.
++    final boolean fine = "fine".equals(System.getenv("GMAINCRAFT_SURFACE_RAY_PROFILE"));
++    final int columns = fine ? 25 : 13;
++    final int rows = fine ? 17 : 9;
 +    final float vfov = (float)(int)client.options.fov().get();
 +    final double aspect = (double)client.getWindow().getWidth() /
 +        Math.max(1,client.getWindow().getHeight());
@@ -185,7 +189,16 @@ index 1e0d5f2..ed98172 100644
 +    final float limit = 16f * client.options.renderDistance().get();
 +    Vec3 eye = player.getEyePosition();
 +    Vec3 forward = player.getViewVector(1f).normalize();
-+    Vec3 right = forward.cross(new Vec3(0,1,0)).normalize();
++    Vec3 right = forward.cross(new Vec3(0,1,0));
++    // At exactly +/-90 pitch, forward is vertical and its cross product
++    // with world up is ZERO. Use a yaw-aligned horizontal camera axis so
++    // samples do not collapse to a single ray when looking straight up/down.
++    if (right.lengthSqr() < 1.0e-8) {
++      double yaw = Math.toRadians(player.getYRot());
++      right = new Vec3(-Math.cos(yaw),0,-Math.sin(yaw));
++    } else {
++      right = right.normalize();
++    }
 +    Vec3 up = right.cross(forward).normalize();
 +    ArrayList<SurfaceRayHit> hits = new ArrayList<>();
 +    if (client.level != null) {

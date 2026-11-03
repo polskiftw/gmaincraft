@@ -52,6 +52,12 @@ class GroupedSurfaceTests(unittest.TestCase):
         self.assertIsInstance(decoded.options[0],SurfaceObjectsRequest)
         self.assertTrue(decoded.options[0].fresh)
 
+    def test_fine_grid_allowed_but_unbounded_rejected(self):
+        fine=SurfaceObjectsV1.from_packet(self.packet(columns=25,rows=17,objects=[]))
+        self.assertEqual((fine.columns,fine.rows),(25,17))
+        with self.assertRaises(ValueError):
+            SurfaceObjectsV1.from_packet(self.packet(columns=31,rows=31,objects=[]))
+
     def test_fail_closed_and_reject_invalid(self):
         self.assertEqual(SurfaceObjectsV1.from_packet(self.packet(objects=[])).objects,())
         with self.assertRaises(RuntimeError):

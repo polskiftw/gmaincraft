@@ -1,6 +1,26 @@
 # Handoff for a brand-new ChatGPT conversation
 
-## NEWEST: real tested on-demand surface observations
+## NEWEST handoff: 23-scene RGB/memory calibration plus natural tests
+
+Read **`VISIBLE_SURFACE_CALIBRATION_2026_11_03.md`** FIRST. The previous
+on-demand sensor is still opt-in and read-only, never injected into V5.
+An early apparent no-detection result was INVALID because actual Minecraft
+server block updates lag MCio frames: the new lab waits for server
+updates and confirms unchanged-before/after scene stability. In 23 paired
+real rendered-image tests, 13x9 reported 16 targets and 25x17 reported
+18, including recovering a 182-pixel off-center block. Glass/leaves still
+produce false negatives (not no-X-ray leaks). Three real noise world
+source seeds, paired normal RGB/idle actions, no frame gaps and variable
+warm throughput are recorded. Exact vertical camera pitch +/-90 now works:
+12/12 live controls; Java source compiled, 92 pure tests passed.
+Current installed isolated mod SHA256 is documented in the study. Preserve
+previous backed-up mod versions, all Git-ignored worlds, logs, datasets and
+checkpoints. NEXT: derive **actual** perceived-block/entity eligibility,
+calibrate FOV/transparency/light/distance in natural moving scenes, then
+schema-tagged V6 same-memory train/frozen and real sustained mining+pickup.
+Default 13x9, 25x17 only explicit research option. No general first log.
+
+## Earlier: real tested on-demand surface observations
 
 See `SURFACE_REQUEST_V1.md`. Grouped first-hit samples can now be requested
 only on the last tick of a normal 6-tick action, rather than every tick.
@@ -33,7 +53,7 @@ in ignored `mcio-data/mod_backups/`. Real logs under ignored `logs/`; viewer
 
 **Last verified: 2026-11-02.** Canonical code: [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. **Historical early milestone (superseded by the sections below):** learn movement W/A/S/D from real RGB features (2 independently trained models; fresh fixture audit p01 **30/32**, p02 **24/32**, always-W 21/32); then **combine frozen RGB aim/ATTACK and pickup policies** on *real mined logs* (two independent camera-angle sets, trained p02 **51/56**, hardcoded W **49/56**, untrained movement 21/56). Earlier numerical-navigation and RGB log-aiming milestones remain preserved; `docs/EXPERIMENTS.md` records all results. The initial uncleaned aim 12/14 and aborted first drop-distance audits are **invalid evidence**. No general world-seed Minecraft speedrunning. Do not ask for old test logs.
 
-## NEWEST handoff: patched MCio real block status, V5 parity, headless speed
+## Historical handoff: patched MCio real block status, V5 parity, headless speed
 
 Read `MCIO_PLAYER_SENSOR.md` FIRST for source patch/build/install/revert,
 exact tests, performance A/B and V5 train/eval commands. Exact upstream MCio

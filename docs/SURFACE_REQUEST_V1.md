@@ -1,5 +1,16 @@
 # Synchronized camera observation requests
 
+## Later real-scene calibration (see new results)
+
+The exact same synchronized request protocol now supports a bounded,
+**explicit** 25x17 research profile as well as the default13x9, and the
+camera basis remains valid at +/-90 pitch. See
+[`VISIBLE_SURFACE_CALIBRATION_2026_11_03.md`](VISIBLE_SURFACE_CALIBRATION_2026_11_03.md)
+for all 23 controlled rendered-image controls, actual natural survival
+seed timings, opaque/glass/leaf/night failures and the newer Java build.
+Neither research profile is a policy input, and these tests cannot be
+mistaken for an autonomous first-log skill.
+
 ## Protocol
 
 This experiment adds opt-in grouped surface observations on specific Minecraft actions.
@@ -49,7 +60,7 @@ statistically significant speedup is established. Replicate on natural worlds.
 ## Rebuild and reproduce
 
 The tracked Fabric patch now includes `MCioClientSync.java` to receive
-observation-request options. Current DemoInstance JAR SHA256:
+observation-request options. JAR SHA256 at the time of this milestone (superseded by the visibility-calibration build):
 `7e89d4d7475e255ba48df70ba688ad7205dab3e96c5bbf2008c35ea4116e618b`.
 The earlier grouped build `8d1152104e6646c59f963456b2d3c243b6c87b0e4b6d2ca9773b8fbb88a34fb3`
 is backed up in ignored `mcio-data/mod_backups/` along with pristine,

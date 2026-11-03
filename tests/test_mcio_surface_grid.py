@@ -29,6 +29,10 @@ class SurfaceGridTests(unittest.TestCase):
             grid.hits[0].block_id='minecraft:diamond_ore'
         self.assertEqual(grid.block_hits('minecraft:stone'),())
 
+    def test_explicit_fine_research_profile_bounds(self):
+        self.assertEqual((SurfaceGridV0.from_packet(self.packet(columns=25,rows=17,hits=[])).columns,
+                          SurfaceGridV0.from_packet(self.packet(columns=25,rows=17,hits=[])).rows),(25,17))
+
     def test_empty_hits_carry_no_world_information(self):
         self.assertEqual(SurfaceGridV0.from_packet(self.packet(hits=[])).hits,())
         with self.assertRaises(RuntimeError):

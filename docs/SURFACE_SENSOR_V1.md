@@ -1,5 +1,15 @@
 # Experimental camera-surface memory, raw grid v0 and grouped blocks v1
 
+## Later measured visibility/throughput study
+
+For 23 independently staged real-Minecraft visual scenes, stone/glass/leaf
+controls and three natural noise seeds, consult
+[`VISIBLE_SURFACE_CALIBRATION_2026_11_03.md`](VISIBLE_SURFACE_CALIBRATION_2026_11_03.md).
+A separate explicit fine 25x17 research profile exists in addition to the
+backward-compatible 13x9 default; the tracked patch also fixes straight
+up/down camera ray geometry. Earlier fixed 13x9 experiments below remain
+valid historical baselines, not current general visibility guarantees.
+
 **Live verified in real Minecraft Java 1.21.3 MCio/Fabric, 2026-11-02/03.**
 These are OPT-IN research sensors only. **NO trained model currently consumes
 these block lists.** The canonical policy knowledge boundary is

@@ -1,6 +1,43 @@
 # TODO — gmaincraft
 
-## NEWEST: tested grouped surface-memory research (not neural policy)
+## NEWEST: camera visibility experiment and natural-scene performance
+
+- [x] Correct invalid lab synchronization: controller `/setblock`
+  completion lags fast MCio action observations. Retire invalid first
+  geometry logs; wait for Minecraft server updates, verify camera pose,
+  unchanged-scene RGB and post-placement stability. No fixture coordinates
+  feed the agent.
+- [x] Independent 320x180 rendered-RGB vs MCio first-hit-ray test at 23
+  settled block offsets/distances, with sensitivity slices and explicit
+  crosshair/HUD masks. Coarse13x9 found16/23 target placements and13/14
+  strong rendered controls; fine25x17 found18/23 and14/14 strong rendered
+  controls. A 182-changed-pixel off-center block was missed by coarse and
+  recovered by fine. This is NOT a universal human-visible threshold.
+- [x] Check stone/glass/leaves/slit/darkness with real game images; opaque
+  stone blocked target, glass/leaves were visible-but-missed cases.
+- [x] Compare no-sensor/coarse/fine grouped sampling on three existing
+  natural noise world seeds (31415927,271828183,161803398), all normal
+  survival input with no world edits during measured samples; 0 action or
+  frame gaps, 50 requested observations/300 ticks, real NVIDIA RGB.
+  Scene-dependent warm times and exact repeat counts in
+  `docs/VISIBLE_SURFACE_CALIBRATION_2026_11_03.md`.
+- [x] Fix camera-ray degeneracy at exact +/-90 pitch; a separate actual
+  Minecraft test at both extremes passed 12/12 request/visibility checks,
+  including off-center overhead oak.
+- [x] Verify earlier V5 crosshair/status interface remains compatible
+  with the final patched mod: a fresh real Minecraft positive/negative
+  4/4 smoke `statuscompat_1103a` passed with surface flags OFF. This is
+  NOT a rerun of learned V5 game success.
+- [ ] NEXT: validate rendered projection and player-knowable thresholds at
+  multiple FOVs, biome/weather/light, partial occlusion, transparent and
+  noncollidable blocks, entities and moving natural scenes. Preserve
+  first-hit/no-X-ray limits; do not give tiny or dark block IDs as oracles.
+- [ ] After calibrating, use a versioned *bounded* current observation in
+  new V6 learning BOTH train/frozen, and test held-out sustained mining,
+  inventory pickup and action history. Keep 13x9 as current default, 25x17
+  explicit research alternative. No Any% or natural first-log win yet.
+
+## Earlier: tested grouped surface-memory research (not neural policy)
 
 - [x] Build opt-in read-only MCio first-hit 13x9 camera ray sampling,
   bounded by the actual 4-chunk render setting in tests; record per-ray

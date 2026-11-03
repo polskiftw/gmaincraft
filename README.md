@@ -1,5 +1,12 @@
 # gmaincraft
 
+**Latest research update:** [Real Minecraft visibility calibration](docs/VISIBLE_SURFACE_CALIBRATION_2026_11_03.md)
+compares memory-derived block-surface candidates with independent actual
+rendered RGB across 23 lab fixtures, three natural survival seeds and
+night/occlusion controls. Fine 25x17 rays are an explicit measured research
+option; 13x9 remains the default. The engine-only sensor is NOT YET a
+trained policy input or a general log-finding skill; no claims of Any%.
+
 **Updated:** The opt-in camera-ray sensor now supports synchronized,
 on-demand last-action-tick observations with real Minecraft verification;
 see [`docs/SURFACE_REQUEST_V1.md`](docs/SURFACE_REQUEST_V1.md).
