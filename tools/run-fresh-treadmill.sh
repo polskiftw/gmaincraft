@@ -72,6 +72,25 @@ fi
 if [[ "$limit" != 'forever' && ! "$limit" =~ ^[1-9][0-9]*$ ]] ||
    [[ ! "$episode_decisions" =~ ^[1-9][0-9]*$ ]] ||
    (( episode_decisions < 12 || episode_decisions > 100000 )); then usage;fi
+# Check the advisory lock before launching a new nested Gamescope/Java
+# session. A crash in a different bubblewrap PID namespace can leave the
+# original Python blocked even though ps here shows no visible process.
+# NEVER delete/recreate the lock file to evade an existing flock.
+"$root/.venv/bin/python" - "checkpoints/fresh_stream_${tag}.lock" <<'PY_LOCK'
+import fcntl,sys
+from pathlib import Path
+lock=Path(sys.argv[1])
+with lock.open('a+') as handle:
+    try:
+        fcntl.flock(handle.fileno(),fcntl.LOCK_EX|fcntl.LOCK_NB)
+    except BlockingIOError:
+        sys.exit('TRAINING LOCK HELD: previous trainer or orphaned sandbox '
+                 'still owns this run. Stop/close the ORIGINAL Gentoo Shell '
+                 'connection and its game process before resuming. '
+                 'Do NOT delete the lock file or launch a second trainer.')
+    else:
+        fcntl.flock(handle.fileno(),fcntl.LOCK_UN)
+PY_LOCK
 console="logs/fresh_treadmill_${tag}_$(date +%Y%m%d_%H%M%S)_$$.console"
 if [[ -e "$console" ]]; then echo 'Console log already exists' >&2;exit 1;fi
 ln -sfn -- "$(basename "$console")" "logs/fresh_treadmill_${tag}_latest.log"

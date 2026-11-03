@@ -1,5 +1,27 @@
 # Handoff for a brand-new ChatGPT conversation
 
+New optional scoped NVIDIA mitigation: fresh treadmill now launches
+Minecraft JVM with `__GL_THREADED_OPTIMIZATIONS=0` by default, reversible
+via `--nvidia-gl-threading default` for direct Python evaluation. Verified
+12-decision real Java Minecraft smoke `nvidia_gl_safe_1103` completed
+without a crash; not proof of fixing the user's prior NVIDIA SIGFPE.
+
+## LATEST handoff: crashed speedrun01, repaired watchdog, checkpoint safe
+
+Read [`NVIDIA_STARTUP_CRASH_RECOVERY.md`](NVIDIA_STARTUP_CRASH_RECOVERY.md)
+first. User's first real 24k run finished exactly12k decisions/5 seeds
+and125 updates, then NVIDIA SIGFPE in native GL driver on sixth seed.
+Python MCio sync recv ignored timeout, hanging while holding flock; new
+sandbox could not see original host process. That flock has subsequently
+released; no lock files were deleted, last checkpoint unchanged. Added
+real 50s-startup/30s-observation watchdog, bounded retries, original
+checkpoint/RNG restore, owned aborted seed quarantine, exact-settings
+recovery, early flock preflight. New actual full Minecraft smoke
+`watchdog_smoke_1103` recovered from early rc=0 JVM exit and finished12
+real decisions+one CUDA update. This does NOT prove driver crash fixed.
+User can resume `tools/run-fresh-treadmill.sh resume speedrun01 24000`;
+no system services or auto-long training launched. 127 tests pass.
+
 ## LATEST: automatic fresh survival worlds (not eight-world repetition)
 
 **FIRST READ [`FRESH_SEED_TREADMILL.md`](FRESH_SEED_TREADMILL.md).** The

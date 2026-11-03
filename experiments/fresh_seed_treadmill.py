@@ -36,7 +36,9 @@ sys.path.insert(0,str(ROOT/'src'))
 from gmaincraft.agent_interface import AgentAction,MCioAgentBridge
 from gmaincraft.fresh_seed_schedule import SeedSchedule,SCHEMA as STREAM_SCHEMA
 from gmaincraft.fresh_world_manager import FreshWorldManager,names
-from gmaincraft.instance_options import temporary_game_options
+from gmaincraft.instance_options import temporary_game_options,restore_orphaned_game_options
+from gmaincraft.mcio_process_watchdog import (WatchedControllerSync,MinecraftProcessExited,
+                                               MinecraftObservationTimeout)
 from gmaincraft.natural_online_policy import (NaturalPPO,NaturalTransition,SCHEMA,
                           DECISION_TICKS,HEAD_SIZES,observe,action_from_heads)
 from gmaincraft.natural_online_session import NaturalSessionMemory
@@ -72,6 +74,10 @@ def parse_args(argv=None):
     ap.add_argument('--visible',action='store_true')
     ap.add_argument('--dry-run',action='store_true')
     ap.add_argument('--slow-ms',type=float,default=12.)
+    ap.add_argument('--max-crash-retries',type=int,default=2,
+                    help='consecutive JVM/MCio crashes before exiting safely; not in learned policy')
+    ap.add_argument('--nvidia-gl-threading',choices=('off','default'),default='off',
+                    help='scoped Minecraft-only NVIDIA GL threaded optimization workaround; default off')
     args=ap.parse_args(argv)
     if not re.fullmatch(RUN_TAG_RE,args.run_tag) or (args.model_run and not re.fullmatch(RUN_TAG_RE,args.model_run)):
         ap.error('Unsafe run/model tag')
@@ -79,7 +85,7 @@ def parse_args(argv=None):
         args.decisions=10000
     if (not 12<=args.episode_decisions<=100000 or not 8<=args.update_every<=512 or
         not 1<=args.report_every<=100000 or not 0<=args.retain_worlds<=10 or
-        not 1<=args.slow_ms<=1000 or
+        not 1<=args.slow_ms<=1000 or not 0<=args.max_crash_retries<=5 or
         (args.decisions is not None and not 1<=args.decisions<=10**10)):
         ap.error('Invalid episode, update, retention, performance or decision bound')
     if args.mode=='train' and (args.model_run or args.control!='policy_sampled'):
@@ -232,10 +238,13 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     created=time.perf_counter()
     world_name=manager.prepare(episode,seed)
     worldgen_s=time.perf_counter()-created
+    child_env={**ENV_EXTRA}
+    if args.nvidia_gl_threading=='off':
+        child_env['__GL_THREADED_OPTIMIZATIONS']='0'
     options=types.RunOptions(mcio_dir=MCIO,instance_name='DemoInstance',
                world_name=world_name,mcio_mode=types.MCioMode.SYNC,
                hide_window=not args.visible,gpu_lib=None if args.visible else 'nvidia',
-               width=320,height=180,env_extra=ENV_EXTRA,cleanup_on_signal=False)
+               width=320,height=180,env_extra=child_env,cleanup_on_signal=False)
     launcher=instance.Launcher(options)
     ctrl=None
     trajectory=[]
@@ -250,8 +259,10 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
         with temporary_game_options(INSTANCE,OVERRIDES,run_tag=args.run_tag):
             ensure_clean_visual_options(INSTANCE)
             launcher.launch(wait=False)
-            ctrl=controller.ControllerSync(action_port=options.action_port,
-                            observation_port=options.observation_port,connection_timeout=100)
+            ctrl=WatchedControllerSync(launcher=launcher,stop_requested=stop_requested,
+                           action_port=options.action_port,
+                           observation_port=options.observation_port,
+                           connection_timeout=50,observation_timeout=30)
             initial_action=network.ActionPacket(clear_input=True,commands=[])
             ctrl.send_action(initial_action)
             initial=ctrl.recv_observation()
@@ -267,7 +278,9 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
             print('FRESH WORLD READY',json.dumps(dict(episode=episode,seed=seed,
                     generator='minecraft:noise',world=world_name,
                     worldgen_s=round(worldgen_s,3),client_startup_s=round(client_startup_s,3),
-                    max_decisions=budget,first_xyz=[round(float(x),2) for x in player.player_xyz])),flush=True)
+                    max_decisions=budget,
+                    nvidia_gl_threading=args.nvidia_gl_threading,
+                    first_xyz=[round(float(x),2) for x in player.player_xyz])),flush=True)
             for i in range(budget):
                 if stop_requested():break
                 if args.mode=='eval' and args.control=='uniform_random':
@@ -327,8 +340,9 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     finally:
         try:
             if ctrl is not None:
-                try:ctrl.send_stop()
-                except Exception as exc:print('STOP WARNING',repr(exc),flush=True)
+                if launcher.poll() is None:
+                    try:ctrl.send_stop()
+                    except Exception as exc:print('STOP WARNING',repr(exc),flush=True)
                 ctrl.close()
         finally:
             launcher.close()
@@ -411,7 +425,13 @@ def main(argv=None):
     journal.parent.mkdir(parents=True,exist_ok=True)
     with lock_path.open('a+') as lock:
         try:fcntl.flock(lock.fileno(),fcntl.LOCK_EX|fcntl.LOCK_NB)
-        except BlockingIOError as exc:raise RuntimeError('Same seed-stream run already active') from exc
+        except BlockingIOError as exc:
+            raise RuntimeError('Same seed-stream run lock is HELD. Another trainer '
+                'or orphaned earlier sandbox may still be running. Do NOT delete '
+                'the .lock file: it would permit concurrent checkpoint writes. '
+                'Close the old game/trainer process or its isolated shell first.') from exc
+        if args.resume and restore_orphaned_game_options(INSTANCE,OVERRIDES,run_tag=args.run_tag):
+            print('FRESH RECOVERY restored interrupted disposable game options',flush=True)
         repaired=None
         abandoned_stages=[]
         if args.mode=='train' and args.resume:
@@ -433,6 +453,7 @@ def main(argv=None):
             if args.mode=='train' and args.resume:
                 recover_inflight(inflight,cursor,manager,log)
             started=time.perf_counter()
+            crash_streak=0
             while (args.decisions is None or committed_decisions<args.decisions) and not stop_requested():
                 remaining=(args.decisions-committed_decisions if args.decisions is not None else args.episode_decisions)
                 budget=min(args.episode_decisions,remaining)
@@ -440,8 +461,32 @@ def main(argv=None):
                 marker=dict(episode=cursor,seed=seed,seed_root=args.seed_root,
                             namespace=schedule.namespace,committed_decisions=committed_decisions)
                 save_json_atomic(inflight,marker)
-                result=play_episode(args,model,manager,NaturalSessionMemory(),cursor,
-                                    seed,budget,log,stop_requested)
+                try:
+                    result=play_episode(args,model,manager,NaturalSessionMemory(),cursor,
+                                        seed,budget,log,stop_requested)
+                except (MinecraftProcessExited,MinecraftObservationTimeout) as exc:
+                    if args.mode!='train':raise
+                    crash_streak+=1
+                    reason=dict(stage='jvm_or_mcio_crash',episode=cursor,seed=seed,
+                        committed_decisions=committed_decisions,attempt=crash_streak,
+                        max_retries=args.max_crash_retries,exception=type(exc).__name__,
+                        error=str(exc))
+                    log_row(log,reason)
+                    print('FRESH CRASH',json.dumps(reason),flush=True)
+                    if crash_streak>args.max_crash_retries:
+                        print('FRESH RETRY LIMIT reached; saved checkpoint is untouched',flush=True)
+                        raise RuntimeError('Exceeded bounded Minecraft crash retries; '
+                            'inspect JVM crash reports and resume later') from exc
+                    # Discard *ALL* uncommitted neural updates and RNG
+                    # from the interrupted episode, rather than train
+                    # twice on any in-flight samples.
+                    loaded_cursor,loaded_decisions,loaded_totals=restore(checkpoint,model,meta)
+                    if loaded_cursor!=cursor or loaded_decisions!=committed_decisions:
+                        raise RuntimeError('Checkpoint changed during crash retry')
+                    total=loaded_totals
+                    recover_inflight(inflight,cursor,manager,log)
+                    continue
+                crash_streak=0
                 for key,value in result['counts'].items():total[key]+=value
                 committed_decisions+=result['decisions']
                 episode_completed=cursor

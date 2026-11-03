@@ -1,5 +1,34 @@
 # AGENTS.md — project instructions for coding assistants
 
+New optional scoped NVIDIA mitigation: fresh treadmill now launches
+Minecraft JVM with `__GL_THREADED_OPTIMIZATIONS=0` by default, reversible
+via `--nvidia-gl-threading default` for direct Python evaluation. Verified
+12-decision real Java Minecraft smoke `nvidia_gl_safe_1103` completed
+without a crash; not proof of fixing the user's prior NVIDIA SIGFPE.
+
+## LATEST CRASH FIX: protect fresh-seed training against JVM/NVIDIA hang
+
+Start by reading [`docs/NVIDIA_STARTUP_CRASH_RECOVERY.md`](docs/NVIDIA_STARTUP_CRASH_RECOVERY.md)
+AND [`docs/FRESH_SEED_TREADMILL.md`](docs/FRESH_SEED_TREADMILL.md).
+User's `speedrun01` trained **5 complete natural worlds**, 12,000 real
+decisions,125 updates, then NVIDIA 595.104.02 `libnvidia-glcore.so`
+SIGFPE/FPE_INTDIV during sixth-world JVM startup. The old MCio sync
+receiver ignored timeouts, leaving Python blocked and holding flock,
+so another PID namespace misleadingly reported an active run. The lock
+is now verified FREE without unlinking it; 12k checkpoint unaffected.
+Added process-aware bounded receive (50s startup/30s observation),
+automatic rollback/quarantine/retry of the SAME uncommitted seed (2 retry
+cap), fail-closed exact game-options recovery and wrapper preflight lock
+check. New real `watchdog_smoke_1103` saw unexpected JVM rc=0, recovered
+and finished12 Minecraft decisions/1 update; this proves recovery, **not**
+that the NVIDIA driver is fixed. User can resume original
+`tools/run-fresh-treadmill.sh resume speedrun01 24000` once no original
+shell/trainer retains the flock. No browser culpability proven; do NOT
+randomly modify Firefox, NVIDIA driver, Gentoo kernel or host environment.
+All original game artifacts preserved. 127 unit tests passed. Continue
+working on natural wood inventory learning after recovery, not scripted
+pre-aimed trees.
+
 ## ACTIVE PRIMARY: endless fresh-seed survival training (verified)
 
 Read **[`docs/FRESH_SEED_TREADMILL.md`](docs/FRESH_SEED_TREADMILL.md)**

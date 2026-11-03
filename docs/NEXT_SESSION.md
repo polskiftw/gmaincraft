@@ -1,5 +1,32 @@
 # START HERE — next ChatGPT/Gentoo Shell session
 
+New optional scoped NVIDIA mitigation: fresh treadmill now launches
+Minecraft JVM with `__GL_THREADED_OPTIMIZATIONS=0` by default, reversible
+via `--nvidia-gl-threading default` for direct Python evaluation. Verified
+12-decision real Java Minecraft smoke `nvidia_gl_safe_1103` completed
+without a crash; not proof of fixing the user's prior NVIDIA SIGFPE.
+
+## Latest: fix for NVIDIA crash + locked stalled trainer
+
+Read [`NVIDIA_STARTUP_CRASH_RECOVERY.md`](NVIDIA_STARTUP_CRASH_RECOVERY.md)
+then [`FRESH_SEED_TREADMILL.md`](FRESH_SEED_TREADMILL.md) and AGENTS/TODO.
+`speedrun01` was NOT merely slow: after five completed real vanilla seed
+worlds (12,000 decisions,125 CUDA updates), sixth JVM exited with NVIDIA
+595.104.02 `libnvidia-glcore` SIGFPE/FPE_INTDIV. Old MCio sync receive
+ignored its timeout, leaving stuck Python holding flock inaccessible from
+new container PID namespace. DO NOT remove lock or overwrite checkpoint.
+The old flock eventually became free and original checkpoint is intact.
+New `WatchedControllerSync` checks JVM exit on every native socket poll,
+50s connection and 30s observation deadlines, stop interrupt; treadmill
+rolls back and retries same seed at most twice. It also restores orphaned
+options only when bytes exactly match and the wrapper probes lock BEFORE
+launching Gamescope. A new real `watchdog_smoke_1103` found first JVM
+exited `rc=0` (different from NVIDIA native error), recovered and
+successfully trained12 real decisions,1 update. Software recovery works;
+NVIDIA driver root cause NOT fixed. 127 unit tests pass. Next test the
+user's original `tools/run-fresh-treadmill.sh resume speedrun01 24000`
+from host after verifying no held lock. No changes to original weights.
+
 ## START HERE: fresh-seed treadmill delivered, hot client switching NOT yet
 
 Read **[`FRESH_SEED_TREADMILL.md`](FRESH_SEED_TREADMILL.md)** FIRST (then

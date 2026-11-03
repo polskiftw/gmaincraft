@@ -1,5 +1,36 @@
 # TODO — gmaincraft
 
+New optional scoped NVIDIA mitigation: fresh treadmill now launches
+Minecraft JVM with `__GL_THREADED_OPTIMIZATIONS=0` by default, reversible
+via `--nvidia-gl-threading default` for direct Python evaluation. Verified
+12-decision real Java Minecraft smoke `nvidia_gl_safe_1103` completed
+without a crash; not proof of fixing the user's prior NVIDIA SIGFPE.
+
+## CRASH FIX complete; natural seed trainer resilience
+
+- [x] Inspect `speedrun01`: committed checkpoint 12,000 decisions / 125
+  neural updates / five full Minecraft seeds, zero natural inventory wood.
+  Original sixth-world startup crashed `SIGFPE/FPE_INTDIV` in NVIDIA
+  `libnvidia-glcore.so.595.104.02`. Firefox cause NOT established.
+- [x] Find synchronous MCio bug: `ControllerSync.recv_observation()`
+  ignores timeout and waits forever when Java dies, preserving a flock
+  inaccessible to new bubblewrap PID namespace. NEVER delete held lock.
+- [x] Add process-aware 30s native observation and 50s connection
+  watchdog, bounded same-seed retries, automatic uncommitted rollback,
+  GPU/JVM error logging, safe original-options restoration on resume.
+- [x] Preflight actual file lock BEFORE starting Gamescope; give clear
+  lock-owner message instead of creating a second stuck compositor.
+- [x] Live `watchdog_smoke_1103`: first Java unexpectedly exited rc=0;
+  detected, quarantined and retried SAME seed, then real12 decisions/1
+  CUDA update and verified checkpoint. Original speedrun01 saved weights
+  remain unchanged. 127 pure tests pass.
+- [ ] Monitor actual resumed `speedrun01` through more world launches;
+  capture driver error reports if NVIDIA SIGFPE reproduces. Differentiate
+  `rc=0` early JVM exits from native driver faults. Consider an isolated
+  graphics backend comparison before touching the user's host system.
+- [ ] Primary skill goal remains genuine natural first wood in inventory;
+  compare fresh unseen seeds against matched random baselines.
+
 ## ACTIVE: never-repeated random Minecraft levels and robust training
 
 - [x] Replace fixed eight-world long-training rotation as PRIMARY roadmap:

@@ -1,5 +1,31 @@
 # Experiment record
 
+New optional scoped NVIDIA mitigation: fresh treadmill now launches
+Minecraft JVM with `__GL_THREADED_OPTIMIZATIONS=0` by default, reversible
+via `--nvidia-gl-threading default` for direct Python evaluation. Verified
+12-decision real Java Minecraft smoke `nvidia_gl_safe_1103` completed
+without a crash; not proof of fixing the user's prior NVIDIA SIGFPE.
+
+## Latest: native NVIDIA crash and automatic MCio recovery (Nov 3, 2026)
+
+Full diagnosis [`NVIDIA_STARTUP_CRASH_RECOVERY.md`](NVIDIA_STARTUP_CRASH_RECOVERY.md).
+Five natural worlds in `speedrun01` completed 12,000 real decisions,
+125 neural updates, 2 deaths, 100 ordinary mined blocks, 489 fresh
+first-hit wood surfaces, **0 actual wood**. On the sixth world Minecraft
+JVM crashed at ~3.6s startup with `SIGFPE FPE_INTDIV` inside NVIDIA
+595.104.02 `libnvidia-glcore`. Not evidence Firefox caused it. The
+original Python MCio receiver ignored its timeout; the old process
+retained a flock and blocked new sandbox launches. Fixed with process-
+aware bounded ZMQ polling and early explicit lock preflight.
+
+Independent post-fix actual Minecraft `watchdog_smoke_1103`: first JVM
+ended early with `rc=0` before MCio delivered valid observation, which
+is distinct from driver crash. Watchdog detected it, retried same fresh
+seed from original checkpoint and new quarantine, then completed12 real
+Minecraft decisions and one CUDA update, preserving valid journal and
+model. Original speedrun01 checkpoint unchanged and lock later FREE.
+Recovery now bounded to two retries to avoid hammering a crashing GPU.
+
 ## LATEST: non-repeating real Minecraft seed-stream and restart safety
 
 Primary complete study [`FRESH_SEED_TREADMILL.md`](FRESH_SEED_TREADMILL.md).

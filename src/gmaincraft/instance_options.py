@@ -39,3 +39,31 @@ def temporary_game_options(instance_dir, overrides, *, run_tag):
     finally:
         config.write_bytes(original)
         backup.unlink()
+
+
+def restore_orphaned_game_options(instance_dir,overrides,*,run_tag):
+    """Recover ONLY this run's verified temporary options after a hard crash.
+
+    Call only while holding the actual *run lock* and before starting a new
+    MCio JVM. Never force-restore foreign/edited settings. Normal exits still
+    use temporary_game_options()'s existing byte-identical finally block.
+    """
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,31}',run_tag):
+        raise ValueError('Unsafe recovery run tag')
+    instance_dir=Path(instance_dir)
+    config=instance_dir/'options.txt'
+    backup=instance_dir/f'options.gmaincraft_{run_tag}.backup'
+    others=[p for p in instance_dir.glob('options.gmaincraft_*.backup') if p!=backup]
+    if others:
+        raise FileExistsError('Another run left options backup; refusing to touch it')
+    if not backup.exists():return False
+    original=backup.read_bytes()
+    edited=original.decode('utf-8').splitlines()
+    edited=[line for line in edited if line.split(':',1)[0] not in overrides]
+    edited.extend(f'{key}:{value}' for key,value in overrides.items())
+    expected=('\n'.join(edited)+'\n').encode('utf-8')
+    if config.read_bytes()!=expected:
+        raise RuntimeError('Interrupted MCio options differ from expected override; manual inspection required')
+    config.write_bytes(original)
+    backup.unlink()
+    return True
