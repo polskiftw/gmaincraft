@@ -2,6 +2,34 @@
 
 This file is the operating contract for anyone (including a future ChatGPT conversation) editing **polskiftw/gmaincraft**. Treat the GitHub repository, not the conversation transcript or an assumed local checkout, as the authoritative codebase.
 
+## MANDATORY FIRST TASK FOR A NEW CHAT: MCio speed regression (highest priority)
+
+**Start with [`docs/NEXT_SESSION.md`](docs/NEXT_SESSION.md), not a new PPO
+run.** The user explicitly requires **diagnosis and remediation of the
+Minecraft/MCio game-step throughput regression BEFORE resuming AI training**.
+Earlier normal real-game runs took ~0.6-0.8 s/300 ticks, current ~3.9-4.0
+s/300; profile showed ~3.876 s inside MCio game send/receive, ~0.09 s CUDA
+inference and ~0.015 s RGB conversion. A no-Torch control is also slow;
+small viewport, 6-vs-12 game-tick action intervals and changing chat scale
+did not fix it. The comparisons must be matched before claiming causality.
+
+**Order of operations:** connect to Gentoo Shell `/workspace` -> inspect
+repo/docs and GPU preflight -> reproduce/trace slow per-tick Minecraft I/O
+with minimal no-ML control -> fix/quantify and rebenchmark under matched
+conditions -> update evidence/docs/tests -> only THEN continue the valid
+from-scratch RGB-only RL course correction toward unrestricted first-log
+mining + inventory pickup. Do not spend hours on model training first.
+If root cause is unresolved, preserve precise profiler results and request
+a user decision before accepting the slower speed as the new baseline.
+
+Use direct `git` from the shell (including commit/push), keep all ignored
+worlds/checkpoints/data unchanged, and never widen the restricted sandbox or
+modify host drivers without demonstrated need and user agreement. New
+conversation must have the Gentoo Shell bridge connected/authorized; do not
+claim it is connected if it is not. Update `TODO.md` and `docs/HANDOFF.md`
+with each verified milestone. See `docs/VISUAL_SELF_SUPERVISION.md` for valid
+vs contaminated experiments; **`v3event01` is INVALID evidence**.
+
 ## NEWEST — clean visual observations, self-supervision and real events (Nov 2, 2026)
 
 **Read `docs/VISUAL_SELF_SUPERVISION.md` BEFORE the next feature or training

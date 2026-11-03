@@ -4,6 +4,17 @@
 
 **Current reality (2026-11-02):** Minecraft Java 1.21.3 + MCio and three seeded numerical-navigation runs are verified. Two random-initialized, RGB-feature mouse+ATTACK models learn to aim at a controlled oak trunk (audited 15/20 and 18/20 real Minecraft logs). Two independently trained RGB-feature W/A/S/D policies learn to approach a **dropped** oak log: in a fresh 32-case offset-item audit, the best reaches **30/32**, versus **21/32** for just holding W. Combining the learned aiming and collection policies yields **51/56 real mined-log inventory pickups** over two fresh camera-angle sets for pickup model `p02`, versus **49/56** with scripted W. This does **not** establish a meaningful advantage in the centered-tree setup, and it still uses hand-engineered pixel masks, controller-only scalar rewards, fixed 100-tick attack holds, a single flat-world template, and separate training for the two neural stages. No general tree recognition or Any% speedrunning.
 
+## Next-session priority: MCio performance first
+
+**For a fresh conversation, open [`docs/NEXT_SESSION.md`](docs/NEXT_SESSION.md)
+and have the Gentoo Shell bridge enabled.** The user explicitly requests
+that the next task is finding/fixing the Minecraft/MCio game-step slowdown
+(~300 ticks took ~0.6-0.8s historically; now ~3.9-4.0s in the learner and
+~5.0s in a no-Torch control). Only after reliable, matched investigation and
+benchmarking should work return to the updated RGB-only, from-scratch
+first-log learning course correction. No external pretrained models,
+hidden game state or scripted speedruns in scored policy evaluation.
+
 ## Newest: self-collected vision learning + verified Minecraft events (2026-11-02)
 
 We inspected real policy screenshots and found that MCio reset error chat was

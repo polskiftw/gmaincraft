@@ -1,6 +1,26 @@
 # Handoff for a brand-new ChatGPT conversation
 
-**Last verified: 2026-11-02.** Canonical code: [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. **Newest milestone:** learn movement W/A/S/D from real RGB features (2 independently trained models; fresh fixture audit p01 **30/32**, p02 **24/32**, always-W 21/32); then **combine frozen RGB aim/ATTACK and pickup policies** on *real mined logs* (two independent camera-angle sets, trained p02 **51/56**, hardcoded W **49/56**, untrained movement 21/56). Earlier numerical-navigation and RGB log-aiming milestones remain preserved; `docs/EXPERIMENTS.md` records all results. The initial uncleaned aim 12/14 and aborted first drop-distance audits are **invalid evidence**. No general world-seed Minecraft speedrunning. Do not ask for old test logs.
+**Last verified: 2026-11-02.** Canonical code: [polskiftw/gmaincraft](https://github.com/polskiftw/gmaincraft), branch `main`. **Historical early milestone (superseded by the sections below):** learn movement W/A/S/D from real RGB features (2 independently trained models; fresh fixture audit p01 **30/32**, p02 **24/32**, always-W 21/32); then **combine frozen RGB aim/ATTACK and pickup policies** on *real mined logs* (two independent camera-angle sets, trained p02 **51/56**, hardcoded W **49/56**, untrained movement 21/56). Earlier numerical-navigation and RGB log-aiming milestones remain preserved; `docs/EXPERIMENTS.md` records all results. The initial uncleaned aim 12/14 and aborted first drop-distance audits are **invalid evidence**. No general world-seed Minecraft speedrunning. Do not ask for old test logs.
+
+## FIRST ACTION FOR NEW CHAT — explicit user priority (Nov 2, 2026)
+
+**The user wants the MCio performance regression investigated and fixed
+FIRST. Read [`NEXT_SESSION.md`](NEXT_SESSION.md) before doing any model
+experiments.** Do not resume training simply because the latest model had
+restricted mining success. The current 300 game tick episode takes ~3.9-4.0
+seconds (MCio game send/receive ~3.876s, CUDA inference ~0.09s, RGB resize
+~0.015s), versus historical ~0.6-0.8s. A no-Torch control is ~5.008s;
+small viewport/chat/6-vs-12 intervals did not restore speed. Root cause
+not yet known, and historical comparisons require matched reruns. Trace
+and reproduce the bottleneck first, report grounded before/after metrics,
+preserve normal Minecraft sync and safe restricted sandbox. Use Git directly
+from connected Gentoo Shell `/workspace`; code, docs and files are already
+pushed in prior work. Then resume the **corrected** from-scratch RGB-only
+Any% course and real unrestricted first-log acquisition; details below.
+
+The very first `## Newest milestone` paragraph above is **historical** and
+predates V2/V3. Current next actions are ONLY the first-priority notes in
+this section and `docs/NEXT_SESSION.md`/`AGENTS.md`/top of `TODO.md`.
 
 ## MOST RECENT HANDOFF — clean RGB, self-learning, stats repair, V3 (2026-11-02)
 

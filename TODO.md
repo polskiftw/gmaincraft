@@ -2,6 +2,35 @@
 
 **Last curated:** 2026-11-02. This is the live source of truth for project status. **All agents must read and update this file alongside substantive changes** (see [AGENTS.md](AGENTS.md)). Never mark a task done from source code alone; require actual run evidence where appropriate.
 
+## NEXT SESSION — PRIORITY 0: recover MCio throughput BEFORE any more AI training
+
+**Read `docs/NEXT_SESSION.md` first.** The user explicitly wants the next
+session to work on the throughput regression before continuing the learning
+course correction. **Do not skip this section just because earlier sections
+contain completed learning milestones.**
+
+- [ ] Capture a **matched, repeatable no-Torch** MCio benchmark showing where
+  ~300 game ticks spend wall time; current measured ~3.9-4.0s in a learner
+  (~3.876s inside game send/receive), ~5.008s in no-Torch baseline.
+  Earlier ~0.6-0.8s/300 ticks is historical, not necessarily matched.
+- [ ] Trace and isolate actual MCio sync/action send/receive and game/server
+  pacing, render/viewer conditions and startup/warmup effects. Keep same
+  world/viewport/tick budget/input sequence; do not guess CPU rendering or
+  blame CUDA when inference is only ~0.09s. Small viewport and reverting
+  chat scale already failed to restore speed.
+- [ ] Apply the smallest safe repo-scoped fix, preserve normal vanilla
+  interaction and observation correctness, and show a reliable matched
+  before/after improvement. If blocked, document narrowed root cause and
+  options **without claiming the regression resolved**; get user decision
+  before deprioritizing it. No host driver/sandbox changes without approval.
+- [ ] Update performance results, `docs/NEXT_SESSION.md`, AGENTS/HANDOFF/TODO,
+  tests, commit and push through connected Gentoo Shell `/workspace`.
+- [ ] **ONLY AFTER PRIORITY 0:** resume RGB-only, from-scratch Minecraft
+  speedrunning course correction. Focus on learning simultaneous visual
+  camera/movement and real **unrestricted** log mining + item pickup,
+  evaluating against the unchanged held-out baselines and real world seeds.
+  Keep contaminated `v3event01` excluded and all local checkpoints preserved.
+
 ## Current priority: perception and authentic mining events (2026-11-02)
 
 - [x] Inspect actual policy RGB screenshots; confirm command error overlays
