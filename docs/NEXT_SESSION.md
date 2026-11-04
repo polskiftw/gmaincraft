@@ -1,3 +1,30 @@
+## LIVE NEXT SESSION: frozen heldout then geometric item visibility
+
+Old qv2memtrain1104 is FINISHED and frozen as qv2memf1104.
+Current sequential frozen heldout suite is/was launched via
+tools/run-qv2mem-heldout-1104.sh, against the old zero-RGB
+Minecraft patch; evaluate indices16-23 on two action RNG seeds.
+All four reports must end completed with zero eval optimizer
+updates before comparing actual item pickups. Check the console:
+logs/qv2mem_heldout_suite_1104.log.
+
+While frozen evaluations are RUNNING, do NOT install another
+Fabric JAR or launch a second Minecraft job. When finished,
+compile/install the new dropped-item research mod with
+tools/build-mcio-player-status.sh --install (hash-specific backup
+of currently installed 42bd0fa0... mod is configured), then
+run experiments/mcio_visible_items_probe.py with a new unique tag.
+See docs/VISIBLE_DROPPED_ITEM_SENSOR_2026_11_04.md for details.
+Real test gates: exposed oak visible, stone barrier blocks it,
+camera turned away blocks it, and no-request yields no stale data.
+Glass and leaves are calibration observations; do not assume
+either before inspecting Minecraft geometry and rendered pictures.
+
+Further identical crack-goal Q training alone is not the
+priority if fresh heldout ability is not improving. Next real
+capability is observing and autonomously collecting dropped
+items with vanilla movement controls and versioned model input.
+
 ## NEWEST: zero-RGB geometric-sensor training batch LIVE (Nov 4, 2026)
 
 Read docs/QV2_FRAME_FREE_FOLLOWUP_2026_11_04.md and

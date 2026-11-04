@@ -26,6 +26,8 @@ mining_feedback_hash="7c41137b8789b0661700a322a90e4e7891752711b27786ac3fb5f75052
 mining_feedback_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.mining-feedback-v1.jar"
 mining_ondemand_hash="28fd3209bd15c9fecd1c2cdb3828b8dca3c17ff0840ea97e57be1f6da0cc05e6"
 mining_ondemand_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.mining-feedback-ondemand.jar"
+memory_only_hash="42bd0fa0afb680d5d25a1edad3a0d6681750f7cce140986b8fff3d223dd3331f"
+memory_only_backup="$root/mcio-data/mod_backups/mcio-1.6.1+1.21.3.memory-only-v1.jar"
 if [[ "$mode" == '--restore' ]]; then
   [[ -f "$backup" ]] || { echo "No backed-up original mod at $backup" >&2; exit 1; }
   tmp="${mod}.gmaincraft.$$.tmp"
@@ -99,6 +101,8 @@ if [[ "$mode" == '--install' ]]; then
         previous_backup="$mining_feedback_backup"
       elif [[ "$actual_hash" == "$mining_ondemand_hash" ]]; then
         previous_backup="$mining_ondemand_backup"
+      elif [[ "$actual_hash" == "$memory_only_hash" ]]; then
+        previous_backup="$memory_only_backup"
       else
         echo 'Unknown mod jar differs from all verified previous builds; aborting' >&2
         exit 1

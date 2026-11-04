@@ -1,3 +1,24 @@
+## NEWEST: finished Q, heldout eval active, item sensor staged
+
+Read docs/VISIBLE_DROPPED_ITEM_SENSOR_2026_11_04.md and TODO.md.
+qv2memtrain1104 is COMPLETE: 20 train seeds306-325, 24000 six-tick
+units, 38 wood inventory gains across 13 positive worlds, 53 mined
+wood, cumulative 4364 Q updates. Immutable qv2memf1104 exported.
+The active sequential fresh heldout suite on eval seeds16-23,
+two sampled action RNGs, uses the SAME zero-RGB Fabric JAR for
+qv2memf1104 and qv2longf1104. Check suite status at
+logs/qv2mem_heldout_suite_1104.log before claiming superiority.
+
+A separate opt-in camera-frustum visible dropped-item sensor has
+been implemented and compiled in pinned Fabric source checkout, with
+Python adapter and unit tests. It is NOT connected to trained neural
+weights. The installed JAR is STILL the older 42bd0fa0 zero-RGB build
+while frozen evals run. DO NOT install the newly compiled research
+JAR or launch another Minecraft process until all frozen evals
+have exited. Then install a backed-up update and run the actual
+staged exposed/stone/glass/leaves/turned-away item visibility lab.
+No new wood training is needed before this test.
+
 ## NEWEST: geometry-based observation faster, 20-world self-play live (Nov 4)
 
 Read docs/NEXT_SESSION.md and docs/QV2_FRAME_FREE_FOLLOWUP_2026_11_04.md.

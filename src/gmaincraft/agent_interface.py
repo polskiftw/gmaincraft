@@ -139,6 +139,11 @@ class MCioAgentBridge:
         from gmaincraft.mcio_mining_feedback import MiningFeedbackV1
         return MiningFeedbackV1.from_packet(self.packet)
 
+    def visible_items(self):
+        """Research-only, same-action camera-visible dropped items (not a model input yet)."""
+        from gmaincraft.mcio_visible_items import VisibleItemsV1
+        return VisibleItemsV1.from_packet(self.packet)
+
     def player_status(self):
         """Opt-in patched-MCio own status + game crosshair target, not X-ray."""
         from gmaincraft.mcio_status import PlayerStatusV1
@@ -149,7 +154,8 @@ class MCioAgentBridge:
         return int(self._stats[category][item])
 
     def apply(self, action: AgentAction, *, request_surface_objects=False,
-              request_mining_feedback=False, return_view=True):
+              request_mining_feedback=False, request_visible_items=False,
+              return_view=True):
         """Send normal actions and read every synchronized game tick.
 
         Memory-only callers can set return_view=False to avoid decoding and
@@ -173,6 +179,9 @@ class MCioAgentBridge:
                 if request_mining_feedback:
                     from gmaincraft.mcio_mining_feedback import MiningFeedbackRequest
                     requests.append(MiningFeedbackRequest(True))
+                if request_visible_items:
+                    from gmaincraft.mcio_visible_items import VisibleItemsRequest
+                    requests.append(VisibleItemsRequest(True))
                 if requests:
                     packet.options = requests
             if tick == 0 and (action.look_dx != 0 or action.look_dy != 0):

@@ -1,8 +1,8 @@
 diff --git a/src/client/java/net/twoturtles/MCioClientSync.java b/src/client/java/net/twoturtles/MCioClientSync.java
-index fe285c0..e1ea9dd 100644
+index fe285c0..7313593 100644
 --- a/src/client/java/net/twoturtles/MCioClientSync.java
 +++ b/src/client/java/net/twoturtles/MCioClientSync.java
-@@ -84,4 +84,10 @@ public class MCioClientSync {
+@@ -84,4 +84,13 @@ public class MCioClientSync {
      lastActionSequence = action.sequence();
      LOGGER.debug("ACTION {}", action);
 +    observationHandler.requestSurfaceObjects(action.options() != null &&
@@ -11,13 +11,16 @@ index fe285c0..e1ea9dd 100644
 +    observationHandler.requestMiningFeedback(action.options() != null &&
 +        action.options().stream().anyMatch(o ->
 +            o instanceof MiningFeedbackRequest request && request.fresh()));
++    observationHandler.requestVisibleItems(action.options() != null &&
++        action.options().stream().anyMatch(o ->
++            o instanceof VisibleItemsRequest request && request.fresh()));
      actionHandler.processAction(action);
    }
 diff --git a/src/client/java/net/twoturtles/MCioNetworkPacket.java b/src/client/java/net/twoturtles/MCioNetworkPacket.java
-index 92d6661..c37d76c 100644
+index 92d6661..4f23dc2 100644
 --- a/src/client/java/net/twoturtles/MCioNetworkPacket.java
 +++ b/src/client/java/net/twoturtles/MCioNetworkPacket.java
-@@ -92,4 +92,58 @@ record StatsUpdateOption(ArrayList<StatCategory> categories) implements Option {
+@@ -92,4 +92,70 @@ record StatsUpdateOption(ArrayList<StatCategory> categories) implements Option {
  record StatsFullOption(ArrayList<StatCategory> categories) implements Option {}
  
 +/* Opt-in read-only player/actual crosshair knowledge. No chunk map, no seed.
@@ -74,10 +77,22 @@ index 92d6661..c37d76c 100644
 + * sample is attached to the observation for THIS normal action. */
 +record SurfaceObjectsRequest(boolean fresh) implements Option {}
 +
++/* Opt-in client-side, camera-frustum / block-occlusion filtered dropped
++ * ITEM entities. This is a research sensor, NOT yet a learned policy input.
++ * Candidate enumeration is used only for local camera visibility tests:
++ * never serialize unseen entity positions, full entity lists or inventories.
++ * Item IDs still require visual recognizability calibration. */
++@JsonTypeInfo(use = Id.MINIMAL_CLASS, include = As.PROPERTY, property = MCioConfig.MCIO_TYPE)
++record VisibleItemHit(String item_id, float[] position, float distance,
++    float screen_u, float screen_v, int visible_samples) {}
++record VisibleItemsOption(String schema, float max_distance,
++    ArrayList<VisibleItemHit> items) implements Option {}
++record VisibleItemsRequest(boolean fresh) implements Option {}
++
  /* Serialize ObservationPacket */
  class ObservationPacketPacker {
 diff --git a/src/client/java/net/twoturtles/MCioObservationHandler.java b/src/client/java/net/twoturtles/MCioObservationHandler.java
-index 1e0d5f2..fcd0c33 100644
+index 1e0d5f2..476502e 100644
 --- a/src/client/java/net/twoturtles/MCioObservationHandler.java
 +++ b/src/client/java/net/twoturtles/MCioObservationHandler.java
 @@ -6,4 +6,5 @@ import java.nio.ByteBuffer;
@@ -86,12 +101,14 @@ index 1e0d5f2..fcd0c33 100644
 +import java.util.LinkedHashMap;
  import java.util.List;
  import java.util.Map;
-@@ -11,8 +12,13 @@ import java.util.Optional;
+@@ -11,8 +12,15 @@ import java.util.Optional;
  import net.minecraft.client.Minecraft;
  import net.minecraft.client.player.LocalPlayer;
 +import net.minecraft.core.BlockPos;
 +import net.minecraft.world.level.ClipContext;
 +import net.minecraft.world.level.LightLayer;
++import net.minecraft.world.entity.item.ItemEntity;
++import net.minecraft.world.phys.AABB;
  import net.minecraft.core.registries.BuiltInRegistries;
  import net.minecraft.world.entity.player.Inventory;
  import net.minecraft.world.item.ItemStack;
@@ -100,7 +117,7 @@ index 1e0d5f2..fcd0c33 100644
 +import net.minecraft.world.phys.HitResult;
  import org.lwjgl.glfw.GLFW;
  import org.slf4j.Logger;
-@@ -27,4 +33,26 @@ public class MCioObservationHandler {
+@@ -27,4 +35,36 @@ public class MCioObservationHandler {
    private static final TrackPerSecond sendFPS = new TrackPerSecond("ObservationsSent");
    private int observationSequence = 0;
 +  private final boolean emitGmaincraftStatus =
@@ -125,9 +142,19 @@ index 1e0d5f2..fcd0c33 100644
 +  void requestSurfaceObjects(boolean fresh) {
 +    requestSurfaceObjects = fresh;
 +  }
++
++  private final boolean emitGmaincraftVisibleItems =
++      "1".equals(System.getenv("GMAINCRAFT_VISIBLE_ITEMS_V1"));
++  private final boolean visibleItemsOnDemand =
++      "1".equals(System.getenv("GMAINCRAFT_VISIBLE_ITEMS_ON_DEMAND_V1"));
++  private boolean requestVisibleItems = false;
++
++  void requestVisibleItems(boolean fresh) {
++    requestVisibleItems = fresh;
++  }
  
    public MCioObservationHandler(Minecraft client, MCioConfig config) {
-@@ -54,4 +82,25 @@ public class MCioObservationHandler {
+@@ -54,4 +94,29 @@ public class MCioObservationHandler {
      // This will be based on the action packet in the future.
      options.add(getStatsUpdate());
 +    if (emitGmaincraftStatus) {
@@ -151,9 +178,13 @@ index 1e0d5f2..fcd0c33 100644
 +      if (emitGmaincraftSurfaceGrid) options.add(grid);
 +      if (emitObjectsNow) options.add(getGmaincraftSurfaceObjects(grid));
 +    }
++    boolean emitItemsNow = emitGmaincraftVisibleItems &&
++        (!visibleItemsOnDemand || requestVisibleItems);
++    requestVisibleItems = false; // never return a cached or previous-camera result
++    if (emitItemsNow) options.add(getGmaincraftVisibleItems(player));
      //        options.add(getStatsFull());
  
-@@ -127,4 +176,165 @@ public class MCioObservationHandler {
+@@ -127,4 +192,234 @@ public class MCioObservationHandler {
    }
  
 +  /** Actual client-side crosshair selection (not an inferred X-ray scan).
@@ -315,6 +346,75 @@ index 1e0d5f2..fcd0c33 100644
 +    return new SurfaceObjectsOption("gmaincraft_surface_objects_v1",
 +        grid.columns(),grid.rows(),grid.vertical_fov_degrees(),
 +        grid.max_distance(),objects);
++  }
++
++  /** Experimental item-sprite camera visibility sensor, NOT action reach.
++   * Each candidate must project inside the camera frustum and have an
++   * unobstructed engine VISUAL ray to at least one of 5 item-box samples.
++   * Nothing about outside-frustum / occluded items reaches the Python actor.
++   * Small sprites less than ~2 pixels are intentionally unreported rather
++   * than awarding a supernatural exact distant item registry ID.
++   * Glass/leaves/partial shapes remain a documented CALIBRATION gap.
++   */
++  VisibleItemsOption getGmaincraftVisibleItems(LocalPlayer player) {
++    final float maxDistance = Math.min(24f, 16f * client.options.renderDistance().get());
++    ArrayList<VisibleItemHit> visible = new ArrayList<>();
++    if (client.level == null) return new VisibleItemsOption("gmaincraft_visible_items_v1",maxDistance,visible);
++    Vec3 eye = player.getEyePosition();
++    Vec3 forward = player.getViewVector(1f).normalize();
++    Vec3 right = forward.cross(new Vec3(0,1,0));
++    if (right.lengthSqr() < 1.0e-8) {
++      double yaw = Math.toRadians(player.getYRot());
++      right = new Vec3(-Math.cos(yaw),0,-Math.sin(yaw));
++    } else right = right.normalize();
++    Vec3 up = right.cross(forward).normalize();
++    double tanV = Math.tan(Math.toRadians(client.options.fov().get())*0.5);
++    double aspect = (double)client.getWindow().getWidth()/Math.max(1,client.getWindow().getHeight());
++    double tanH=tanV*aspect;
++    double pixelsPerVertical = Math.max(1,client.getWindow().getHeight());
++    for (ItemEntity item : client.level.getEntitiesOfClass(ItemEntity.class,
++            new AABB(eye.x-24,eye.y-24,eye.z-24,eye.x+24,eye.y+24,eye.z+24),
++            entity -> entity.isAlive() && !entity.getItem().isEmpty())) {
++      AABB bounds = item.getBoundingBox();
++      Vec3 center = bounds.getCenter();
++      Vec3 offset = center.subtract(eye);
++      double depth = offset.dot(forward);
++      if (depth<=0.05 || depth>maxDistance || tanV<=0 || tanH<=0) continue;
++      double sx=offset.dot(right)/depth/tanH;
++      double sy=offset.dot(up)/depth/tanV;
++      double visibleHeight=Math.max(bounds.getYsize(),bounds.getXsize());
++      if (Math.max(bounds.getXsize()/depth/tanH * client.getWindow().getWidth()/2,
++                   visibleHeight/depth/tanV * pixelsPerVertical/2)<2.0) continue;
++      // Offset a bounding-box pixel/quad sample in directions visible to the
++      // camera, not arbitrary hidden corners of an item entity.
++      double halfX=bounds.getXsize()*0.40;
++      double halfY=bounds.getYsize()*0.40;
++      Vec3[] samples={center,
++          center.add(right.scale(halfX)),center.add(right.scale(-halfX)),
++          center.add(up.scale(halfY)),center.add(up.scale(-halfY))};
++      int exposed=0;
++      for (Vec3 sample:samples) {
++        Vec3 displacement=sample.subtract(eye);
++        double d=displacement.dot(forward);
++        if (d<=0 || d>maxDistance) continue;
++        double projectedX=displacement.dot(right)/d/tanH;
++        double projectedY=displacement.dot(up)/d/tanV;
++        if (Math.abs(projectedX)>1 || Math.abs(projectedY)>1) continue;
++        BlockHitResult blocker=client.level.clip(new ClipContext(
++            eye,sample,ClipContext.Block.VISUAL,ClipContext.Fluid.NONE,player));
++        if (blocker.getType()!=HitResult.Type.MISS &&
++            eye.distanceTo(blocker.getLocation())+0.005<eye.distanceTo(sample)) continue;
++        exposed++;
++      }
++      if (exposed==0) continue;
++      String id=BuiltInRegistries.ITEM.getKey(item.getItem().getItem()).toString();
++      visible.add(new VisibleItemHit(id,
++          new float[]{(float)center.x,(float)center.y,(float)center.z},
++          (float)offset.length(),(float)(sx*.5+.5),(float)(.5-sy*.5),exposed));
++    }
++    visible.sort((a,b)->Float.compare(a.distance(),b.distance()));
++    if (visible.size()>16) visible.subList(16,visible.size()).clear();
++    return new VisibleItemsOption("gmaincraft_visible_items_v1",maxDistance,visible);
 +  }
 +
    float getYaw(LocalPlayer player) {

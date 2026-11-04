@@ -1,3 +1,22 @@
+## Nov 4: finished Q and visible dropped-item research
+
+- [x] Finished qv2memtrain1104: 20 train worlds, cursor326,
+  24000 six-tick units, 38 wood inventory gains, 53 mined blocks,
+  13/20 positive worlds, cumulative Q updates 4364.
+- [x] Export immutable qv2memf1104 frozen checkpoint.
+- [ ] Complete disjoint frozen heldout eval on indices16..23 with two
+  action RNGs vs qv2longf1104, no model updates.
+- [x] Implement opt-in, bounded, on-demand camera-frustum and ray-tested
+  dropped-item observation as research-only separate typed schema.
+- [x] Compile pinned Fabric mod; unit-test request and parser contracts
+  without mutating old learned observation.
+- [ ] After frozen eval exits, install backed-up research mod in only
+  DemoInstance; run actual exposed/stone/glass/leaves/away item test.
+- [ ] Research staged visual recognizability and natural mined-drop pickup.
+- [ ] Design a new versioned entity-aware pickup/navigation learning skill.
+- [ ] Avoid more identical Q wood-crack reward training without better
+  independent frozen success.
+
 ## Memory-as-eyes audit, November 4
 
 - [x] Inspect active model inputs, screenshot flow and known visibility failures.
