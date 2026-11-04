@@ -104,6 +104,12 @@ opts=(--run-tag "$tag" --seed-root 917211 --policy-seed 731117
 if [[ "$limit" == 'forever' ]]; then opts+=(--until-stopped)
 else opts+=(--decisions "$limit");fi
 if [[ "$operation" == resume ]];then opts+=(--resume);fi
+if [[ "${GMAINCRAFT_RECORD_EXPERIENCE:-0}" == 1 ]]; then
+  opts+=(--record-experience
+         --experience-limit-gb "${GMAINCRAFT_EXPERIENCE_LIMIT_GB:-20}"
+         --experience-max-episode-mb "${GMAINCRAFT_EXPERIENCE_MAX_EPISODE_MB:-256}")
+  printf 'Experience archive: data-local/experience/%s (rolling cap %s GiB; 0 unlimited)\n' "$tag" "${GMAINCRAFT_EXPERIENCE_LIMIT_GB:-20}"
+fi
 old_bytes=0
 if [[ -f "$journal" ]]; then old_bytes="$(wc -c < "$journal")";fi
 printf 'Fresh-seed natural survival training: %s | run %s | target %s\n' "$operation" "$tag" "$limit"

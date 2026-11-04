@@ -47,6 +47,12 @@ win evaluator exists yet.
   V7/V8 choose among 20 fixed *ordinary-input* move/look/attack/duration
   motor primitives; V8 had two real training wood pickups in ten fresh
   worlds, but is not reliable on held-out seeds or alternate rollout RNG.
+  **New implemented baseline:** a player-only compressed self-play
+  archive, checkpoint-safe recovery, a from-scratch goal-conditioned
+  hindsight-imitation network and a frozen item-goal Minecraft skill
+  evaluation path are in
+  [DURABLE_EXPERIENCE_AND_SELF_GOALS.md](DURABLE_EXPERIENCE_AND_SELF_GOALS.md).
+  These are infrastructure, not an established learned skill manager.
 - **Historical separate skills:** aim/mine and pickup networks were trained
   in restricted environments and evaluated together after an **evaluator-
   scripted mined-event handoff**. This is not self-directed composition.
@@ -54,8 +60,9 @@ win evaluator exists yet.
   (use/place, hotbar, inventory, recipe-book/crafting UI, trade, combat);
   reliable player-visible dropped-entity sensing; full item/type inventory
   encoder rather than just log counts; task-conditioned skills; learned
-  skill initiation/termination; replay-based outcome learning; long-lived
-  episodic memory/belief; high-level goal selection; genuine unconstrained
+  skill initiation/termination; off-policy reward-based outcome learning
+  beyond the new positive-only hindsight imitation; long-lived episodic
+  memory/belief; high-level goal selection; genuine unconstrained
   multi-skill learning; End victory detection and timed Any% scoring.
 - **Risk identified NOW:** V5 observed only nine attack-on-wood decisions
   in 1,118 neural selections; V7/V8 improved the action search space,

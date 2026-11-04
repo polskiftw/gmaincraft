@@ -31,6 +31,36 @@
 
 # TODO — gmaincraft
 
+## IMPLEMENTED toolchain: years-scale replay and goal-conditioned practice
+
+- [x] Optional, versioned player-knowledge-only before/after action archive
+  in existing CUDA fresh-seed PPO. No seed/world geometry, no raw MCio
+  packet, no evaluator-only stat, and V2-V8 checkpoint format unchanged.
+- [x] Atomic compressed per-episode files published after normal JVM exit
+  and before PPO checkpoint; replay readers require original committed
+  checkpoint cursor; incomplete files quarantined on resume.
+- [x] Bounded per-run replay cap (configurable, 0 unlimited) and live
+  action/tick/inventory-inspection CLI. Preserve old weights/worlds.
+- [x] Learn independent from-scratch goal-conditioned motor by imitation
+  of the policy's SELF-achieved actual item inventory gains. Checkpoint
+  optimizer/epochs; safe resume; never invent success labels.
+- [x] Connect goal model to frozen live Minecraft evaluation with known
+  practice item ID, normal game inputs, exact own-inventory scoring and
+  source observation/motor/seed-root contract checks.
+- [x] Two REAL CUDA+Minecraft fresh-seed sessions, including resuming
+  original optimizer/RNG: 2 worlds, 432 ticks, 19 neural actions, 4
+  CUDA PPO updates, 2 preserved replay files, 0 inventory goals.
+  Synthetic test-only achievement/goal network checks isolated.
+- [ ] Build a new real V9 sample-efficient learner with player-owned
+  temporal target/crack history and/or natural forest curriculum. Capture
+  enough real item gains to train and test replay-conditioned item skills.
+- [ ] Train/evaluate learned goals on real acquisitions vs flat and random
+  under independent unseen Minecraft seeds/action RNGs. Offline imitation
+  accuracy is NOT proof of a competent goal-following policy.
+- [ ] Autonomously select and terminate at least two options without a
+  teacher-driven phase handoff, then start longer-horizon planning.
+
+
 ## New project-level goal: discover and compose skills toward Any% (DESIGN ONLY)
 
 **Architecture contract:** [docs/BOOTSTRAP_TO_ANY_PERCENT.md](docs/BOOTSTRAP_TO_ANY_PERCENT.md).

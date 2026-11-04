@@ -34,6 +34,9 @@ from mcio_ctrl import controller,instance,network,types
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
 from gmaincraft.agent_interface import AgentAction,MCioAgentBridge
+from gmaincraft.experience_archive import (
+    EpisodeExperience,owned_inventory,archive_path,reconcile_uncommitted,compact_retention)
+from gmaincraft.hindsight_skills import HindsightSkillModel,SCHEMA as HINDSIGHT_SCHEMA
 from gmaincraft.fresh_seed_schedule import SeedSchedule,SCHEMA as STREAM_SCHEMA
 from gmaincraft.fresh_world_manager import FreshWorldManager,names
 from gmaincraft.instance_options import temporary_game_options,restore_orphaned_game_options
@@ -78,9 +81,12 @@ def parse_args(argv=None):
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--run-tag',required=True)
     ap.add_argument('--mode',choices=('train','eval'),default='train')
-    ap.add_argument('--control',choices=('policy_sampled','policy_greedy','uniform_random','untrained'),
+    ap.add_argument('--control',choices=('policy_sampled','policy_greedy','uniform_random',
+                                         'untrained','goal_sampled','goal_greedy'),
                     default='policy_sampled')
-    ap.add_argument('--model-run',help='train run whose frozen checkpoint is evaluated')
+    ap.add_argument('--model-run',help='train run whose frozen PPO checkpoint is evaluated')
+    ap.add_argument('--goal-model',help='frozen hindsight skill tag (eval-only, not full-game planner)')
+    ap.add_argument('--goal-item',help='one player-knowable item ID to acquire in skill-only evaluation')
     ap.add_argument('--resume',action='store_true')
     cap=ap.add_mutually_exclusive_group()
     cap.add_argument('--decisions',type=int,default=None,help='TOTAL six-tick gameplay units (v4 may hold actions for multiple units), including resume')
@@ -99,6 +105,12 @@ def parse_args(argv=None):
     ap.add_argument('--retain-worlds',type=int,default=2,
                     help='keep this many most recent completed disposable worlds')
     ap.add_argument('--visible',action='store_true')
+    ap.add_argument('--record-experience',action='store_true',
+                    help='Opt-in bounded player-knowable transition archive for later goal learning')
+    ap.add_argument('--experience-limit-gb',type=int,default=20,
+                    help='Per-run archive rolling disk cap in GiB; 0 preserves all episodes')
+    ap.add_argument('--experience-max-episode-mb',type=int,default=256,
+                    help='Max compressed archive size per one committed seed; fail closed if exceeded')
     ap.add_argument('--dry-run',action='store_true')
     ap.add_argument('--slow-ms',type=float,default=12.)
     ap.add_argument('--max-crash-retries',type=int,default=2,
@@ -106,24 +118,37 @@ def parse_args(argv=None):
     ap.add_argument('--nvidia-gl-threading',choices=('off','default'),default='off',
                     help='scoped Minecraft-only NVIDIA GL threaded optimization workaround; default off')
     args=ap.parse_args(argv)
-    if not re.fullmatch(RUN_TAG_RE,args.run_tag) or (args.model_run and not re.fullmatch(RUN_TAG_RE,args.model_run)):
+    if not re.fullmatch(RUN_TAG_RE,args.run_tag) or (args.model_run and not re.fullmatch(RUN_TAG_RE,args.model_run)) or (
+            args.goal_model and not re.fullmatch(RUN_TAG_RE,args.goal_model)):
         ap.error('Unsafe run/model tag')
     if args.decisions is None and not args.until_stopped:
         args.decisions=10000
     if (not 12<=args.episode_decisions<=100000 or not 8<=args.update_every<=512 or
         not 1<=args.report_every<=100000 or not 0<=args.retain_worlds<=10 or
         not 1<=args.slow_ms<=1000 or not 0<=args.max_crash_retries<=5 or
+        not 0<=args.experience_limit_gb<=2048 or
+        not 1<=args.experience_max_episode_mb<=2048 or
         (args.decisions is not None and not 1<=args.decisions<=10**10)):
         ap.error('Invalid episode, update, retention, performance or decision bound')
     if (type(args.eval_seed_start) is not int or not 0<=args.eval_seed_start<2**63 or
         (args.mode=='train' and args.eval_seed_start!=0)):
         ap.error('Held-out seed index must be 0 for training and within the eval stream')
-    if args.mode=='train' and (args.model_run or args.control!='policy_sampled'):
-        ap.error('Train has no model import and uses sampled PPO actions')
+    if args.mode=='train' and (args.model_run or args.goal_model or args.goal_item or
+                               args.control!='policy_sampled'):
+        ap.error('Train has no model import/goal and uses sampled PPO actions')
+    if args.mode!='train' and args.record_experience:
+        ap.error('Only own training experience, never held-out evaluation, can be archived')
+    is_goal=args.control in ('goal_sampled','goal_greedy')
     if args.mode=='eval' and (args.resume or args.until_stopped or
                              (args.control.startswith('policy') and not args.model_run) or
-                             (not args.control.startswith('policy') and args.model_run)):
-        ap.error('Evaluation is bounded, non-resumable; policy controls require --model-run')
+                             (not args.control.startswith('policy') and args.model_run) or
+                             (is_goal!=(args.goal_model is not None)) or
+                             (is_goal!=(args.goal_item is not None))):
+        ap.error('Evaluation is bounded; standard policy uses --model-run, '
+                 'goal control requires --goal-model and --goal-item')
+    if args.goal_item and (not args.goal_item.startswith('minecraft:') or
+                           len(args.goal_item)>128 or not re.fullmatch(r'[a-z0-9_:./-]+',args.goal_item)):
+        ap.error('Invalid observed-game-item goal ID')
     SeedSchedule(args.seed_root,'train')  # type + sign bound
     return args
 
@@ -294,6 +319,10 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     policy_actions=0  # Actual neural choices; v4 options may span 1, 4 or 12 budget units.
     last_report_bucket=0
     previous_frame=None
+    experience=(EpisodeExperience(observation_schema=policy_schema(args),
+        action_sizes=(MOTOR_V7_HEAD_SIZES if single_motor_v7(args) else
+                      PERSISTENCE_HEAD_SIZES if variable_motor(args) else HEAD_SIZES))
+                      if args.record_experience and args.mode=='train' else None)
     control_rng=random.Random(args.policy_seed ^ (episode*0x9E3779B97F4A7C15))
     launch_started=time.perf_counter()
     try:
@@ -317,6 +346,10 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
             state,player,surfaces=read_step(bridge,memory,0,bad_counter=bad_counter,
                                                 observation_schema=policy_schema(args))
             client_startup_s=time.perf_counter()-launch_started
+            goal_initial=(owned_inventory(player).get(args.goal_item,0)
+                          if args.goal_item else 0)
+            goal_max=goal_initial
+            goal_previous=goal_initial
             print('FRESH WORLD READY',json.dumps(dict(episode=episode,seed=seed,
                     generator='minecraft:noise',world=world_name,
                     worldgen_s=round(worldgen_s,3),client_startup_s=round(client_startup_s,3),
@@ -333,7 +366,7 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                     logp=value=0.
                 else:
                     heads,logp,value=model.act(state,greedy=(args.mode=='eval' and
-                                                           args.control=='policy_greedy'))
+                                         args.control in ('policy_greedy','goal_greedy')))
                 action=(action_from_motor_v7(heads,(budget-decisions)*DECISION_TICKS)
                         if single_motor_v7(args) else
                         action_from_persistence_heads(heads,(budget-decisions)*DECISION_TICKS)
@@ -348,6 +381,7 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                 spent_ticks=0
                 macro_reward=0.
                 current_state=state
+                current_player=player
                 died=False
                 # Long v4 actions are ONE neural selection, ordinary vanilla
                 # held controls and read-only fresh observations every 6 ticks.
@@ -411,6 +445,7 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                     macro_reward+=(.9995**spent_ticks)*record['reward']
                     spent_ticks+=chunk_ticks
                     current_state=next_state
+                    current_player=next_player
                     if record['new_mined_blocks'] or record['wood_inventory_gain'] or died:
                         log_row(log,dict(stage='uncommitted_game_event',episode=episode,
                              seed=seed,step=decisions+spent_ticks//DECISION_TICKS,**record))
@@ -422,9 +457,22 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                 if args.mode=='train':
                     trajectory.append(NaturalTransition(state,heads,macro_reward,
                                          value,logp,spent_ticks,died))
+                if args.goal_item:
+                    # Scorer-only actual own inventory, never an oracle reward.
+                    observed_count=owned_inventory(current_player).get(args.goal_item,0)
+                    events['goal_item_gains']+=max(0,observed_count-goal_previous)
+                    goal_max=max(goal_max,observed_count)
+                    goal_previous=observed_count
+                if experience is not None:
+                    # Archive exactly the model's ordinary observations and
+                    # the player's own inventory at BOTH ends of this action.
+                    # No evaluator secrets, seed, target oracle or raw packet.
+                    experience.add(state,heads,current_state,player,current_player,
+                                   duration=spent_ticks,reward=macro_reward,done=died)
                 decisions+=spent_ticks//DECISION_TICKS
                 policy_actions+=1
                 state=current_state
+                player=current_player
                 if args.mode=='train' and len(trajectory)>=args.update_every:
                     bootstrap=0. if died else model.act(state,greedy=True)[2]
                     metrics=model.update(trajectory,bootstrap_value=bootstrap)
@@ -471,6 +519,10 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     from gmaincraft.fresh_world_manager import verify_noise_world
     verify_noise_world(manager.paths(episode)[1],seed,require_fixed_spawn=True)
     result=dict(episode=episode,seed=seed,decisions=decisions,policy_actions=policy_actions,
+                **({'goal_item':args.goal_item,'goal_initial':goal_initial,
+                    'goal_max_inventory':goal_max,
+                    'goal_achieved':bool(goal_max>goal_initial)}
+                   if args.goal_item else {}),
                 **({'motor_v7_counts':dict(motor_v7_counts),
                     'motor_v7_on_wood_counts':dict(motor_v7_on_wood_counts)}
                    if single_motor_v7(args) else {}),
@@ -482,7 +534,47 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                 invalid_mining_readings=bad_counter[0],
                 counts=dict(events),action_audit=audit.summary(),
                 stopped_early=decisions<budget)
-    return result
+    return result,experience
+
+
+class FrozenHindsightController:
+    """Only a restricted goal-conditioned skill EVALUATOR, never a scripted plan."""
+    updates=0
+
+    def __init__(self,model,item_id):
+        self.model=model
+        self.item_id=item_id
+
+    def act(self,observation,*,greedy=False):
+        return self.model.act(observation,self.item_id,greedy=greedy),0.,0.
+
+
+def load_goal_control(root,args):
+    """Require exact source observation/action profile and disjoint seed root."""
+    from gmaincraft.experience_archive import ObservedItemGoal
+    ObservedItemGoal(args.goal_item)
+    path=root/'checkpoints'/f'hindsight_{args.goal_model}.pt'
+    if not path.is_file():raise FileNotFoundError('No trained hindsight skill checkpoint')
+    import torch
+    record=torch.load(path,map_location='cpu',weights_only=True)
+    if record.get('schema')!=HINDSIGHT_SCHEMA:
+        raise ValueError('Unknown versioned goal-policy checkpoint')
+    meta=record['metadata']
+    if (meta['source_observation_schema']!=policy_schema(args) or
+        tuple(meta['action_sizes'])!=(MOTOR_V7_HEAD_SIZES if single_motor_v7(args)
+                else PERSISTENCE_HEAD_SIZES if variable_motor(args) else HEAD_SIZES)):
+        raise ValueError('Goal policy observation/action schema does not match evaluation')
+    source_path=root/'checkpoints'/f"fresh_stream_{meta['source_run']}.pt"
+    source=torch.load(source_path,map_location='cpu',weights_only=True)
+    if (source['metadata']['seed_root']!=args.seed_root or
+        source['metadata']['reward_profile']!=args.reward_profile or
+        source['metadata']['policy_schema']!=meta['source_observation_schema']):
+        raise ValueError('Goal policy trained on different source world-stream/motor/profile')
+    model=HindsightSkillModel(own_size=meta['own_size'],
+                 action_sizes=tuple(meta['action_sizes']),
+                 device=args.device,seed=meta['seed'])
+    model.restore(record['model'],optimizer=False)
+    return FrozenHindsightController(model,args.goal_item)
 
 
 def main(argv=None):
@@ -513,13 +605,14 @@ def main(argv=None):
           checkpoint.with_suffix('.pt.pending').exists() or
           inflight.with_suffix('.json.pending').exists()):
         raise FileExistsError('Existing training stream or unfinished stages; use --resume or inspect artifacts')
-    model=NaturalPPO(seed=args.policy_seed,device=args.device,
+    model=(load_goal_control(ROOT,args) if args.mode=='eval' and args.goal_model else
+           NaturalPPO(seed=args.policy_seed,device=args.device,
                      learning_rate=.00015 if args.reward_profile in ('wood_progress_v3','wood_persistence_v4','wood_target_v5','wood_engagement_v6','wood_motor_v7','wood_sustain_v8') else .00035,
                      entropy_coef=.06 if args.reward_profile=='wood_engagement_v6' else
                                   .04 if args.reward_profile in ('wood_progress_v3','wood_persistence_v4','wood_target_v5','wood_motor_v7','wood_sustain_v8') else .014,
                      schema=policy_schema(args),
                      action_sizes=MOTOR_V7_HEAD_SIZES if single_motor_v7(args) else
-                                  PERSISTENCE_HEAD_SIZES if variable_motor(args) else HEAD_SIZES)
+                                  PERSISTENCE_HEAD_SIZES if variable_motor(args) else HEAD_SIZES))
     cursor=args.eval_seed_start if args.mode=='eval' else 0
     committed_decisions=0
     total=Counter()
@@ -570,6 +663,12 @@ def main(argv=None):
                 saved=quarantine_pending_file(stage_file)
                 if saved:abandoned_stages.append(saved)
         with journal.open('a' if args.resume else 'x',encoding='utf8') as log:
+            if args.record_experience and args.mode=='train' and args.resume:
+                orphaned=reconcile_uncommitted(ROOT/'data-local'/'experience',
+                                               args.run_tag,cursor)
+                if orphaned:
+                    log_row(log,dict(stage='quarantined_uncommitted_experience',
+                                     paths=orphaned,committed_cursor=cursor))
             if repaired:log_row(log,repaired)
             if abandoned_stages:
                 log_row(log,dict(stage='recovered_pending_files',quarantined=abandoned_stages))
@@ -578,6 +677,9 @@ def main(argv=None):
             if not args.resume:
                 log_row(log,dict(stage='config',mode=args.mode,metadata=meta,
                       evaluation_control=args.control,
+                      **({'goal_model':args.goal_model,'goal_item':args.goal_item,
+                          'restricted_goal_conditioned_skill_evaluation':True}
+                         if args.goal_model else {}),
                       evaluation_seed_start=args.eval_seed_start,
                       frozen_checkpoint=str(frozen_checkpoint) if frozen_checkpoint else None))
             if args.mode=='train' and args.resume:
@@ -592,7 +694,7 @@ def main(argv=None):
                             namespace=schedule.namespace,committed_decisions=committed_decisions)
                 save_json_atomic(inflight,marker)
                 try:
-                    result=play_episode(args,model,manager,NaturalSessionMemory(),cursor,
+                    result,experience=play_episode(args,model,manager,NaturalSessionMemory(),cursor,
                                         seed,budget,log,stop_requested)
                 except (MinecraftProcessExited,MinecraftObservationTimeout) as exc:
                     if args.mode!='train':raise
@@ -617,6 +719,14 @@ def main(argv=None):
                     recover_inflight(inflight,cursor,manager,log)
                     continue
                 crash_streak=0
+                if experience is not None and result['policy_actions']:
+                    # Archive FIRST: if interrupted before checkpoint commit,
+                    # resume quarantines it by checkpoint cursor. Never learn
+                    # from uncommitted episodes. World/JVM already closed.
+                    archived=experience.save(ROOT/'data-local'/'experience',args.run_tag,
+                        cursor,max_bytes=args.experience_max_episode_mb*(1024**2))
+                    log_row(log,dict(stage='uncommitted_experience',episode=cursor,
+                                      **archived))
                 for key,value in result['counts'].items():total[key]+=value
                 committed_decisions+=result['decisions']
                 episode_completed=cursor
@@ -628,6 +738,12 @@ def main(argv=None):
                            **result))
                 print('FRESH EPISODE COMMITTED',json.dumps(dict(
                       next_episode=cursor,total_decisions=committed_decisions,**result)),flush=True)
+                if args.record_experience and args.experience_limit_gb:
+                    pruned=compact_retention(ROOT/'data-local'/'experience',
+                        args.run_tag,args.experience_limit_gb*(1024**3))
+                    if pruned:
+                        log_row(log,dict(stage='experience_retention_pruned',
+                                          discarded=pruned,reason='opted_in_disk_cap'))
                 # World cleanup is after the model checkpoint. Preserve the
                 # most recent N completed owned worlds for user inspection.
                 old=episode_completed-args.retain_worlds

@@ -1,5 +1,17 @@
 ## CURRENT continuation — V7/V8 statistical failure diagnosis
 
+**NEW EXECUTABLE DATA/GOAL FOUNDATION:** See
+[DURABLE_EXPERIENCE_AND_SELF_GOALS.md](DURABLE_EXPERIENCE_AND_SELF_GOALS.md).
+The archive feature, scratch hindsight item-goal learner, resume and
+frozen item-goal evaluation are now implemented, tested and documented.
+Actual two-seed CUDA+Minecraft archive smoke saved 19 legitimate motor
+choices across 432 ticks and four optimizer updates; no actual item
+acquisition, so new learned goal transfer is UNPROVEN. This is an
+opt-in extension, not a silent V8 training-policy modification.
+Immediate sample-efficiency/conditional wood goals below still apply,
+with enough genuine positive self-play needed for reuse.
+
+
 **ADDITIONAL PROJECT-WIDE DESIGN CONTRACT:** Read
 [BOOTSTRAP_TO_ANY_PERCENT.md](BOOTSTRAP_TO_ANY_PERCENT.md) before designing
 the next generation of skills or rewards. We must learn a goal-conditioned

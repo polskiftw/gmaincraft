@@ -1,5 +1,26 @@
 # AGENTS.md — project instructions for coding assistants
 
+## NEW IMPLEMENTED INFRASTRUCTURE: durable self-play -> observed goal learning
+
+Read [docs/DURABLE_EXPERIENCE_AND_SELF_GOALS.md](docs/DURABLE_EXPERIENCE_AND_SELF_GOALS.md)
+alongside the Any% bootstrap contract. The fresh-seed PPO treadmill can now
+opt in to atomic player-only experience archives after each successful
+Minecraft episode, tied to the PPO committed cursor, plus per-run disk
+retention. New independent scratch hindsight neural models can train
+from the agent's OWN actual observed inventory gains and be evaluated
+as frozen, externally practice-goal-conditioned controllers on fresh
+unseen survival seeds. This is behavior cloning, not full goal RL,
+autonomous hierarchical selection or a proven wood collector. **No
+invented/teacher-produced item trajectories or hardcoded recipes.**
+First actual CUDA training/resume tests for replayproof1104a: two distinct
+real generated worlds, 72 six-tick game-time units, 432 Minecraft ticks,
+19 sampled motor choices, 4 PPO CUDA updates, two verified replay files,
+0 inventory gains. All prior V2-V8 models and worlds remain unchanged.
+Do NOT claim a learned new skill from test-only synthetic examples.
+Next: improve real mining conditional credit, acquire more true experience,
+and prove autonomous two-skill switching with unbiased Minecraft eval.
+
+
 ## ARCHITECTURE DECISION — learn composition, not a scripted Minecraft route
 
 **Read [docs/BOOTSTRAP_TO_ANY_PERCENT.md](docs/BOOTSTRAP_TO_ANY_PERCENT.md) before designing

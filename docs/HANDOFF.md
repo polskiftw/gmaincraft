@@ -1,5 +1,25 @@
 # Handoff for a brand-new ChatGPT conversation
 
+## MOST RECENT code milestone: durable player-owned replay + hindsight goals
+
+Read [DURABLE_EXPERIENCE_AND_SELF_GOALS.md](DURABLE_EXPERIENCE_AND_SELF_GOALS.md).
+Implemented opt-in compressed recorded transitions from the real fresh-seed
+Minecraft PPO learner, archive crash-recovery tied to committed PPO cursor
+and bounded optional retention. New separate goal-conditioned PyTorch actor
+can learn scratch weights from actual observed inventory increases in
+self-collected player-only replay; has safe optimizer/epoch resume and a
+frozen natural-game skill test with a practice goal. This is behavioral
+cloning and skill-only evaluation, NOT autonomous high-level planning,
+crafting, general wood mastery or Any%. Real smoke replayproof1104a
+completed fresh-world start and RESUME on another true seed: 432 real
+Minecraft ticks, 19 neural choices, 4 CUDA updates, 2 committed replay
+files; no wood acquired, no genuine hindsight training samples from this
+small test. Unit suite 160 passes. Old models/checkpoints/hidden data
+unmodified. Next: actual reliable wood mining/collection, then prove
+goal-conditioned Minecraft transfer and autonomous two-skill selection.
+Shell commands and their record/stop/resume variants are in the guide.
+
+
 ## New design authority for long-horizon skill composition (November 3, 2026)
 
 The user explicitly asked for a plan *before* training many independent

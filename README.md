@@ -1,5 +1,15 @@
 # gmaincraft
 
+> **New executable research infrastructure:** [Durable self-play replay,
+> real-GPU resume, goal-conditioned skill learning and frozen practice
+> evaluation](docs/DURABLE_EXPERIENCE_AND_SELF_GOALS.md).
+> Unlike the long-term architecture plan, these tools now RUN. Actual
+> player-only experience was captured in two newly generated vanilla
+> worlds (432 ticks, 19 neural choices and 4 CUDA PPO updates). The
+> replay/goal training toolchain does not confer a reliable wood skill,
+> learned skill manager, crafting or full-game Any% competence.
+
+
 > **Latest research direction (Nov 3, 2026):** The real natural survival
 > trainer has completed V7/V8 controlled CUDA runs, but does NOT yet
 > acquire wood reliably on unseen seeds/alternate action RNGs. The new
