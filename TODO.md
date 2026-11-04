@@ -1,3 +1,29 @@
+## NEWEST: replay Q online self-play and independent frozen gate
+
+- [x] Implement versioned conservative double-Q from only original V9
+  player-known before/after archived states, real inventory and observed
+  crack-stage outcomes; no human action teacher or hidden/seed information.
+- [x] From scratch, 1000 CUDA replay-Q updates on 449 actual V9 real-world
+  transitions with only FOUR real crack-progress outcomes. Frozen heldout
+  seed0 gained 2/1 wood items at two RNG seeds vs original V9 0/random0;
+  heldout indices1/2 gained zero (wood crosshair never observed at action
+  boundaries); UPDATED Q snapshot heldout index3 zero. NO reliable skill.
+- [x] Separate crash-aligned Q-controlled natural self-play with atomic
+  real own-memory transition archive, 32-world prioritized online replay,
+  exact-optimizer resume, strict phase-free motor/action/sensor contract,
+  and immutable frozen checkpoint export. Initial cursor starts at exact
+  train-seed index to make crash recovery safe.
+- [x] REAL two-world online Q start/resume across new noise seeds4/5:
+  470 ordinary actions, 7200 game ticks, 16 new CUDA replay updates,
+  one actual dark-oak log acquired, 2 verified replay files and checkpoint.
+- [ ] Run extended Q self-play from index2 (never rerun original source V9
+  train-seed indices0/1), with bounded disk, explicit stop/recovery.
+- [ ] Freeze later Q weights and compare on many NEW unbiased heldout seeds,
+  independent action RNGs; report actual logs owned vs original Q/V9/random.
+- [ ] Improve resource approach and own-visible dropped item perception;
+  learn generalized actual item-goal skills and eventually learned independent
+  two-skill switching, not a hardcoded route.
+
 ## Highest priority after V7/V8 measured real PPO sample-efficiency failure
 
 - [x] Quantify the real training budget: V5 1,118 neural choices, 21 crosshair-wood, nine attack-on-wood, **zero** stationary attack-on-wood; original random four-head stationary long attack before aim has probability 1/252.

@@ -1,4 +1,4 @@
-"""Resumable from-scratch PPO on an unbounded stream of NEW survival seeds.
+"""Resumable scratch PPO and experimental off-policy Q on NEW survival seeds.
 
 Each episode receives a fresh Minecraft noise-generated world (not one of a
 small rotating cohort). The Minecraft seed is NEVER shown to the policy.
@@ -37,6 +37,8 @@ from gmaincraft.agent_interface import AgentAction,MCioAgentBridge
 from gmaincraft.experience_archive import (
     EpisodeExperience,owned_inventory,archive_path,reconcile_uncommitted,compact_retention)
 from gmaincraft.hindsight_skills import HindsightSkillModel,SCHEMA as HINDSIGHT_SCHEMA
+from gmaincraft.replay_q_skill import ReplayQSkill,SCHEMA as REPLAY_Q_SCHEMA,CRACK_GOAL
+from gmaincraft.online_q_replay import update_from_player_replay
 from gmaincraft.fresh_seed_schedule import SeedSchedule,SCHEMA as STREAM_SCHEMA
 from gmaincraft.fresh_world_manager import FreshWorldManager,names
 from gmaincraft.instance_options import temporary_game_options,restore_orphaned_game_options
@@ -99,13 +101,15 @@ def event_reward_profile(profile):
 def parse_args(argv=None):
     ap=argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--run-tag',required=True)
-    ap.add_argument('--mode',choices=('train','eval'),default='train')
+    ap.add_argument('--mode',choices=('train','eval','collect'),default='train')
     ap.add_argument('--control',choices=('policy_sampled','policy_greedy','uniform_random',
-                                         'untrained','goal_sampled','goal_greedy'),
+                                         'untrained','goal_sampled','goal_greedy','q_sampled','q_greedy'),
                     default='policy_sampled')
     ap.add_argument('--model-run',help='train run whose frozen PPO checkpoint is evaluated')
     ap.add_argument('--goal-model',help='frozen hindsight skill tag (eval-only, not full-game planner)')
     ap.add_argument('--goal-item',help='one player-knowable item ID to acquire in skill-only evaluation')
+    ap.add_argument('--q-model',help='frozen off-policy replay Q skill tag (eval-only)')
+    ap.add_argument('--q-goal',help='the Q model training goal: observed inventory item or crack progress')
     ap.add_argument('--resume',action='store_true')
     cap=ap.add_mutually_exclusive_group()
     cap.add_argument('--decisions',type=int,default=None,help='TOTAL six-tick gameplay units (v4 may hold actions for multiple units), including resume')
@@ -117,6 +121,13 @@ def parse_args(argv=None):
     ap.add_argument('--seed-root',type=int,default=917211,
                     help='deterministic fresh-seed stream (not a policy feature)')
     ap.add_argument('--policy-seed',type=int,default=731117)
+    ap.add_argument('--q-updates-per-world',type=int,default=0,
+                    help='collect-only real self-replay Q updates between saved Minecraft worlds')
+    ap.add_argument('--q-replay-worlds',type=int,default=32,
+                    help='bounded committed collection episodes replayed for Q updates')
+    ap.add_argument('--q-replay-batch-size',type=int,default=48)
+    ap.add_argument('--collect-seed-start',type=int,default=0,
+                    help='collection-only index in the TRAIN seed stream; avoid Q source episodes')
     ap.add_argument('--eval-seed-start',type=int,default=0,
                     help='eval-only starting unique held-out seed index; never a policy feature')
     ap.add_argument('--reward-profile',choices=tuple(FRESH_REWARDS),default='wood_discovery_v2')
@@ -137,7 +148,7 @@ def parse_args(argv=None):
     ap.add_argument('--nvidia-gl-threading',choices=('off','default'),default='off',
                     help='scoped Minecraft-only NVIDIA GL threaded optimization workaround; default off')
     args=ap.parse_args(argv)
-    if not re.fullmatch(RUN_TAG_RE,args.run_tag) or (args.model_run and not re.fullmatch(RUN_TAG_RE,args.model_run)) or (
+    if not re.fullmatch(RUN_TAG_RE,args.run_tag) or (args.model_run and not re.fullmatch(RUN_TAG_RE,args.model_run)) or (args.q_model and not re.fullmatch(RUN_TAG_RE,args.q_model)) or (
             args.goal_model and not re.fullmatch(RUN_TAG_RE,args.goal_model)):
         ap.error('Unsafe run/model tag')
     if args.decisions is None and not args.until_stopped:
@@ -147,24 +158,44 @@ def parse_args(argv=None):
         not 1<=args.slow_ms<=1000 or not 0<=args.max_crash_retries<=5 or
         not 0<=args.experience_limit_gb<=2048 or
         not 1<=args.experience_max_episode_mb<=2048 or
+        not 0<=args.q_updates_per_world<=1000 or
+        not 1<=args.q_replay_worlds<=128 or not 8<=args.q_replay_batch_size<=256 or
+        (args.mode!='collect' and args.q_updates_per_world!=0) or
         (args.decisions is not None and not 1<=args.decisions<=10**10)):
         ap.error('Invalid episode, update, retention, performance or decision bound')
     if (type(args.eval_seed_start) is not int or not 0<=args.eval_seed_start<2**63 or
-        (args.mode=='train' and args.eval_seed_start!=0)):
+        (args.mode!='eval' and args.eval_seed_start!=0) or
+        (args.mode!='collect' and args.collect_seed_start!=0) or
+        (args.mode=='collect' and not 0<=args.collect_seed_start<2**63)):
         ap.error('Held-out seed index must be 0 for training and within the eval stream')
-    if args.mode=='train' and (args.model_run or args.goal_model or args.goal_item or
+    if args.mode=='train' and (args.model_run or args.goal_model or args.goal_item or args.q_model or args.q_goal or
                                args.control!='policy_sampled'):
         ap.error('Train has no model import/goal and uses sampled PPO actions')
-    if args.mode!='train' and args.record_experience:
-        ap.error('Only own training experience, never held-out evaluation, can be archived')
+    if args.mode=='eval' and args.record_experience:
+        ap.error('Held-out evaluation can never be archived as training')
+    if args.mode=='collect' and (
+            args.control!='q_sampled' or not args.q_model or not args.q_goal or
+            args.model_run or args.goal_model or args.goal_item or not args.record_experience):
+        ap.error('Collection must use a frozen Q practice policy and record own experience')
     is_goal=args.control in ('goal_sampled','goal_greedy')
+    is_q=args.control in ('q_sampled','q_greedy')
     if args.mode=='eval' and (args.resume or args.until_stopped or
-                             (args.control.startswith('policy') and not args.model_run) or
-                             (not args.control.startswith('policy') and args.model_run) or
+                             (args.control.startswith('policy')!=(args.model_run is not None)) or
                              (is_goal!=(args.goal_model is not None)) or
-                             (is_goal!=(args.goal_item is not None))):
+                             (is_goal!=(args.goal_item is not None) and not is_q) or
+                             (is_q!=(args.q_model is not None)) or
+                             (is_q!=(args.q_goal is not None)) or
+                             (not is_q and args.q_goal is not None)):
         ap.error('Evaluation is bounded; standard policy uses --model-run, '
-                 'goal control requires --goal-model and --goal-item')
+                 'goal control uses --goal-model/--goal-item, Q control uses '
+                 '--q-model/--q-goal and optional --goal-item score')
+    if is_q and args.q_goal!=CRACK_GOAL:
+        if not args.q_goal.startswith('minecraft:'):ap.error('Replay Q requires vanilla item goal')
+        from gmaincraft.experience_archive import ObservedItemGoal
+        try:ObservedItemGoal(args.q_goal)
+        except ValueError as exc:ap.error(str(exc))
+    if is_q and args.reward_profile!='wood_temporal_v9':
+        ap.error('Replay Q requires exact V9 observation/action contract')
     if args.goal_item and (not args.goal_item.startswith('minecraft:') or
                            len(args.goal_item)>128 or not re.fullmatch(r'[a-z0-9_:./-]+',args.goal_item)):
         ap.error('Invalid observed-game-item goal ID')
@@ -175,7 +206,7 @@ def parse_args(argv=None):
 def paths(tag,mode):
     stem='fresh_stream_'+tag
     checkpoint=ROOT/'checkpoints'/(stem+'.pt')
-    journal=ROOT/'logs'/('fresh_stream_'+tag+'.jsonl' if mode=='train' else
+    journal=ROOT/'logs'/('fresh_stream_'+tag+'.jsonl' if mode in ('train','collect') else
                          'fresh_eval_'+tag+'.jsonl')
     inflight=ROOT/'logs'/('fresh_stream_'+tag+'.inflight.json')
     stop=ROOT/'logs'/('fresh_stream_'+tag+'.stop')
@@ -184,7 +215,13 @@ def paths(tag,mode):
 
 
 def metadata(args):
-    return dict(kind='gmaincraft_fresh_stream_v2_fixed_spawn',policy_schema=policy_schema(args),
+    return dict(kind='gmaincraft_q_collect_v1' if args.mode=='collect' else
+                'gmaincraft_fresh_stream_v2_fixed_spawn',policy_schema=policy_schema(args),
+                **({'collector_q_model':args.q_model,'collector_q_goal':args.q_goal,
+                    'collector_start_index':args.collect_seed_start,
+                    'collector_q_updates_per_world':args.q_updates_per_world,
+                    'collector_q_replay_worlds':args.q_replay_worlds,
+                    'collector_q_replay_batch_size':args.q_replay_batch_size} if args.mode=='collect' else {}),
                 **({'duration_ticks':PERSISTENCE_DURATIONS,'horizon_unit_ticks':DECISION_TICKS} if variable_motor(args) else {}),
                 **({'motor_v7_actions':MOTOR_V7,'policy_action_heads':MOTOR_V7_HEAD_SIZES} if single_motor_v7(args) else {}),
                 **({'visible_target_history_schema':HISTORY_V9_SCHEMA,
@@ -344,7 +381,7 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     experience=(EpisodeExperience(observation_schema=policy_schema(args),
         action_sizes=(MOTOR_V7_HEAD_SIZES if single_motor_v7(args) else
                       PERSISTENCE_HEAD_SIZES if variable_motor(args) else HEAD_SIZES))
-                      if args.record_experience and args.mode=='train' else None)
+                      if args.record_experience and args.mode in ('train','collect') else None)
     control_rng=random.Random(args.policy_seed ^ (episode*0x9E3779B97F4A7C15))
     launch_started=time.perf_counter()
     try:
@@ -389,7 +426,7 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                     logp=value=0.
                 else:
                     heads,logp,value=model.act(state,greedy=(args.mode=='eval' and
-                                         args.control in ('policy_greedy','goal_greedy')))
+                                         args.control in ('policy_greedy','goal_greedy','q_greedy')))
                 action=(action_from_motor_v7(heads,(budget-decisions)*DECISION_TICKS)
                         if single_motor_v7(args) else
                         action_from_persistence_heads(heads,(budget-decisions)*DECISION_TICKS)
@@ -605,10 +642,61 @@ def load_goal_control(root,args):
     return FrozenHindsightController(model,args.goal_item)
 
 
+class FrozenReplayQController:
+    """A bounded Q practice policy; only collection mode permits updates."""
+    schema=REPLAY_Q_SCHEMA
+
+    def __init__(self,model,goal):
+        self.model=model
+        self.goal=goal
+        self.torch=model.torch
+        self.device=model.device
+
+    @property
+    def updates(self):
+        return self.model.updates
+
+    def act(self,observation,*,greedy=False):
+        return self.model.act(observation,self.goal,greedy=greedy),0.,0.
+
+    def state(self):
+        return self.model.state()
+
+    def restore(self,state):
+        self.model.restore(state)
+        return self
+
+
+def load_replay_q_control(root,args):
+    """Require unchanged V9 player sensors, source stream and action motor."""
+    import torch
+    record=torch.load(root/'checkpoints'/f'replay_q_{args.q_model}.pt',
+                      map_location='cpu',weights_only=True)
+    if record.get('schema')!=REPLAY_Q_SCHEMA:
+        raise ValueError('Unknown replay Q model schema')
+    meta=record['metadata']
+    if (meta.get('goal')!=args.q_goal or
+        meta.get('source_observation_schema')!=TEMPORAL_V9_SCHEMA or
+        tuple(meta.get('action_sizes',()))!=MOTOR_V7_HEAD_SIZES):
+        raise ValueError('Replay Q goal/observation/motor contract mismatch')
+    source=torch.load(root/'checkpoints'/f"fresh_stream_{meta['source_run']}.pt",
+                      map_location='cpu',weights_only=True)
+    if (source.get('stream')!=STREAM_SCHEMA or
+        source['metadata']['seed_root']!=args.seed_root or
+        source['metadata']['seed_root']!=meta['source_seed_root'] or
+        source['metadata']['reward_profile']!='wood_temporal_v9' or
+        source['metadata']['policy_schema']!=TEMPORAL_V9_SCHEMA or
+        policy_schema(args)!=TEMPORAL_V9_SCHEMA or not single_motor_v7(args)):
+        raise ValueError('Replay Q source/evaluation stream or player sensor drift')
+    model=ReplayQSkill(seed=args.policy_seed,device=args.device)
+    model.restore(record['model'],optimizer=False)
+    return FrozenReplayQController(model,args.q_goal)
+
+
 def main(argv=None):
     args=parse_args(argv)
     meta=metadata(args)
-    schedule=SeedSchedule(args.seed_root,'train' if args.mode=='train' else 'eval')
+    schedule=SeedSchedule(args.seed_root,'train' if args.mode in ('train','collect') else 'eval')
     checkpoint,journal,inflight,stop_file,lock_path=paths(args.run_tag,args.mode)
     frozen_checkpoint=(ROOT/'checkpoints'/f'fresh_stream_{args.model_run}.pt'
                        if args.mode=='eval' and args.model_run else None)
@@ -633,7 +721,8 @@ def main(argv=None):
           checkpoint.with_suffix('.pt.pending').exists() or
           inflight.with_suffix('.json.pending').exists()):
         raise FileExistsError('Existing training stream or unfinished stages; use --resume or inspect artifacts')
-    model=(load_goal_control(ROOT,args) if args.mode=='eval' and args.goal_model else
+    model=(load_replay_q_control(ROOT,args) if args.mode in ('eval','collect') and args.q_model else
+           load_goal_control(ROOT,args) if args.mode=='eval' and args.goal_model else
            NaturalPPO(seed=args.policy_seed,device=args.device,
                      learning_rate=.00015 if args.reward_profile in ('wood_progress_v3','wood_persistence_v4','wood_target_v5','wood_engagement_v6','wood_motor_v7','wood_sustain_v8','wood_temporal_v9') else .00035,
                      entropy_coef=.06 if args.reward_profile=='wood_engagement_v6' else
@@ -641,10 +730,11 @@ def main(argv=None):
                      schema=policy_schema(args),
                      action_sizes=MOTOR_V7_HEAD_SIZES if single_motor_v7(args) else
                                   PERSISTENCE_HEAD_SIZES if variable_motor(args) else HEAD_SIZES))
-    cursor=args.eval_seed_start if args.mode=='eval' else 0
+    cursor=(args.eval_seed_start if args.mode=='eval' else
+            args.collect_seed_start if args.mode=='collect' else 0)
     committed_decisions=0
     total=Counter()
-    if args.mode=='train' and args.resume:
+    if args.mode in ('train','collect') and args.resume:
         cursor,committed_decisions,total=restore(checkpoint,model,meta)
     elif args.mode=='eval' and frozen_checkpoint:
         loaded=model.torch.load(frozen_checkpoint,map_location=model.device,weights_only=True)
@@ -684,14 +774,14 @@ def main(argv=None):
             print('FRESH RECOVERY restored interrupted disposable game options',flush=True)
         repaired=None
         abandoned_stages=[]
-        if args.mode=='train' and args.resume:
+        if args.mode in ('train','collect') and args.resume:
             repaired=repair_jsonl_tail(journal)
             for stage_file in (checkpoint.with_suffix('.pt.pending'),
                                inflight.with_suffix('.json.pending')):
                 saved=quarantine_pending_file(stage_file)
                 if saved:abandoned_stages.append(saved)
         with journal.open('a' if args.resume else 'x',encoding='utf8') as log:
-            if args.record_experience and args.mode=='train' and args.resume:
+            if args.record_experience and args.mode in ('train','collect') and args.resume:
                 orphaned=reconcile_uncommitted(ROOT/'data-local'/'experience',
                                                args.run_tag,cursor)
                 if orphaned:
@@ -700,17 +790,23 @@ def main(argv=None):
             if repaired:log_row(log,repaired)
             if abandoned_stages:
                 log_row(log,dict(stage='recovered_pending_files',quarantined=abandoned_stages))
-            if args.mode=='train' and not args.resume:
-                save_model(checkpoint,model,meta,0,0,total)
+            if args.mode in ('train','collect') and not args.resume:
+                # A collect stream may start AFTER the old V9 source seeds.
+                # The initial committed cursor must match that FIRST seed,
+                # otherwise startup crash recovery falsely sees a future seed.
+                save_model(checkpoint,model,meta,cursor,0,total)
             if not args.resume:
                 log_row(log,dict(stage='config',mode=args.mode,metadata=meta,
                       evaluation_control=args.control,
+                      **({'q_model':args.q_model,'q_goal':args.q_goal,
+                          'restricted_offpolicy_skill_evaluation':True}
+                         if args.q_model else {}),
                       **({'goal_model':args.goal_model,'goal_item':args.goal_item,
                           'restricted_goal_conditioned_skill_evaluation':True}
                          if args.goal_model else {}),
                       evaluation_seed_start=args.eval_seed_start,
                       frozen_checkpoint=str(frozen_checkpoint) if frozen_checkpoint else None))
-            if args.mode=='train' and args.resume:
+            if args.mode in ('train','collect') and args.resume:
                 recover_inflight(inflight,cursor,manager,log)
             started=time.perf_counter()
             crash_streak=0
@@ -725,7 +821,7 @@ def main(argv=None):
                     result,experience=play_episode(args,model,manager,NaturalSessionMemory(),cursor,
                                         seed,budget,log,stop_requested)
                 except (MinecraftProcessExited,MinecraftObservationTimeout) as exc:
-                    if args.mode!='train':raise
+                    if args.mode not in ('train','collect'):raise
                     crash_streak+=1
                     reason=dict(stage='jvm_or_mcio_crash',episode=cursor,seed=seed,
                         committed_decisions=committed_decisions,attempt=crash_streak,
@@ -755,11 +851,24 @@ def main(argv=None):
                         cursor,max_bytes=args.experience_max_episode_mb*(1024**2))
                     log_row(log,dict(stage='uncommitted_experience',episode=cursor,
                                       **archived))
+                if args.mode=='collect':
+                    # The latest episode has closed and its player-only archive
+                    # was published, but no model/episode cursor has committed.
+                    # A crash during Q updates reverts to the *previous* exact
+                    # Q checkpoint and quarantines this episode on resume.
+                    q_update=update_from_player_replay(model.model,
+                           ROOT/'data-local'/'experience',args.run_tag,cursor,
+                           goal=args.q_goal,updates=args.q_updates_per_world,
+                           batch_size=args.q_replay_batch_size,
+                           max_episodes=args.q_replay_worlds)
+                    log_row(log,dict(stage='uncommitted_online_q_update',
+                                     episode=cursor,**q_update))
+                    print('FRESH Q REPLAY UPDATE',json.dumps(q_update),flush=True)
                 for key,value in result['counts'].items():total[key]+=value
                 committed_decisions+=result['decisions']
                 episode_completed=cursor
                 cursor+=1
-                if args.mode=='train':
+                if args.mode in ('train','collect'):
                     save_model(checkpoint,model,meta,cursor,committed_decisions,total)
                 log_row(log,dict(stage='episode_committed',mode=args.mode,
                            next_episode=cursor,committed_decisions=committed_decisions,
@@ -778,7 +887,7 @@ def main(argv=None):
                 if old>=0:
                     manager.retire(old,keep=False)
                 inflight.unlink()
-                if args.mode=='train' and stop_requested():break
+                if args.mode in ('train','collect') and stop_requested():break
             summary=dict(stage='completed' if args.decisions is not None and
                          committed_decisions>=args.decisions else 'paused',
                          episodes=cursor,
@@ -788,10 +897,11 @@ def main(argv=None):
                          mode=args.mode,control=args.control,updates=model.updates,
                          seed_namespace=schedule.namespace,
                          new_optimizer_updates_in_eval=0 if args.mode=='eval' else None,
+                         collector_q_model_optimizer_updates=model.model.updates if args.mode=='collect' else None,
                          totals=dict(total),wall_s=round(time.perf_counter()-started,2))
             log_row(log,summary)
             print('FRESH STREAM SUMMARY',json.dumps(summary),flush=True)
-            print('FRESH STREAM SAVED',journal,checkpoint if args.mode=='train' else 'frozen/eval only',flush=True)
+            print('FRESH STREAM SAVED',journal,checkpoint if args.mode in ('train','collect') else 'frozen/eval only',flush=True)
             if stop_file.is_file() and stopped[0]:stop_file.unlink()
 
 

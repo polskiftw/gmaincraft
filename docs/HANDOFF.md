@@ -1,3 +1,22 @@
+## NEWEST VERIFIED: conservative replay Q, real online CUDA self-play (Nov 3 local / Nov 4 UTC)
+
+Read [REPLAY_Q_LIVE_LEARNING_2026_11_04.md](REPLAY_Q_LIVE_LEARNING_2026_11_04.md)
+FIRST. A new strictly versioned double-Q learner trains only from archived
+V9 bounded player-observations/own-inventory outcomes; no external action
+teacher, seed/hidden map or scripted handoff. Scratch real archived V9 data
+contained only four crack-progress outcomes in 449 actual actions. Frozen
+Q obtained genuine wood inventory on heldout seed0 under two independent
+action RNGs (2 and 1), where exact V9/random controls collected 0; however
+it scored **0 wood** on additional heldout seeds1/2. NOT a reliable skill.
+A new Q self-play collector and crash-aligned experience + online Q learner
+were exercised across two REAL new train noise worlds, 470 ordinary actions,
+16 NEW CUDA Q updates (1000->1016), restart+resume, and a real dark oak
+log entering inventory in world2. The collector checkpoint/own replay and
+frozen export were validated; its frozen snapshot acquired zero logs on
+heldout index3. Original V2-V9 weights intact. Tests: 174+ pure expected.
+NEXT run: build a larger diverse train replay, then multi-RNG independent
+heldout inventory comparisons vs same-seed controls; not a speedrun.
+
 # Handoff for a brand-new ChatGPT conversation
 
 ## NEWEST: V9 temporal target memory and real learned-goal experiment

@@ -1,3 +1,15 @@
+> **Latest executable work (Nov 3 local / Nov 4 UTC):**
+> [Real replay-Q self-play, online CUDA training, independent heldout audits](docs/REPLAY_Q_LIVE_LEARNING_2026_11_04.md).
+> New from-scratch Q learning reuses actual player-only V9 action experience,
+> with no teacher, hidden seed map, auto-target or scripted strategy. A real
+> Q rollout collected 2/1 logs on the same unseen seed under two action RNGs,
+> but had no pickups on two other unseen seeds. The separate self-play
+> collector restarted across two REAL new Minecraft worlds, saved replay,
+> performed 16 additional CUDA updates and independently acquired one dark
+> oak log. These are useful experiments, **not** a proven first-log agent
+> or autonomous Any% speedrunner. See the guide for the new bounded,
+> stoppable longer-training commands; previous V2-V9 work is preserved.
+
 # gmaincraft
 
 > **Latest executed V9 research:** [V9 real-game temporal target, CUDA,
@@ -49,7 +61,7 @@ individual success, **not a demonstrated reliable learned wood skill**,
 and Any% is much farther away. Read the complete evidence and constraints:
 [First natural wood inventory + versioned action-duration V4](docs/NATURAL_WOOD_FIRST_LOG_PERSISTENCE_V4.md).
 
-**Next recommended foreground training (continues the successful pilot):**
+**Archived historical V4 training command (already completed; do not re-run):**
 
 ```bash
 cd "$HOME/Documents/minecraft-discovery"

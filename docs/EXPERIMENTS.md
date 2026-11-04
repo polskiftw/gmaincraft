@@ -1,3 +1,18 @@
+## Latest empirical audit: replay Q and resumed self-play, Nov 3 local / Nov 4 UTC
+
+[Details, commands, saved source journals and failure caveats](REPLAY_Q_LIVE_LEARNING_2026_11_04.md).
+New from-scratch offline player-observation Q: 4 bona fide crack-progress
+outcomes in 449 real V9 archived actions; 1,000 CUDA updates. On identical
+heldout seed0/3600 ticks, Q obtained 2 real logs (action RNG731117) or
+1 (RNG813777) while V9 PPO and random controls acquired none. Other
+heldout seed indices1/2 yielded no Q log pickup; the newly online-trained
+Q snapshot likewise acquired none on heldout seed3. This is a SMALL,
+inconclusive signal, not wood mastery. New collector real start+resume
+across train seed indices4/5 recorded 470 actual actions, one dark oak
+inventory pickup, 16 new CUDA Q updates after real saved worlds, 2 verified
+player-only archives and exact checkpoint cursor. All original models and
+older ignored data preserved; headless Gamescope teardown exit139 remains.
+
 # Experiment record
 
 New optional scoped NVIDIA mitigation: fresh treadmill now launches

@@ -1,3 +1,47 @@
+## NEWEST VERIFIED: conservative replay Q, real online CUDA self-play (Nov 3 local / Nov 4 UTC)
+
+Read [REPLAY_Q_LIVE_LEARNING_2026_11_04.md](REPLAY_Q_LIVE_LEARNING_2026_11_04.md)
+FIRST. A new strictly versioned double-Q learner trains only from archived
+V9 bounded player-observations/own-inventory outcomes; no external action
+teacher, seed/hidden map or scripted handoff. Scratch real archived V9 data
+contained only four crack-progress outcomes in 449 actual actions. Frozen
+Q obtained genuine wood inventory on heldout seed0 under two independent
+action RNGs (2 and 1), where exact V9/random controls collected 0; however
+it scored **0 wood** on additional heldout seeds1/2. NOT a reliable skill.
+A new Q self-play collector and crash-aligned experience + online Q learner
+were exercised across two REAL new train noise worlds, 470 ordinary actions,
+16 NEW CUDA Q updates (1000->1016), restart+resume, and a real dark oak
+log entering inventory in world2. The collector checkpoint/own replay and
+frozen export were validated; its frozen snapshot acquired zero logs on
+heldout index3. Original V2-V9 weights intact. Tests: 174+ pure expected.
+NEXT run: build a larger diverse train replay, then multi-RNG independent
+heldout inventory comparisons vs same-seed controls; not a speedrun.
+
+## Next long experiment — Q fresh-world online self-play
+
+Run tag **`qselfplay_v1_1104`**, intended cumulative cap **240,000 six-tick
+units** across fresh train worlds of **1,200 six-tick units each** (up to
+200 worlds). First index **2** avoids original PPO source indices0/1;
+practice goal is the *player's own observable crack-progress effect*.
+Initial immutable offline Q model `qcrack_v1a1104` has 1,000 updates;
+collector adds max 64 Q minibatch updates after each real closed/saved
+world with bona fide positive outcomes, reading up to 32 recent committed
+worlds. Keep 20 GiB replay retention cap and newest 2 saved worlds. Exact
+command (only `resume` after already launched, same options):
+
+```bash
+cd "$HOME/Documents/minecraft-discovery"
+GMAINCRAFT_Q_UPDATES_PER_WORLD=64 tools/run-replay-q-collection.sh resume qselfplay_v1_1104 240000 1200 qcrack_v1a1104 effect:visible_crack_progress 2
+tools/run-replay-q-collection.sh status qselfplay_v1_1104
+tools/run-replay-q-collection.sh stop qselfplay_v1_1104
+.venv/bin/python tools/inspect-experience.py qselfplay_v1_1104
+```
+
+**Status at the time of this source edit:** prepared; verify actual run/journal
+and lock before claiming it is active. Do NOT run `start` twice or touch
+an existing flock to bypass a live trainer. If no long job is active and
+no original tag artifacts exist, use `start` in place of `resume`.
+
 ## CURRENT continuation — V7/V8 statistical failure diagnosis
 
 **NEWEST VERIFIED V9 CODE/EXPERIMENT:** Start with
