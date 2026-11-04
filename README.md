@@ -9,6 +9,9 @@
 > oak log. These are useful experiments, **not** a proven first-log agent
 > or autonomous Any% speedrunner. See the guide for the new bounded,
 > stoppable longer-training commands; previous V2-V9 work is preserved.
+> **Long fresh-world Q self-play launched:** `qselfplay_v1_1104`,
+> `tools/run-replay-q-collection.sh status qselfplay_v1_1104`.
+> See `docs/NEXT_SESSION.md` before attempting to resume it.
 
 # gmaincraft
 

@@ -37,10 +37,24 @@ tools/run-replay-q-collection.sh stop qselfplay_v1_1104
 .venv/bin/python tools/inspect-experience.py qselfplay_v1_1104
 ```
 
-**Status at the time of this source edit:** prepared; verify actual run/journal
-and lock before claiming it is active. Do NOT run `start` twice or touch
-an existing flock to bypass a live trainer. If no long job is active and
-no original tag artifacts exist, use `start` in place of `resume`.
+**Verified launched in detached mode:** run `qselfplay_v1_1104` was started
+with `start` and the exact configuration above, Nov 4 UTC. Independent
+shell connection confirmed the command survived shell exit (parent PID 1),
+the advisory flock **HELD**, and the REAL Minecraft Java client running
+alongside the collector (not merely a shell launcher). Startup checkpoint
+and stream journal were already present. It may still finish, crash or stop
+before the next agent session: determine current status from its actual
+journal and checkpoint before attempting any `resume`. Never run `start`
+twice or remove a held `.lock` to evade a live trainer.
+
+Detached console: `logs/qselfplay_v1_1104_detached.log`; full per-world
+console `logs/fresh_treadmill_qselfplay_v1_1104_latest.log`. Original
+command for audit:
+
+```bash
+GMAINCRAFT_Q_UPDATES_PER_WORLD=64 GMAINCRAFT_Q_REPLAY_WORLDS=32 GMAINCRAFT_Q_REPLAY_BATCH_SIZE=48 tools/run-replay-q-collection.sh start qselfplay_v1_1104 240000 1200 qcrack_v1a1104 effect:visible_crack_progress 2
+```
+
 
 ## CURRENT continuation — V7/V8 statistical failure diagnosis
 

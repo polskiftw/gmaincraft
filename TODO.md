@@ -16,8 +16,12 @@
 - [x] REAL two-world online Q start/resume across new noise seeds4/5:
   470 ordinary actions, 7200 game ticks, 16 new CUDA replay updates,
   one actual dark-oak log acquired, 2 verified replay files and checkpoint.
-- [ ] Run extended Q self-play from index2 (never rerun original source V9
-  train-seed indices0/1), with bounded disk, explicit stop/recovery.
+- [x] Launch extended Q self-play `qselfplay_v1_1104` from train index2
+  (avoid original V9 training seeds0/1); 240,000 cumulative units, up to
+  200 fresh 1,200-unit worlds, bounded 20 GiB replay, 64 GPU Q updates
+  per world with observed successes; verify launcher/JVM and held lock.
+- [ ] Recheck the detached job and its REAL committed episodes/optimizer
+  updates after the longer session; resume safely only if the lock is free.
 - [ ] Freeze later Q weights and compare on many NEW unbiased heldout seeds,
   independent action RNGs; report actual logs owned vs original Q/V9/random.
 - [ ] Improve resource approach and own-visible dropped item perception;

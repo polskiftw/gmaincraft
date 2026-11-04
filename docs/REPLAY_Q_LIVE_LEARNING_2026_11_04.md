@@ -145,6 +145,16 @@ GMAINCRAFT_Q_UPDATES_PER_WORLD=64 tools/run-replay-q-collection.sh resume exampl
 tools/run-replay-q-evaluation.sh qsnapshot01 qsnapshot_eval01 effect:visible_crack_progress 600 600 6 813777 q_sampled
 ```
 
+**A larger live run was actually launched** under tag
+`qselfplay_v1_1104` with **240,000 cumulative units / 1,200 per natural
+train world**, up to 200 distinct new noise seeds starting at index2. It
+uses 64 online Q updates after each world if genuine crack outcomes have
+been archived, 32 prior worlds of replay, and 20 GiB rolling retention.
+An independent connector invocation confirmed the detached process,
+held advisory lock, live real Minecraft JVM and initial checkpoint. For
+its CURRENT actual status or safe recovery, follow [NEXT_SESSION](NEXT_SESSION.md).
+Launch is not proof of completed training or improvement.
+
 Do not rerun the `start` examples with existing tags; the wrappers refuse
 replacing old logs/weights. The longer session's exact real tag and status
 are reported in `docs/NEXT_SESSION.md`. Use a single collector at a time to
