@@ -187,6 +187,23 @@ claim uncommitted episodes, include a heldout evaluation journal, or
 silently create new observations/actions. No model chooses a hidden target,
 teleports or executes a privileged mine command.
 
+### Subsequent protected long V2 continuation (newly launched)
+
+**Actual detached run `qwood_v2long1104` started on never-used TRAIN
+index206**, from frozen model `qv2triplef1104` with 84 protected
+self-achieved wood-crack motor outcomes across the three completed
+sources. Plan is at most 100 new independent natural worlds of 1,200
+six-tick units each (120,000 units / 720,000 game ticks), 32 online
+Q updates per world, player-only replay cap20GiB, nonwood anchor2,
+success action weight0.6. The real first game index206
+`-8578009869789058631` completed 7,200 ticks and actually acquired
+**five logs**. 34 actual new achieved wood-crack MOTOR actions (56
+six-tick V9 sensor rises) plus all 84 earlier saved successes produced
+32 CUDA Q updates (model524->556); exact checkpoint cursor207 verified,
+new world207 already started under the held advisory lock. This is
+training progress, NOT independent frozen generalization proof.
+[Current handoff/stop/resume/status](NEXT_SESSION.md).
+
 ## 5. Workstation commands and next gates
 
 Status after this audit: V1 long run completed, V2 start+resume and chained

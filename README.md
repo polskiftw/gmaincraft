@@ -7,8 +7,13 @@
 > another FIVE logs in total. Neither reliable wood collection, crafting,
 > skill composition nor Any% is solved. Full measured results, failures,
 > versioned CLI and lineage: [V2 rare-success and forgetting audit](docs/V2_RARE_SUCCESS_REPLAY_AUDIT_2026_11_04.md).
-> Use [current handoff](docs/NEXT_SESSION.md) for the next long V2 run,
-> not the historical v1 commands farther below.
+> **Active V2 long training:** `qwood_v2long1104` launched and verified
+> with up to 100 NEW natural survival worlds starting at TRAIN index206;
+> its FIRST world actually acquired 5 logs, with 32 GPU updates,
+> checkpoint cursor207 and new world207 already launched. Use
+> `tools/run-replay-q-collection.sh status qwood_v2long1104` and
+> [current handoff](docs/NEXT_SESSION.md) for status, safe stop/resume
+> and eventual frozen heldout gate, not the old v1 commands below.
 
 > **Latest executable work (Nov 3 local / Nov 4 UTC):**
 > [Real replay-Q self-play, online CUDA training, independent heldout audits](docs/REPLAY_Q_LIVE_LEARNING_2026_11_04.md).

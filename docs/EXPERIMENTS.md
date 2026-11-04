@@ -1,3 +1,19 @@
+## LIVE V2 100-world continued training: first real world committed
+
+Tag `qwood_v2long1104`, fresh original TRAIN seed index206
+`-8578009869789058631`, 1,200 six-tick units / 7,200 actual Minecraft
+ticks. From previously frozen `qv2triplef1104` (524 Q updates), the
+ordinary-input Q agent mined and actually acquired **5 logs** in this
+first real world, with 56 own 6-tick wood crack-rise sensor samples,
+34 genuinely achieved motor-transition wood-crack outcome labels, and
+32 CUDA Q gradient steps using 84 protected successes across its THREE
+prior completed TRAIN source runs. Fully committed model cursor207,
+1,200 units, model556 updates. The next unique natural TRAIN world207
+began with no external handoff or target coordinates; the process and
+flock were still active. MCio sync I/O 2.255ms/game tick. Source
+`logs/fresh_stream_qwood_v2long1104.jsonl`. This is self-play TRAINING
+only, not heldout transfer or proven Minecraft speedrunner.
+
 ## New measured V1 collapse and V2 retained-self-success training (Nov 4)
 
 [Full audit and actual journal tags](V2_RARE_SUCCESS_REPLAY_AUDIT_2026_11_04.md).

@@ -25,10 +25,20 @@
 - [x] Versioned immutable V2 snapshot lineage: `qv2triplef1104` tracks
   52+23+9=84 actual player-known successes from THREE previous completed
   train sources; follow source cursors and seed split, NO heldout replay.
-- [ ] Start/inspect `qwood_v2long1104` V2 longer training: 100 fresh
-  1,200-unit survival worlds beginning at NEW TRAIN index206, with
-  84 previous successes protected plus new successful real actions,
-  32 new CUDA updates per committed world and strict versioned resume.
+- [x] LAUNCH `qwood_v2long1104` longer V2: max 100 fresh natural
+  1,200-unit worlds starting at previously unused TRAIN index206,
+  84 protected previous real successes, 32 CUDA Q updates per world,
+  20 GiB replay cap and strict versioned resume. Detached real Minecraft
+  Java process and held run lock independently verified.
+- [x] First new V2 long-train seed index206 committed: 1,200 units /
+  7,200 ticks, **5 real log pickups**, 34 true new wood-crack motor
+  outcome labels, 32 CUDA Q updates (524->556), exact checkpoint
+  cursor207, new seed index207 already launched.
+- [ ] Recheck the ongoing V2 long run without interrupting it, report
+  success/targeting trend by independent groups of new train worlds,
+  saved optimizer cursor, own inventory goals, performance and failures.
+  If complete: frozen multi-seed and multi-action-RNG controls versus
+  starting V2 and original Q before any further scale-up.
 - [ ] Frozen progress gate on MANY independent unseen natural seeds and
   sampled RNGs vs original Q/V1 final, matched random, and V2 pretraining.
 - [ ] Improve wood access, dropped item visibility, whole item/vanilla

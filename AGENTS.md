@@ -18,9 +18,10 @@ Latest frozen model `qv2triplef1104` preserves 84 actual own-achieved
 wood-crack motor successes across all THREE prior completed training runs
 (52+23+9). It is a practice skill, NOT a reliable full-game Any% agent.
 All previous V1/V2 experiment checkpoints and worlds are intact. Next:
-`qwood_v2long1104` protected 100-world V2 training starting at unused
-TRAIN seed index206; see `docs/NEXT_SESSION.md` for exact source chain,
-status, stop and resume. Then frozen multi-seed/alternate-RNG audit.
+`qwood_v2long1104` protected 100-world V2 training ACTUALLY RUNNING,
+first world206 committed 5 true logs and 32 CUDA updates, cursor207;
+new world207 started. See `docs/NEXT_SESSION.md` for exact source
+chain, fresh status, stop and resume. Then frozen multi-seed/alternate-RNG audit.
 
 ## NEWEST VERIFIED: conservative replay Q, real online CUDA self-play (Nov 3 local / Nov 4 UTC)
 

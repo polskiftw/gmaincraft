@@ -74,8 +74,33 @@ RNGs*, with actual newly acquired inventory item counts. Do not
 promote a skill based only on policy probabilities or successes in
 training worlds. Archive notes: [V2 audit](V2_RARE_SUCCESS_REPLAY_AUDIT_2026_11_04.md).
 
-**Current launch status:** prepared, awaiting independent process/journal
-verification. Do not infer that the job is running simply from these docs.
+**LAUNCH VERIFIED / FIRST REAL WORLD COMMITTED:** `qwood_v2long1104`
+was launched detached with exactly the 32-update, 100-new-world, V2
+schema configuration above. The launcher survived the invoking shell
+(parent PID 1), the REAL Minecraft Java client and CUDA learner ran,
+and the advisory flock was independently **HELD**. First train seed
+index206 `-8578009869789058631` completed all **1,200** six-tick units
+(7,200 Minecraft ticks), mined and actually picked up **5 logs**,
+with **56** player-visible same-wood crack-rise six-tick samples and
+**34** positive recorded motor transitions. The online updater used
+**84 protected historical true successes**, performed **32 new CUDA Q
+updates** (524->556), and committed the exact V2 outer+inner network,
+optimizer/RNG and cursor **207**, total **1,200** units. The next new
+train world index207 was already launched; neither full training nor
+held-out generalization is claimed. Real game I/O in first world was
+2.255ms/game tick. Source `logs/fresh_stream_qwood_v2long1104.jsonl`,
+ignored checkpoint `checkpoints/fresh_stream_qwood_v2long1104.pt`,
+player-only archive `data-local/experience/qwood_v2long1104/`.
+
+Detached launch console: `logs/qwood_v2long1104_detached.log`;
+real per-game console: `logs/fresh_treadmill_qwood_v2long1104_latest.log`.
+The project may finish, pause or crash BEFORE the next session; ALWAYS
+check the actual lock, journal and committed model cursor first. Never
+start a second trainer on the same run, never remove the `.lock` file,
+and do not silently change prior source/goal/action hyperparameters on
+resume. If it has finished at 120,000 units, freeze a new snapshot and
+evaluate independently, do not blindly add more identical training.
+
 
 ## Historical V1 Q replay run (COMPLETED, NOT ACTIVE)
 
