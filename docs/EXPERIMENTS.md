@@ -1,3 +1,17 @@
+## ACTIVE experimental extension: `qselfplay_v1_1104` first world verified
+
+A longer replay-Q self-play run was independently confirmed **detached,
+running in real Java Minecraft with advisory lock HELD**. First complete
+new TRAIN seed index2 `2449750809322325767` ran 1,200 game six-tick
+units / 7,200 Minecraft ticks with 451 ordinary policy decisions and
+actually acquired **2 spruce logs, 1 spruce sapling, 1 stick and 5 dirt**
+from its own player inventory records. 18 real own-visible crack-rise
+transition effects drove 64 new CUDA Q updates; checkpoint independently
+verified at episode cursor3, 1,200 units, 1,064 total Q optimizer updates.
+The next unique normal Minecraft seed index3 already started. This is
+TRAINING, not unseen success evidence. Read
+[NEXT_SESSION](NEXT_SESSION.md) for live status/stop/resume commands.
+
 ## Latest empirical audit: replay Q and resumed self-play, Nov 3 local / Nov 4 UTC
 
 [Details, commands, saved source journals and failure caveats](REPLAY_Q_LIVE_LEARNING_2026_11_04.md).

@@ -20,6 +20,11 @@
   (avoid original V9 training seeds0/1); 240,000 cumulative units, up to
   200 fresh 1,200-unit worlds, bounded 20 GiB replay, 64 GPU Q updates
   per world with observed successes; verify launcher/JVM and held lock.
+- [x] Verify the FIRST committed `qselfplay_v1_1104` real new train world:
+  451 real neural decisions, actual 2 spruce logs + 1 sapling + 1 stick
+  + 5 dirt, 18 true crack-rise replay outcomes and 64 CUDA Q updates.
+  Saved checkpoint cursor3, 1,200 units, 1,064 Q optimizer steps;
+  next world index3 started under the held lock.
 - [ ] Recheck the detached job and its REAL committed episodes/optimizer
   updates after the longer session; resume safely only if the lock is free.
 - [ ] Freeze later Q weights and compare on many NEW unbiased heldout seeds,

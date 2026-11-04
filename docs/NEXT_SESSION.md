@@ -42,7 +42,16 @@ with `start` and the exact configuration above, Nov 4 UTC. Independent
 shell connection confirmed the command survived shell exit (parent PID 1),
 the advisory flock **HELD**, and the REAL Minecraft Java client running
 alongside the collector (not merely a shell launcher). Startup checkpoint
-and stream journal were already present. It may still finish, crash or stop
+and stream journal were already present. **FIRST REAL WORLD NOW COMMITTED:** source TRAIN seed index2
+`2449750809322325767`, 1,200 six-tick units / 7,200 true Minecraft
+ticks, **451 ordinary neural actions**, 2 spruce logs, 1 spruce sapling,
+1 stick and 5 dirt items verified by replayed actual own inventory.
+The first world provided 18 genuine own crack-rise transitions, enabled
+64 new CUDA Q optimizer updates (1,000 -> 1,064), and fully committed
+checkpoint `next_episode=3`, `decisions=1200`. The NEXT world
+(index3) started while the collector's lock was still held. Archived
+report `tools/inspect-experience.py qselfplay_v1_1104` verified 1 complete
+replay and actual item gains. The process is NOT complete. It may still finish, crash or stop
 before the next agent session: determine current status from its actual
 journal and checkpoint before attempting any `resume`. Never run `start`
 twice or remove a held `.lock` to evade a live trainer.

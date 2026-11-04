@@ -153,7 +153,16 @@ been archived, 32 prior worlds of replay, and 20 GiB rolling retention.
 An independent connector invocation confirmed the detached process,
 held advisory lock, live real Minecraft JVM and initial checkpoint. For
 its CURRENT actual status or safe recovery, follow [NEXT_SESSION](NEXT_SESSION.md).
-Launch is not proof of completed training or improvement.
+**First long-job world already verified:** new TRAIN seed index2
+`2449750809322325767`, 1,200 six-tick units / 7,200 game ticks,
+451 neural choices, 2 actual `minecraft:spruce_log`, 1 spruce sapling,
+1 stick and 5 dirt inventory gains. Player-known replay for this episode
+has 18 actual observed crack-rise transitions and prompted 64 new CUDA
+Q training updates (1,000 -> 1,064). Exact checkpoint cursor3 and
+player-only archived `.npz` were reopened. The next unique seed3 began
+running with the active advisory lock. This is self-play TRAINING, **not**
+heldout validation or evidence of reliable log gathering; monitor later
+independent frozen runs before drawing performance conclusions.
 
 Do not rerun the `start` examples with existing tags; the wrappers refuse
 replacing old logs/weights. The longer session's exact real tag and status
