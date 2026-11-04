@@ -148,7 +148,14 @@ class MCioAgentBridge:
         return int(self._stats[category][item])
 
     def apply(self, action: AgentAction, *, request_surface_objects=False,
-              request_mining_feedback=False):
+              request_mining_feedback=False, return_view=True):
+        """Send normal actions and read every synchronized game tick.
+
+        Memory-only callers can set return_view=False to avoid decoding and
+        copying an unused RGB image. This does NOT stop MCio from capturing or
+        transmitting a rendered frame; that requires a separate mod/protocol
+        change. The default preserves legacy screenshot-policy behavior.
+        """
         from mcio_ctrl import network
         if not isinstance(action, AgentAction):
             raise TypeError('Agent must return an AgentAction')
@@ -176,7 +183,7 @@ class MCioAgentBridge:
                 raise RuntimeError('Missing or invalid MCio observation')
             self.packet = observed
             self._stats.update_cache(observed)
-        return self.view()
+        return self.view() if return_view else None
 
 
 # Only a controller/evaluator uses the privileged inventory packet to score.

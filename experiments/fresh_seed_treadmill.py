@@ -410,7 +410,7 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
             bridge=MCioAgentBridge(ctrl,initial)
             memory.ensure_world(0,bridge.player_knowledge(),bridge._stats)
             bridge.apply(AgentAction(ticks=1),request_surface_objects=True,
-                         request_mining_feedback=True)
+                         request_mining_feedback=True,return_view=False)
             bad_counter=[0]
             state,player,surfaces=read_step(bridge,memory,0,bad_counter=bad_counter,
                                                 observation_schema=policy_schema(args),
@@ -464,7 +464,8 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                         look_dy=action.look_dy if spent_ticks==0 else 0.,
                         ticks=chunk_ticks)
                     before=time.perf_counter()
-                    bridge.apply(chunk,request_surface_objects=True,request_mining_feedback=True)
+                    bridge.apply(chunk,request_surface_objects=True,request_mining_feedback=True,
+                                 return_view=False)
                     elapsed_io+=time.perf_counter()-before
                     current_frame=bridge.packet.frame_sequence
                     if previous_frame is not None and current_frame<=previous_frame:

@@ -327,7 +327,7 @@ def main(argv=None):
                         bridge=MCioAgentBridge(ctrl,initial)
                         player=fresh_memory(bridge,memory,index)
                         bridge.apply(AgentAction(ticks=1),request_surface_objects=True,
-                                     request_mining_feedback=True)
+                                     request_mining_feedback=True,return_view=False)
                         state,player,surface=read_step(bridge,memory,index,
                                                         bad_counter=bad_counter)
                         print('NATURAL WORLD LIVE',json.dumps(dict(source=args.sources[index],
@@ -347,7 +347,7 @@ def main(argv=None):
                             action=action_from_heads(actions)
                             t0=time.perf_counter()
                             bridge.apply(action,request_surface_objects=True,
-                                         request_mining_feedback=True)
+                                         request_mining_feedback=True,return_view=False)
                             io=time.perf_counter()-t0
                             elapsed_io+=io
                             last_io_ms=round(1000*io/action.ticks,3)

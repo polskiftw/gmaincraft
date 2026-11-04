@@ -1,3 +1,7 @@
+## NEWEST: Memory-as-eyes audit (Nov 4)
+
+Read [MEMORY_AS_EYES_AUDIT_2026_11_04.md](MEMORY_AS_EYES_AUDIT_2026_11_04.md). Active policy does not use RGB, but MCio still captures and transmits it. New opt-in return_view=False eliminates unused Python decoding/copying for memory-only training with legacy compatibility; full frame-free MCio requires a new synchronized protocol. Verify throughput and independently calibrate camera visibility. The 120k training run is completed; heldout assessment remains.
+
 ## NEWEST: 200-world Q failure analyzed; V2 rare-success learner validated (Nov 4, 2026)
 
 Read [V2_RARE_SUCCESS_REPLAY_AUDIT_2026_11_04.md](V2_RARE_SUCCESS_REPLAY_AUDIT_2026_11_04.md)

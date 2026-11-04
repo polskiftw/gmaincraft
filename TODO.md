@@ -1,3 +1,14 @@
+## Memory-as-eyes audit, November 4
+
+- [x] Inspect active model inputs, screenshot flow and known visibility failures.
+- [x] Skip unnecessary Python RGB conversion in memory-only training while preserving legacy RGB path.
+- [ ] Benchmark real-game before/after throughput and packet costs.
+- [ ] Design optional RGB-free MCio protocol with capture-independent synchronization; test against original.
+- [ ] Calibrate visibility across transparent/partial occluders, lighting, FOV and object size.
+- [ ] Add bounded genuinely visible dropped item entity representation.
+- [ ] Freeze and evaluate completed long Q run on heldout seeds and independent action RNG.
+- [ ] Investigate post-completion launcher segfault separately.
+
 ## CURRENT NOV 4: finished 200-world V1, V2 rare own-success learner / durable lineage
 
 - [x] V1 `qselfplay_v1_1104` finished 200 natural train worlds,
