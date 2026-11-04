@@ -13,7 +13,7 @@ sys.path.insert(0,str(ROOT/'src'))
 sys.path.insert(0,str(ROOT/'experiments'))
 from gmaincraft.fresh_seed_schedule import SeedSchedule
 from gmaincraft.fresh_world_manager import FreshWorldManager,names
-from gmaincraft.natural_online_policy import NaturalPPO,PERSISTENCE_SCHEMA,PERSISTENCE_HEAD_SIZES
+from gmaincraft.natural_online_policy import NaturalPPO,PERSISTENCE_SCHEMA,PERSISTENCE_HEAD_SIZES,WOOD_ENGAGEMENT_SCHEMA
 from fresh_seed_treadmill import (parse_args,metadata,save_json_atomic,
     save_model,restore,recover_inflight,repair_jsonl_tail,quarantine_pending_file)
 
@@ -70,6 +70,51 @@ class StreamRecoveryTests(unittest.TestCase):
             self.assertEqual(restore(path,restored,meta),(4,960,{'new_mined_blocks':3}))
             with self.assertRaises(ValueError):restore(path,restored,metadata(old))
             with self.assertRaises(ValueError):restore(path,NaturalPPO(device='cpu'),meta)
+
+    def test_v5_reward_profile_new_exact_resume_without_mutating_v4(self):
+        old=parse_args(['--run-tag','oldv4','--decisions','120',
+                        '--episode-decisions','120','--update-every','32',
+                        '--reward-profile','wood_persistence_v4'])
+        new=parse_args(['--run-tag','targetv5','--decisions','120',
+                        '--episode-decisions','120','--update-every','32',
+                        '--reward-profile','wood_target_v5'])
+        self.assertEqual(metadata(old)['policy_schema'],PERSISTENCE_SCHEMA)
+        self.assertEqual(metadata(new)['policy_schema'],PERSISTENCE_SCHEMA)
+        self.assertNotEqual(metadata(old),metadata(new))
+        with tempfile.TemporaryDirectory() as td:
+            path=pathlib.Path(td)/'newv5.pt'
+            model=NaturalPPO(device='cpu',schema=PERSISTENCE_SCHEMA,
+                             action_sizes=PERSISTENCE_HEAD_SIZES)
+            save_model(path,model,metadata(new),1,120,{'wood_inventory_gain':1})
+            other=NaturalPPO(device='cpu',schema=PERSISTENCE_SCHEMA,
+                             action_sizes=PERSISTENCE_HEAD_SIZES)
+            self.assertEqual(restore(path,other,metadata(new))[1],120)
+            with self.assertRaises(ValueError):restore(path,other,metadata(old))
+
+    def test_v6_player_visible_schema_is_not_silent_v5_checkpoint_resume(self):
+        v5=parse_args(['--run-tag','v5stay','--reward-profile','wood_target_v5'])
+        v6=parse_args(['--run-tag','v6fresh','--reward-profile','wood_engagement_v6'])
+        self.assertEqual(metadata(v6)['policy_schema'],WOOD_ENGAGEMENT_SCHEMA)
+        self.assertEqual(metadata(v5)['policy_schema'],PERSISTENCE_SCHEMA)
+        self.assertNotEqual(metadata(v5),metadata(v6))
+        with tempfile.TemporaryDirectory() as td:
+            dest=pathlib.Path(td)/'v6.pt'
+            fresh=NaturalPPO(device='cpu',schema=WOOD_ENGAGEMENT_SCHEMA,
+                             action_sizes=PERSISTENCE_HEAD_SIZES,entropy_coef=.06)
+            save_model(dest,fresh,metadata(v6),1,120,{'new_wood_mined':0})
+            other=NaturalPPO(device='cpu',schema=WOOD_ENGAGEMENT_SCHEMA,
+                             action_sizes=PERSISTENCE_HEAD_SIZES)
+            self.assertEqual(restore(dest,other,metadata(v6))[1],120)
+            with self.assertRaises(ValueError):restore(dest,other,metadata(v5))
+
+    def test_eval_rollout_rng_is_not_a_policy_observation(self):
+        a=parse_args(['--run-tag','rng_a','--mode','eval','--control','uniform_random',
+                      '--decisions','120','--policy-seed','731117'])
+        b=parse_args(['--run-tag','rng_b','--mode','eval','--control','uniform_random',
+                      '--decisions','120','--policy-seed','813777'])
+        self.assertEqual(a.seed_root,b.seed_root)
+        self.assertNotEqual(metadata(a)['policy_seed'],metadata(b)['policy_seed'])
+        self.assertNotIn('policy_seed',','.join(__import__('gmaincraft.natural_online_policy',fromlist=['SELF_FEATURES']).SELF_FEATURES))
 
     def test_heldout_seed_offset_cannot_contaminate_training(self):
         eval_args=parse_args(['--run-tag','holdout2','--mode','eval','--control','uniform_random',

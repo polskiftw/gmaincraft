@@ -1,5 +1,10 @@
 # AGENTS.md — project instructions for coding assistants
 
+## Latest completed continuation: V5/V6 wood experiments and CUDA recovery
+
+Read [`docs/V5_V6_NATURAL_WOOD_EXPERIMENT_AUDIT_2026_11_03.md`](docs/V5_V6_NATURAL_WOOD_EXPERIMENT_AUDIT_2026_11_03.md) FIRST. CUDA inside the restarted isolated shell was restored by host loading `nvidia_uvm`; actual torch CUDA compute passed. Two separate scratch-trained 6,000-unit/10-seed real survival experiments finished: V5 first-crosshair wood reward, 41 CUDA updates, 149 mined blocks, **1 true wood collected during training**; V6 extra already-visible wood features and one-time wood attack engagement, 41 updates, 147 mined blocks, **0 wood**. V5 default sampled frozen on eval seeds6-9 got wood on 2/4, but **independent policy RNG gave 0/4 and greedy policy 0**, so this is NOT reliable learning. V6 frozen seeds6-9 got 0 wood. The real failure remains continuous visible-wood targeting/attack and stage progression, not raw CUDA speed. **143 pure tests pass**. Next should be a new scoped experiment, NOT blindly repeating V5/V6, preserving all ignored checkpoints/worlds. Read the report for exact journals/controls.
+
+
 ## Current continuation: completed V4 long-run audit (November 3)
 
 Read `docs/V4_24000_TRAINING_AND_HELDOUT_AUDIT.md` **first**. The old recommendation to resume `persistpilot1103` to 24,000 is now COMPLETE; do not rerun it. Forty train seeds produced 3 natural wood inventory pickups, but two further heldout seeds show grown frozen V4 0 wood vs uniform random 1. Long-action saturation is a concern. Current sandbox CUDA unavailable, though CPU frozen evaluation works with `GMAINCRAFT_EVAL_DEVICE=cpu`; avoid host GPU changes. Next improve wood targeting and stationary attack persistence under a new exact versioned train/frozen contract; preserve original checkpoints and data.

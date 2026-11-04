@@ -6,6 +6,7 @@ sys.path.insert(0,str(ROOT/'src'))
 from gmaincraft.natural_online_policy import (NaturalPPO,NaturalTransition,
      SCHEMA,SELF_FEATURES,MAX_OBJECTS,ID_BYTES,wood_id,observe,action_from_heads,
      PERSISTENCE_SCHEMA,PERSISTENCE_HEAD_SIZES,PERSISTENCE_DURATIONS,
+     WOOD_ENGAGEMENT_SCHEMA,WOOD_ENGAGEMENT_SELF_FEATURES,
      action_from_persistence_heads)
 from gmaincraft.player_knowledge import PlayerKnowledgeV1,OwnedItem
 from gmaincraft.mcio_status import PlayerStatusV1,CrosshairBlock
@@ -132,6 +133,51 @@ class NaturalPolicyTests(unittest.TestCase):
         with self.assertRaises(ValueError):old.restore(trainer.state())
         with self.assertRaises(ValueError):trainer.restore(old.state())
         with self.assertRaises(ValueError):NaturalPPO(device='cpu',schema=PERSISTENCE_SCHEMA)
+
+    def test_v6_explicit_wood_features_are_from_same_visible_records(self):
+        from dataclasses import replace
+        oak=sample('minecraft:oak_log')
+        # Reconstruct only from the SAME typed known player/status/camera.
+        player=PlayerKnowledgeV1('player_knowledge_v1',(5.5,69.0,-3.5),0.,14.,20.,(),(),(),())
+        status=PlayerStatusV1('gmaincraft_status_v1',20,5.,0,300,0,
+                             'minecraft:overworld',
+                             CrosshairBlock('minecraft:oak_log',(6,69,-1),'north',2.4))
+        surface=SurfaceObjectsV1('gmaincraft_surface_objects_v1',13,9,70.,64.,(
+            ProjectedBlockV1('minecraft:oak_log',(6,69,-1),('north',),2.5,15,0,(50,51),2/117,
+                             (6/13,4/9),(.4,.45,.6,.55)),))
+        v6=observe(player,status,surface,None,start_xyz=(5.5,69,-3.5),
+                   schema=WOOD_ENGAGEMENT_SCHEMA)
+        self.assertEqual(v6.own.shape,(len(WOOD_ENGAGEMENT_SELF_FEATURES),))
+        self.assertEqual(tuple(v6.own[-2:]),(1.,1/24))
+        missed=observe(player,replace(status,crosshair_block=None),surface,None,
+                       start_xyz=(5.5,69,-3.5),schema=WOOD_ENGAGEMENT_SCHEMA)
+        self.assertEqual(missed.own[-2],0.)
+        self.assertEqual(missed.own[-1],1/24)
+        legacy=observe(player,status,surface,None,start_xyz=(5.5,69,-3.5))
+        self.assertEqual(legacy.own.shape,(len(SELF_FEATURES),))
+        with self.assertRaises(ValueError):
+            observe(player,status,surface,None,start_xyz=(5.5,69,-3.5),schema='guess')
+
+    def test_v6_scratch_model_feature_schema_and_strict_roundtrip(self):
+        trainer=NaturalPPO(device='cpu',seed=702,schema=WOOD_ENGAGEMENT_SCHEMA,
+                           action_sizes=PERSISTENCE_HEAD_SIZES,entropy_coef=.06)
+        # Shape must match V6, even if original v4/v5 numeric features are similar.
+        state=sample()
+        from dataclasses import replace
+        v6=replace(state,own=np.concatenate([state.own,np.array([1.,1/24],np.float32)]))
+        act,logp,value=trainer.act(v6)
+        self.assertEqual(len(act),4)
+        self.assertEqual(trainer.state()['feature_order'],WOOD_ENGAGEMENT_SELF_FEATURES)
+        self.assertEqual(trainer.update([NaturalTransition(v6,act,.4,value,logp,24,False)]*4)['update'],1)
+        saved=trainer.state()
+        restored=NaturalPPO(device='cpu',seed=703,schema=WOOD_ENGAGEMENT_SCHEMA,
+                            action_sizes=PERSISTENCE_HEAD_SIZES)
+        restored.restore(saved)
+        self.assertEqual(restored.act(v6,greedy=True),trainer.act(v6,greedy=True))
+        prior=NaturalPPO(device='cpu',schema=PERSISTENCE_SCHEMA,
+                         action_sizes=PERSISTENCE_HEAD_SIZES)
+        with self.assertRaises(ValueError):prior.restore(saved)
+        with self.assertRaises(ValueError):trainer.restore(prior.state())
 
     def test_cuda_checkpoint_roundtrip_device_safe(self):
         import torch

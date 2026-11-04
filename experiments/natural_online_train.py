@@ -189,7 +189,7 @@ def fresh_memory(bridge,memory,index):
     return player
 
 
-def read_step(bridge,memory,index,*,bad_counter):
+def read_step(bridge,memory,index,*,bad_counter,observation_schema=SCHEMA):
     player=bridge.player_knowledge()
     status=bridge.player_status()
     surfaces=bridge.surface_objects()
@@ -209,7 +209,7 @@ def read_step(bridge,memory,index,*,bad_counter):
     visit=memory.cell_visits(index,player)
     state=observe(player,status,surfaces,mining,start_xyz=memory.starts[index],
                   last_action=memory.last_actions[index],visit_count=visit,
-                  elapsed_ticks=memory.ticks[index])
+                  elapsed_ticks=memory.ticks[index],schema=observation_schema)
     return state,player,surfaces
 
 

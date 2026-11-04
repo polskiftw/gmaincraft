@@ -1,3 +1,14 @@
+## Latest priorities: V5/V6 complete and CUDA healthy (Nov 3)
+
+- [x] Verified after Gentoo Shell bridge restart: `nvidia_uvm` node available and PyTorch CUDA tensor compute on RTX 4070 SUPER passed.
+- [x] V5 `wood_target_v5`: 10 true fresh survival worlds, 6,000 units, 41 updates, training one actual collected wood; frozen default RNG 2/4 wood on heldout seeds6-9.
+- [x] V6 `wood_engagement_v6`: new schema explicitly labels only visible wood in current first-hit camera and crosshair; 10 natural worlds, 6,000 units, 41 updates, zero training wood and 0/4 heldout wood.
+- [x] Cross-check V5 different action RNG and greedy: 0/4 alternative sampled RNG, 0/2 greedy on heldout seeds6-7. Reliable learned wood harvesting NOT established.
+- [x] All 143 pure tests, including CUDA test, passed. Historical models/checkpoints preserved.
+- [ ] NEXT major work: diagnose and teach sustained correct target + attack + stable camera and actual growing visible crack stage (no scripted commands/aim).
+- [ ] On a newly versioned agent, evaluate many unseen Minecraft seeds with several independent *policy* RNG seeds, comparing actual wood inventory to current V5/V6/V4 and random; watch for greedy collapse.
+- [ ] Only after independent real inventory gains are robust should the next long 24k+ training round start; no repeating previous objectives blindly.
+
 ## Current November 3 priorities after completed V4 24k run
 
 - [x] Inspect `persistpilot1103` complete journal: 40 worlds, 3 true wood inventory pickups, no broad generalization claim.

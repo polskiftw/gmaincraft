@@ -4,21 +4,27 @@
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
-if (( $# < 3 || $# > 7 )); then
-  echo 'Usage: tools/run-fresh-evaluation.sh TRAIN_RUN|- EVAL_TAG TOTAL_DECISIONS [policy_sampled|policy_greedy|uniform_random|untrained] [EPISODE_DECISIONS] [REWARD_PROFILE] [EVAL_SEED_START]' >&2
+if (( $# < 3 || $# > 8 )); then
+  echo 'Usage: tools/run-fresh-evaluation.sh TRAIN_RUN|- EVAL_TAG TOTAL_DECISIONS [policy_sampled|policy_greedy|uniform_random|untrained] [EPISODE_DECISIONS] [REWARD_PROFILE] [EVAL_SEED_START] [EVAL_ACTION_RNG_SEED]' >&2
   exit 2
 fi
 training="$1"; tag="$2"; decisions="$3"; mode="${4:-policy_sampled}"
 horizon="${5:-1200}"
 reward_profile="${6:-wood_discovery_v2}"
 eval_seed_start="${7:-0}"
+# Optional independent rollout RNG for repeated frozen comparisons. This
+# changes sampled actions, NOT model weights or the Minecraft seed stream.
+eval_action_rng_seed="${8:-731117}"
+if [[ ! "$eval_action_rng_seed" =~ ^[0-9]{1,15}$ ]]; then
+  echo "Invalid evaluation action RNG seed" >&2; exit 2
+fi
 # Preserve the CUDA default, but permit safe CPU-only frozen inference
 # when an isolated shell cannot initialize the NVIDIA CUDA device.
 eval_device="${GMAINCRAFT_EVAL_DEVICE:-cuda}"
 if [[ "$eval_device" != cuda && "$eval_device" != cpu && "$eval_device" != auto ]]; then
   echo "Invalid GMAINCRAFT_EVAL_DEVICE: use cuda, cpu, or auto" >&2; exit 2
 fi
-if [[ "$reward_profile" != wood_discovery_v2 && "$reward_profile" != wood_progress_v3 && "$reward_profile" != wood_persistence_v4 ]]; then echo "Invalid reward profile" >&2; exit 2; fi
+if [[ "$reward_profile" != wood_discovery_v2 && "$reward_profile" != wood_progress_v3 && "$reward_profile" != wood_persistence_v4 && "$reward_profile" != wood_target_v5 && "$reward_profile" != wood_engagement_v6 ]]; then echo "Invalid reward profile" >&2; exit 2; fi
 if [[ ! "$eval_seed_start" =~ ^[0-9]{1,9}$ ]]; then
   echo "Invalid held-out seed start index" >&2; exit 2
 fi
@@ -42,11 +48,11 @@ if [[ -e "$journal" ]];then echo 'Refusing to overwrite existing evaluation repo
 console="logs/fresh_eval_${tag}_$(date +%Y%m%d_%H%M%S)_$$.console"
 args=(--mode eval --control "$mode" --run-tag "$tag" --decisions "$decisions"
       --eval-seed-start "$eval_seed_start"
-      --episode-decisions "$horizon" --seed-root 917211 --policy-seed 731117
+      --episode-decisions "$horizon" --seed-root 917211 --policy-seed "$eval_action_rng_seed"
       --reward-profile "$reward_profile" --retain-worlds 2 --device "$eval_device" --visible)
 if [[ "$training" != '-' ]];then args+=(--model-run "$training");fi
 printf 'Frozen evaluation: %s, %s, %s decisions; fresh held-out Minecraft seeds\n' "$training" "$mode" "$decisions"
-printf 'Frozen policy compute device: %s\n' "$eval_device"
+printf 'Frozen policy compute device: %s; rollout RNG: %s\n' "$eval_device" "$eval_action_rng_seed"
 set +e
 GMAINCRAFT_GAMESCOPE_BACKEND="${GMAINCRAFT_GAMESCOPE_BACKEND:-headless}" \
   "$root/tools/run-mcio-viewer.sh" "$root/.venv/bin/python" -u \

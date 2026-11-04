@@ -30,6 +30,7 @@ HEAD_SIZES=(len(MOVE_KEYS),len(LOOK_DELTAS),2)
 PERSISTENCE_DURATIONS=(6,24,72)
 PERSISTENCE_HEAD_SIZES=HEAD_SIZES+(len(PERSISTENCE_DURATIONS),)
 PERSISTENCE_SCHEMA='natural_memory_online_v2_first_hit_objects_ppo_variable_duration'
+WOOD_ENGAGEMENT_SCHEMA='natural_memory_online_v3_visible_wood_engagement_ppo_variable_duration'
 SELF_FEATURES=(
  'player_x_div_1024','player_y_div_128','player_z_div_1024',
  'relative_x_from_start_div_64','relative_z_from_start_div_64',
@@ -43,6 +44,10 @@ SELF_FEATURES=(
  'local_visits_log_div_8','own_elapsed_ticks_div_72000',
  'visible_object_count_div_24',
 )
+# V6 only: the player can recognize a wood block already under their
+# vanilla crosshair / within the SAME top-24 first-hit visible sample.
+# These booleans are not a world scan, target location or steering command.
+WOOD_ENGAGEMENT_SELF_FEATURES=SELF_FEATURES+('crosshair_is_wood','visible_wood_fraction')
 OBJECT_FEATURES=(
  'relative_dx_div_32','relative_dy_div_32','relative_dz_div_32',
  'screen_u_2_minus_1','screen_v_2_minus_1','distance_div_64',
@@ -75,12 +80,14 @@ class NaturalObservation:
 
 
 def observe(player,status,surface,mining,*,start_xyz,last_action=(0,0,0),
-            visit_count=0,elapsed_ticks=0):
+            visit_count=0,elapsed_ticks=0,schema=SCHEMA):
     if not isinstance(player,PlayerKnowledgeV1) or not isinstance(status,PlayerStatusV1) \
             or not isinstance(surface,SurfaceObjectsV1):
         raise TypeError('Expected real typed player/status/first-hit surfaces')
     if mining is not None and not isinstance(mining,MiningFeedbackV1):
         raise TypeError('Mining feedback must be a typed own-player reading or missing')
+    if schema not in (SCHEMA,PERSISTENCE_SCHEMA,WOOD_ENGAGEMENT_SCHEMA):
+        raise ValueError('Unknown versioned natural observation schema')
     if len(start_xyz)!=3 or any(not np.isfinite(v) for v in start_xyz):
         raise ValueError('Invalid remembered starting coordinates')
     if (len(last_action)!=3 or any(type(i) is not int or not 0<=i<HEAD_SIZES[j]
@@ -94,6 +101,9 @@ def observe(player,status,surface,mining,*,start_xyz,last_action=(0,0,0),
     owned=sum(slot.count for slot in player.main_inventory+player.offhand_inventory)
     owned_logs=sum(slot.count for slot in player.main_inventory+player.offhand_inventory
                    if wood_id(slot.item_id))
+    # The feature only summarizes the same visible first-hit records already
+    # available to the actor. An unobserved block cannot enter this selection.
+    ranked=sorted(surface.objects,key=lambda x:(-len(x.ray_indices),x.nearest_distance,x.xyz))[:MAX_OBJECTS]
     def bound(value,limit=1.):return float(np.clip(value,-limit,limit))
     numbers=(
         bound(xyz[0]/1024,32),bound(xyz[1]/128,4),bound(xyz[2]/1024,32),
@@ -112,8 +122,13 @@ def observe(player,status,surface,mining,*,start_xyz,last_action=(0,0,0),
         float(last_action[2]),min(log1p(visit_count)/8,1),
         min(elapsed_ticks/72000,4),min(len(surface.objects)/MAX_OBJECTS,4),
     )
+    feature_order=(WOOD_ENGAGEMENT_SELF_FEATURES if schema==WOOD_ENGAGEMENT_SCHEMA
+                   else SELF_FEATURES)
+    if schema==WOOD_ENGAGEMENT_SCHEMA:
+        numbers+= (float(target is not None and wood_id(target.block_id)),
+                   sum(wood_id(obj.block_id) for obj in ranked)/MAX_OBJECTS)
     own=np.asarray(numbers,dtype=np.float32)
-    if own.shape!=(len(SELF_FEATURES),) or not np.isfinite(own).all():
+    if own.shape!=(len(feature_order),) or not np.isfinite(own).all():
         raise ValueError('Invalid own-player numeric features')
     surface_ids=np.zeros((MAX_OBJECTS,ID_BYTES),dtype=np.uint8)
     surface_data=np.zeros((MAX_OBJECTS,len(OBJECT_FEATURES)),dtype=np.float32)
@@ -121,7 +136,6 @@ def observe(player,status,surface,mining,*,start_xyz,last_action=(0,0,0),
     # Model budget is top 24 first-hit block surfaces, ranked by projected ray
     # coverage then distance. This is a finite input size, NOT an assertion
     # that other block surfaces are invisible. No hidden world scan.
-    ranked=sorted(surface.objects,key=lambda x:(-len(x.ray_indices),x.nearest_distance,x.xyz))[:MAX_OBJECTS]
     for idx,obj in enumerate(ranked):
         dx,dy,dz=(obj.xyz[j]-xyz[j] for j in range(3))
         u,v=obj.screen_center_uv
@@ -191,22 +205,27 @@ class NaturalPPO:
             raise RuntimeError('Requested policy accelerator unavailable')
         if (not 1<=epochs<=8 or not 8<=minibatch<=512 or not 0<=entropy_coef<=.2 or
             (schema,tuple(action_sizes)) not in ((SCHEMA,HEAD_SIZES),
-                                                 (PERSISTENCE_SCHEMA,PERSISTENCE_HEAD_SIZES))):
+                                                 (PERSISTENCE_SCHEMA,PERSISTENCE_HEAD_SIZES),
+                                                 (WOOD_ENGAGEMENT_SCHEMA,PERSISTENCE_HEAD_SIZES))):
             raise ValueError('Invalid PPO hyperparameters or versioned motor schema')
         self.schema=schema
+        self.feature_order=(WOOD_ENGAGEMENT_SELF_FEATURES if schema==WOOD_ENGAGEMENT_SCHEMA
+                            else SELF_FEATURES)
         self.action_sizes=tuple(action_sizes)
         self.torch=torch
         self.device=torch.device(device)
         torch.manual_seed(seed)
 
         class Network(nn.Module):
-            def __init__(self):
+            def __init__(self,feature_order):
                 super().__init__()
+                self_features=feature_order
+                self.self_features=self_features
                 self.chars=nn.Embedding(257,16,padding_idx=0)
                 self.object=nn.Sequential(nn.Linear(16+len(OBJECT_FEATURES),64),nn.Tanh(),
                                           nn.Linear(64,64),nn.Tanh())
                 self.attention=nn.Linear(64,1)
-                self.fuse=nn.Sequential(nn.Linear(len(SELF_FEATURES)+16+128,128),nn.Tanh(),
+                self.fuse=nn.Sequential(nn.Linear(len(self_features)+16+128,128),nn.Tanh(),
                                          nn.Linear(128,128),nn.Tanh())
                 self.heads=nn.ModuleList([nn.Linear(128,n) for n in action_sizes])
                 self.value=nn.Linear(128,1)
@@ -231,7 +250,7 @@ class NaturalPPO:
                 return tuple(head(x) for head in self.heads),self.value(x).squeeze(-1)
 
 
-        self.net=Network().to(self.device)
+        self.net=Network(self.feature_order).to(self.device)
         self.optimizer=torch.optim.Adam(self.net.parameters(),lr=learning_rate,eps=1e-5)
         self.epochs=epochs
         self.minibatch=minibatch
@@ -298,7 +317,7 @@ class NaturalPPO:
 
     def state(self):
         torch=self.torch
-        return dict(schema=self.schema,feature_order=SELF_FEATURES,object_order=OBJECT_FEATURES,
+        return dict(schema=self.schema,feature_order=self.feature_order,object_order=OBJECT_FEATURES,
                     action_sizes=self.action_sizes,net=self.net.state_dict(),
                     optimizer=self.optimizer.state_dict(),updates=self.updates,
                     torch_rng=torch.get_rng_state(),
@@ -306,7 +325,7 @@ class NaturalPPO:
                     seed=self.seed)
 
     def restore(self,state,*,optimizer=True):
-        if state['schema']!=self.schema or tuple(state['feature_order'])!=SELF_FEATURES or \
+        if state['schema']!=self.schema or tuple(state['feature_order'])!=self.feature_order or \
                 tuple(state['object_order'])!=OBJECT_FEATURES or tuple(state['action_sizes'])!=self.action_sizes:
             raise ValueError('Incompatible natural-memory PPO schema or action layout')
         self.net.load_state_dict(state['net'])

@@ -83,7 +83,7 @@ class NaturalSessionMemory:
     def accrue(self,index,player,surface,stats,action,ticks,*,death=False,
                reward_profile='explore_v1'):
         if index not in self.visits:raise RuntimeError('Must open real world first')
-        if reward_profile not in ('explore_v1','wood_discovery_v2'):
+        if reward_profile not in ('explore_v1','wood_discovery_v2','wood_target_v5','wood_engagement_v6'):
             raise ValueError('Unknown natural exploration reward version')
         cell=self.cell(player)
         visits=self.visits[index]
@@ -128,13 +128,29 @@ class NaturalSessionMemory:
         # No scripted goal bearing/distance reward. Small curiosity for
         # actually entering unvisited territory, plus first-hit surfaces;
         # real vanilla block events and inventory are distinct external goals.
-        curiosity=.65*fresh_cell+.018*min(seen_new,6)
-        # Wood sighting reward is from actual first-hit CAMERA surfaces only;
-        # never a fixture target, path oracle or loaded-chunk lookup. Each
-        # exact visible block can earn this once, not by staring repeatedly.
-        wood_sighting=(.32*min(seen_new_wood,6) if
-                        reward_profile=='wood_discovery_v2' else 0.)
-        task_reward=.09*min(new_mined,3)+1.8*min(new_wood_mined,3)+7.*min(inventory_gain,3)
+        if reward_profile=='wood_engagement_v6':
+            # V6: genuine player-visible contact, mining and pickup must
+            # dominate passive scanning. Both contact and attack are paid
+            # separately, once per observed block, in the live loop.
+            curiosity=.05*fresh_cell+.002*min(seen_new,6)
+            wood_sighting=.08*min(seen_new_wood,6)
+            task_reward=(.015*min(new_mined,3)+12.*min(new_wood_mined,3)
+                         +40.*min(inventory_gain,3))
+        elif reward_profile=='wood_target_v5':
+            # V5: make actual wood targeting/breaking/pickup more important
+            # than mowing through unrelated terrain. All reward events are
+            # from the own-player/camera-visible inputs or actual own stats.
+            curiosity=.12*fresh_cell+.008*min(seen_new,6)
+            wood_sighting=.40*min(seen_new_wood,6)
+            task_reward=(.02*min(new_mined,3)+5.*min(new_wood_mined,3)
+                         +20.*min(inventory_gain,3))
+        else:
+            curiosity=.65*fresh_cell+.018*min(seen_new,6)
+            # Wood sighting reward is from actual first-hit CAMERA surfaces
+            # only, deduplicated by block identity and position.
+            wood_sighting=(.32*min(seen_new_wood,6) if
+                            reward_profile=='wood_discovery_v2' else 0.)
+            task_reward=.09*min(new_mined,3)+1.8*min(new_wood_mined,3)+7.*min(inventory_gain,3)
         reward=curiosity+wood_sighting+task_reward-.025-(3. if death else 0.)
         record=dict(fresh_cell=fresh_cell,new_visible_surfaces=seen_new,
                     new_visible_wood=seen_new_wood,visible_wood_count=visible_wood_count,

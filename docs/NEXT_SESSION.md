@@ -1,3 +1,7 @@
+## ACTIVE continuation — V5/V6 finish audit and CUDA repaired
+
+Start with [`V5_V6_NATURAL_WOOD_EXPERIMENT_AUDIT_2026_11_03.md`](V5_V6_NATURAL_WOOD_EXPERIMENT_AUDIT_2026_11_03.md). CUDA tensor test in restarted Gentoo Shell passes following host `nvidia_uvm` load. Separate scratch V5 and V6 trained 6k game-time units/10 natural noise seeds/41 CUDA updates each. V5 train1 wood inventory, V6 train0. V5 default frozen sampled on heldout indices6-9 had wood2/4, but alternate RNG0/4 and greedy0/2; V6 frozen0/4. Strong inconsistency: do not claim established learned success. Primary next work is player-visible wood camera alignment and sustained no-look attacking, not exploratory time or fixed scenes. Preserve original checkpoints/worlds and strict schema parity. 143 pure tests passing; exact result journals in the audit.
+
 ## Current continuation: completed V4 long-run audit (November 3)
 
 Read `docs/V4_24000_TRAINING_AND_HELDOUT_AUDIT.md` **first**. The old recommendation to resume `persistpilot1103` to 24,000 is now COMPLETE; do not rerun it. Forty train seeds produced 3 natural wood inventory pickups, but two further heldout seeds show grown frozen V4 0 wood vs uniform random 1. Long-action saturation is a concern. Current sandbox CUDA unavailable, though CPU frozen evaluation works with `GMAINCRAFT_EVAL_DEVICE=cpu`; avoid host GPU changes. Next improve wood targeting and stationary attack persistence under a new exact versioned train/frozen contract; preserve original checkpoints and data.
