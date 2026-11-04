@@ -31,6 +31,35 @@ PERSISTENCE_DURATIONS=(6,24,72)
 PERSISTENCE_HEAD_SIZES=HEAD_SIZES+(len(PERSISTENCE_DURATIONS),)
 PERSISTENCE_SCHEMA='natural_memory_online_v2_first_hit_objects_ppo_variable_duration'
 WOOD_ENGAGEMENT_SCHEMA='natural_memory_online_v3_visible_wood_engagement_ppo_variable_duration'
+MOTOR_V7_SCHEMA='natural_memory_online_v4_visible_wood_learned_motor_primitives'
+# Normal game inputs only. A *single* categorical output chooses a motor and
+# duration together, including a stationary held attack, rather than demanding
+# that four independent sampled heads happen to align. NO target selection,
+# auto-aim, conditional phase switch, or environmental input in this map.
+# Rows: label, move index, coarse look-history index, attack, dx, dy, ticks.
+MOTOR_V7=(
+    ('idle6',0,0,0,0.,0.,6),
+    ('walk24',1,0,0,0.,0.,24),
+    ('back24',2,0,0,0.,0.,24),
+    ('strafe_left24',3,0,0,0.,0.,24),
+    ('strafe_right24',4,0,0,0.,0.,24),
+    ('jump_walk24',5,0,0,0.,0.,24),
+    ('turn_left_fine6',0,1,0,-24.,0.,6),
+    ('turn_right_fine6',0,2,0,24.,0.,6),
+    ('turn_left_large6',0,3,0,-100.,0.,6),
+    ('turn_right_large6',0,4,0,100.,0.,6),
+    ('look_up_fine6',0,5,0,0.,-25.,6),
+    ('look_down_fine6',0,6,0,0.,25.,6),
+    ('attack_stationary6',0,0,1,0.,0.,6),
+    ('attack_stationary24',0,0,1,0.,0.,24),
+    ('attack_stationary72',0,0,1,0.,0.,72),
+    ('attack_advance24',1,0,1,0.,0.,24),
+    ('attack_turn_left_fine6',0,1,1,-24.,0.,6),
+    ('attack_turn_right_fine6',0,2,1,24.,0.,6),
+    ('attack_look_up_fine6',0,5,1,0.,-25.,6),
+    ('attack_look_down_fine6',0,6,1,0.,25.,6),
+)
+MOTOR_V7_HEAD_SIZES=(len(MOTOR_V7),)
 SELF_FEATURES=(
  'player_x_div_1024','player_y_div_128','player_z_div_1024',
  'relative_x_from_start_div_64','relative_z_from_start_div_64',
@@ -86,7 +115,7 @@ def observe(player,status,surface,mining,*,start_xyz,last_action=(0,0,0),
         raise TypeError('Expected real typed player/status/first-hit surfaces')
     if mining is not None and not isinstance(mining,MiningFeedbackV1):
         raise TypeError('Mining feedback must be a typed own-player reading or missing')
-    if schema not in (SCHEMA,PERSISTENCE_SCHEMA,WOOD_ENGAGEMENT_SCHEMA):
+    if schema not in (SCHEMA,PERSISTENCE_SCHEMA,WOOD_ENGAGEMENT_SCHEMA,MOTOR_V7_SCHEMA):
         raise ValueError('Unknown versioned natural observation schema')
     if len(start_xyz)!=3 or any(not np.isfinite(v) for v in start_xyz):
         raise ValueError('Invalid remembered starting coordinates')
@@ -122,9 +151,9 @@ def observe(player,status,surface,mining,*,start_xyz,last_action=(0,0,0),
         float(last_action[2]),min(log1p(visit_count)/8,1),
         min(elapsed_ticks/72000,4),min(len(surface.objects)/MAX_OBJECTS,4),
     )
-    feature_order=(WOOD_ENGAGEMENT_SELF_FEATURES if schema==WOOD_ENGAGEMENT_SCHEMA
+    feature_order=(WOOD_ENGAGEMENT_SELF_FEATURES if schema in (WOOD_ENGAGEMENT_SCHEMA,MOTOR_V7_SCHEMA)
                    else SELF_FEATURES)
-    if schema==WOOD_ENGAGEMENT_SCHEMA:
+    if schema in (WOOD_ENGAGEMENT_SCHEMA,MOTOR_V7_SCHEMA):
         numbers+= (float(target is not None and wood_id(target.block_id)),
                    sum(wood_id(obj.block_id) for obj in ranked)/MAX_OBJECTS)
     own=np.asarray(numbers,dtype=np.float32)
@@ -152,6 +181,33 @@ def observe(player,status,surface,mining,*,start_xyz,last_action=(0,0,0),
         if not np.isfinite(array).all():raise ValueError('Nonfinite player observation')
         array.setflags(write=False)
     return NaturalObservation(*arrays)
+
+
+def action_from_motor_v7(indices, remaining_ticks=72):
+    """Learned one-head ordinary Minecraft key/mouse macro, no special commands."""
+    if (not isinstance(indices,(tuple,list)) or len(indices)!=1 or
+        type(indices[0]) is not int or not 0<=indices[0]<len(MOTOR_V7) or
+        type(remaining_ticks) is not int or remaining_ticks<1):
+        raise ValueError('Invalid V7 categorical motor choice or game-time remainder')
+    _,move,_,attack,dx,dy,ticks=MOTOR_V7[indices[0]]
+    return AgentAction(keys=MOVE_KEYS[move]+(('LEFT_BUTTON',) if attack else ()),
+                       look_dx=dx,look_dy=dy,ticks=min(ticks,remaining_ticks))
+
+
+def motor_v7_history(indices):
+    """Coarse action-history/audit tuple; exact camera angle is in own yaw/pitch."""
+    if (not isinstance(indices,(tuple,list)) or len(indices)!=1 or
+        type(indices[0]) is not int or not 0<=indices[0]<len(MOTOR_V7)):
+        raise ValueError('Invalid V7 action history')
+    _,move,look,attack,_,_,_=MOTOR_V7[indices[0]]
+    return (move,look,attack)
+
+
+def motor_v7_duration_index(indices):
+    if (not isinstance(indices,(tuple,list)) or len(indices)!=1 or
+        type(indices[0]) is not int or not 0<=indices[0]<len(MOTOR_V7)):
+        raise ValueError('Invalid V7 motor duration choice')
+    return (6,24,72).index(MOTOR_V7[indices[0]][6])
 
 
 def action_from_persistence_heads(indices, remaining_ticks=72):
@@ -206,10 +262,11 @@ class NaturalPPO:
         if (not 1<=epochs<=8 or not 8<=minibatch<=512 or not 0<=entropy_coef<=.2 or
             (schema,tuple(action_sizes)) not in ((SCHEMA,HEAD_SIZES),
                                                  (PERSISTENCE_SCHEMA,PERSISTENCE_HEAD_SIZES),
-                                                 (WOOD_ENGAGEMENT_SCHEMA,PERSISTENCE_HEAD_SIZES))):
+                                                 (WOOD_ENGAGEMENT_SCHEMA,PERSISTENCE_HEAD_SIZES),
+                                                 (MOTOR_V7_SCHEMA,MOTOR_V7_HEAD_SIZES))):
             raise ValueError('Invalid PPO hyperparameters or versioned motor schema')
         self.schema=schema
-        self.feature_order=(WOOD_ENGAGEMENT_SELF_FEATURES if schema==WOOD_ENGAGEMENT_SCHEMA
+        self.feature_order=(WOOD_ENGAGEMENT_SELF_FEATURES if schema in (WOOD_ENGAGEMENT_SCHEMA,MOTOR_V7_SCHEMA)
                             else SELF_FEATURES)
         self.action_sizes=tuple(action_sizes)
         self.torch=torch

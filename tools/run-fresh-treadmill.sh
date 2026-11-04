@@ -70,7 +70,7 @@ if [[ -e "$marker" ]];then
   echo "Stale stop marker exists: $marker. Inspect the previous run before starting or resuming." >&2
   exit 1
 fi
-if [[ "$reward_profile" != wood_discovery_v2 && "$reward_profile" != wood_progress_v3 && "$reward_profile" != wood_persistence_v4 && "$reward_profile" != wood_target_v5 && "$reward_profile" != wood_engagement_v6 ]]; then usage; fi
+if [[ "$reward_profile" != wood_discovery_v2 && "$reward_profile" != wood_progress_v3 && "$reward_profile" != wood_persistence_v4 && "$reward_profile" != wood_target_v5 && "$reward_profile" != wood_engagement_v6 && "$reward_profile" != wood_motor_v7 && "$reward_profile" != wood_sustain_v8 ]]; then usage; fi
 if [[ "$limit" != 'forever' && ! "$limit" =~ ^[1-9][0-9]*$ ]] ||
    [[ ! "$episode_decisions" =~ ^[1-9][0-9]*$ ]] ||
    (( episode_decisions < 12 || episode_decisions > 100000 )); then usage;fi
@@ -97,7 +97,7 @@ console="logs/fresh_treadmill_${tag}_$(date +%Y%m%d_%H%M%S)_$$.console"
 if [[ -e "$console" ]]; then echo 'Console log already exists' >&2;exit 1;fi
 ln -sfn -- "$(basename "$console")" "logs/fresh_treadmill_${tag}_latest.log"
 update_every=96
-if [[ "$reward_profile" == wood_persistence_v4 || "$reward_profile" == wood_target_v5 || "$reward_profile" == wood_engagement_v6 ]]; then update_every=32; fi
+if [[ "$reward_profile" == wood_persistence_v4 || "$reward_profile" == wood_target_v5 || "$reward_profile" == wood_engagement_v6 || "$reward_profile" == wood_motor_v7 || "$reward_profile" == wood_sustain_v8 ]]; then update_every=32; fi
 opts=(--run-tag "$tag" --seed-root 917211 --policy-seed 731117
       --episode-decisions "$episode_decisions" --update-every "$update_every" --report-every 100
       --reward-profile "$reward_profile" --retain-worlds 2 --device cuda --visible)

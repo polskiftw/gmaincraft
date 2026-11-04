@@ -24,7 +24,7 @@ eval_device="${GMAINCRAFT_EVAL_DEVICE:-cuda}"
 if [[ "$eval_device" != cuda && "$eval_device" != cpu && "$eval_device" != auto ]]; then
   echo "Invalid GMAINCRAFT_EVAL_DEVICE: use cuda, cpu, or auto" >&2; exit 2
 fi
-if [[ "$reward_profile" != wood_discovery_v2 && "$reward_profile" != wood_progress_v3 && "$reward_profile" != wood_persistence_v4 && "$reward_profile" != wood_target_v5 && "$reward_profile" != wood_engagement_v6 ]]; then echo "Invalid reward profile" >&2; exit 2; fi
+if [[ "$reward_profile" != wood_discovery_v2 && "$reward_profile" != wood_progress_v3 && "$reward_profile" != wood_persistence_v4 && "$reward_profile" != wood_target_v5 && "$reward_profile" != wood_engagement_v6 && "$reward_profile" != wood_motor_v7 && "$reward_profile" != wood_sustain_v8 ]]; then echo "Invalid reward profile" >&2; exit 2; fi
 if [[ ! "$eval_seed_start" =~ ^[0-9]{1,9}$ ]]; then
   echo "Invalid held-out seed start index" >&2; exit 2
 fi

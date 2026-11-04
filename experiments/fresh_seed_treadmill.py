@@ -42,10 +42,12 @@ from gmaincraft.mcio_process_watchdog import (WatchedControllerSync,MinecraftPro
 from gmaincraft.natural_online_policy import (NaturalPPO,NaturalTransition,SCHEMA,wood_id,
                           DECISION_TICKS,HEAD_SIZES,observe,action_from_heads,
                           PERSISTENCE_SCHEMA,PERSISTENCE_HEAD_SIZES,PERSISTENCE_DURATIONS,
-                          action_from_persistence_heads,WOOD_ENGAGEMENT_SCHEMA)
+                          action_from_persistence_heads,WOOD_ENGAGEMENT_SCHEMA,
+                          MOTOR_V7_SCHEMA,MOTOR_V7_HEAD_SIZES,MOTOR_V7,
+                          action_from_motor_v7,motor_v7_history,motor_v7_duration_index)
 from gmaincraft.natural_online_session import NaturalSessionMemory
 from gmaincraft.natural_diagnostics import NaturalActionAudit,WoodCrackProgress
-from gmaincraft.wood_target_reward import WoodTargetFirstContact,WoodEngagement
+from gmaincraft.wood_target_reward import WoodTargetFirstContact,WoodEngagement,WoodSustainedAttack
 from gmaincraft.vision_settings import ensure_clean_visual_options
 from natural_online_train import (MCIO,INSTANCE,ENV_EXTRA,OVERRIDES,REWARDS,
                                    read_step,log_row)
@@ -54,14 +56,21 @@ RUN_TAG_RE=r'[A-Za-z0-9][A-Za-z0-9_-]{0,22}'
 FRESH_REWARDS={**REWARDS,'wood_progress_v3':'wood_discovery_v2+nonrepeatable_own_wood_crack_stage_progress',
     'wood_persistence_v4':'wood_progress_v3+learned_normal_action_hold_duration_6_24_72_ticks',
     'wood_target_v5':'v4_motor+reduced_nonwood_curiosity+first_vanilla_crosshair_wood_contact+wood_progress_goal',
-    'wood_engagement_v6':'v4_motor+player_visible_wood_features+one_time_crosshair_attack_engagement+actual_inventory_goal'}
+    'wood_engagement_v6':'v4_motor+player_visible_wood_features+one_time_crosshair_attack_engagement+actual_inventory_goal',
+    'wood_motor_v7':'v5_rewards+v6_visible_wood+one_categorical_ordinary_motor_action_and_duration',
+    'wood_sustain_v8':'v7_learned_motor+low_sighting_rewards+bounded_consecutive_stationary_wood_attack_reward'}
+
+
+def single_motor_v7(args):
+    return args.reward_profile in ('wood_motor_v7','wood_sustain_v8')
 
 
 def variable_motor(args):
-    return args.reward_profile in ('wood_persistence_v4','wood_target_v5','wood_engagement_v6')
+    return args.reward_profile in ('wood_persistence_v4','wood_target_v5','wood_engagement_v6','wood_motor_v7','wood_sustain_v8')
 
 def policy_schema(args):
-    return (WOOD_ENGAGEMENT_SCHEMA if args.reward_profile=='wood_engagement_v6' else
+    return (MOTOR_V7_SCHEMA if single_motor_v7(args) else
+            WOOD_ENGAGEMENT_SCHEMA if args.reward_profile=='wood_engagement_v6' else
             PERSISTENCE_SCHEMA if variable_motor(args) else SCHEMA)
 
 
@@ -133,6 +142,7 @@ def paths(tag,mode):
 def metadata(args):
     return dict(kind='gmaincraft_fresh_stream_v2_fixed_spawn',policy_schema=policy_schema(args),
                 **({'duration_ticks':PERSISTENCE_DURATIONS,'horizon_unit_ticks':DECISION_TICKS} if variable_motor(args) else {}),
+                **({'motor_v7_actions':MOTOR_V7,'policy_action_heads':MOTOR_V7_HEAD_SIZES} if single_motor_v7(args) else {}),
                 seed_schedule=STREAM_SCHEMA,seed_root=args.seed_root,
                 episode_decisions=args.episode_decisions,
                 update_every=args.update_every,
@@ -272,8 +282,11 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     trajectory=[]
     events=Counter()
     audit=NaturalActionAudit()
+    motor_v7_counts=Counter()
+    motor_v7_on_wood_counts=Counter()
     crack_progress=WoodCrackProgress()
-    target_reward=WoodTargetFirstContact() if args.reward_profile=='wood_target_v5' else None
+    target_reward=WoodTargetFirstContact(bonus=.3 if args.reward_profile=='wood_sustain_v8' else .9) if args.reward_profile in ('wood_target_v5','wood_motor_v7','wood_sustain_v8') else None
+    sustain_reward=WoodSustainedAttack() if args.reward_profile=='wood_sustain_v8' else None
     engagement=WoodEngagement() if args.reward_profile=='wood_engagement_v6' else None
     elapsed_io=0.
     trained=0
@@ -313,17 +326,25 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
             while decisions<budget:
                 if stop_requested():break
                 is_v4=variable_motor(args)
-                action_sizes=PERSISTENCE_HEAD_SIZES if is_v4 else HEAD_SIZES
+                action_sizes=(MOTOR_V7_HEAD_SIZES if single_motor_v7(args) else
+                              PERSISTENCE_HEAD_SIZES if is_v4 else HEAD_SIZES)
                 if args.mode=='eval' and args.control=='uniform_random':
                     heads=tuple(control_rng.randrange(n) for n in action_sizes)
                     logp=value=0.
                 else:
                     heads,logp,value=model.act(state,greedy=(args.mode=='eval' and
                                                            args.control=='policy_greedy'))
-                action=(action_from_persistence_heads(heads,(budget-decisions)*DECISION_TICKS)
+                action=(action_from_motor_v7(heads,(budget-decisions)*DECISION_TICKS)
+                        if single_motor_v7(args) else
+                        action_from_persistence_heads(heads,(budget-decisions)*DECISION_TICKS)
                         if is_v4 else action_from_heads(heads))
+                audit_heads=motor_v7_history(heads) if single_motor_v7(args) else heads[:3]
                 target_before=bridge.player_status().crosshair_block
-                audit.observe(heads[:3],state,target_before)
+                audit.observe(audit_heads,state,target_before)
+                if single_motor_v7(args):
+                    motor_v7_counts[MOTOR_V7[heads[0]][0]]+=1
+                    if target_before is not None and wood_id(target_before.block_id):
+                        motor_v7_on_wood_counts[MOTOR_V7[heads[0]][0]]+=1
                 spent_ticks=0
                 macro_reward=0.
                 current_state=state
@@ -348,30 +369,37 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                     next_state,next_player,next_surfaces=read_step(bridge,memory,0,bad_counter=bad_counter,
                                                 observation_schema=policy_schema(args))
                     died=next_player.health<=0
-                    record=memory.accrue(0,next_player,next_surfaces,bridge._stats,heads[:3],
+                    record=memory.accrue(0,next_player,next_surfaces,bridge._stats,audit_heads,
                                          chunk_ticks,death=died,reward_profile=(
                                              'wood_discovery_v2' if args.reward_profile in
                                              ('wood_progress_v3','wood_persistence_v4')
+                                             else 'wood_target_v5' if args.reward_profile=='wood_motor_v7'
                                              else args.reward_profile))
                     live_target=bridge.player_status().crosshair_block
                     progress_bonus=(crack_progress.observe(next_state,live_target)
-                                    if args.reward_profile in ('wood_progress_v3','wood_persistence_v4','wood_target_v5','wood_engagement_v6')
+                                    if args.reward_profile in ('wood_progress_v3','wood_persistence_v4','wood_target_v5','wood_engagement_v6','wood_motor_v7','wood_sustain_v8')
                                     else 0.)
                     # Same own visible crack progress; V5 pays twice the v3/v4
                     # amount to compete with long-hold exploration rewards.
-                    if args.reward_profile=='wood_target_v5':progress_bonus=round(progress_bonus*2,5)
-                    if args.reward_profile=='wood_engagement_v6':progress_bonus=round(progress_bonus*3,5)
+                    if args.reward_profile in ('wood_target_v5','wood_motor_v7'):progress_bonus=round(progress_bonus*2,5)
+                    if args.reward_profile in ('wood_engagement_v6','wood_sustain_v8'):progress_bonus=round(progress_bonus*3,5)
                     contact_bonus=target_reward.observe(live_target) if target_reward is not None else 0.
                     engagement_contact,engagement_attack=(
                         engagement.observe(live_target,attack=heads[2]==1)
                         if engagement is not None else (0.,0.))
+                    sustain_bonus=(sustain_reward.observe(live_target,stationary_attack=(
+                        audit_heads[2]==1 and not action.look_dx and not action.look_dy
+                        and not any(k in action.keys for k in ('W','S','A','D','SPACE'))))
+                        if sustain_reward is not None else 0.)
                     record['wood_crack_progress_reward']=progress_bonus
                     if target_reward is not None:record['wood_target_first_contact_reward']=contact_bonus
+                    if sustain_reward is not None:record['wood_sustain_attack_reward']=sustain_bonus
                     if engagement is not None:
                         record['wood_engagement_contact_reward']=engagement_contact
                         record['wood_engagement_first_attack_reward']=engagement_attack
-                    record['reward']=round(record['reward']+progress_bonus+contact_bonus+engagement_contact+engagement_attack,5)
+                    record['reward']=round(record['reward']+progress_bonus+contact_bonus+engagement_contact+engagement_attack+sustain_bonus,5)
                     if progress_bonus:events['wood_crack_progress_reward']+=progress_bonus
+                    if sustain_bonus:events['wood_sustain_attack_reward']+=sustain_bonus
                     if contact_bonus:events['wood_target_first_contact_reward']+=contact_bonus
                     if engagement_contact:events['wood_engagement_contact_reward']+=engagement_contact
                     if engagement_attack:events['wood_engagement_first_attack_reward']+=engagement_attack
@@ -387,7 +415,8 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                         log_row(log,dict(stage='uncommitted_game_event',episode=episode,
                              seed=seed,step=decisions+spent_ticks//DECISION_TICKS,**record))
                     if died or stop_requested():break
-                audit.record_duration(heads[3] if is_v4 else 0,spent_ticks,attack=heads[2]==1,
+                audit.record_duration(motor_v7_duration_index(heads) if single_motor_v7(args) else
+                                      heads[3] if is_v4 else 0,spent_ticks,attack=audit_heads[2]==1,
                         wood_crosshair=target_before is not None and
                         wood_id(target_before.block_id))
                 if args.mode=='train':
@@ -407,6 +436,9 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                 if report_bucket>last_report_bucket or decisions==budget:
                     last_report_bucket=report_bucket
                     pulse=dict(stage='uncommitted_pulse',episode=episode,seed=seed,
+                               **({'motor_v7_counts':dict(motor_v7_counts),
+                                   'motor_v7_on_wood_counts':dict(motor_v7_on_wood_counts)}
+                                  if single_motor_v7(args) else {}),
                                decisions=decisions,policy_actions=policy_actions,
                                game_ticks=decisions*DECISION_TICKS,
                                game_io_s=round(elapsed_io,3),
@@ -439,6 +471,9 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     from gmaincraft.fresh_world_manager import verify_noise_world
     verify_noise_world(manager.paths(episode)[1],seed,require_fixed_spawn=True)
     result=dict(episode=episode,seed=seed,decisions=decisions,policy_actions=policy_actions,
+                **({'motor_v7_counts':dict(motor_v7_counts),
+                    'motor_v7_on_wood_counts':dict(motor_v7_on_wood_counts)}
+                   if single_motor_v7(args) else {}),
                 game_ticks=decisions*DECISION_TICKS,
                 updates=trained,worldgen_s=round(worldgen_s,3),
                 client_startup_s=round(client_startup_s,3),
@@ -479,11 +514,12 @@ def main(argv=None):
           inflight.with_suffix('.json.pending').exists()):
         raise FileExistsError('Existing training stream or unfinished stages; use --resume or inspect artifacts')
     model=NaturalPPO(seed=args.policy_seed,device=args.device,
-                     learning_rate=.00015 if args.reward_profile in ('wood_progress_v3','wood_persistence_v4','wood_target_v5','wood_engagement_v6') else .00035,
+                     learning_rate=.00015 if args.reward_profile in ('wood_progress_v3','wood_persistence_v4','wood_target_v5','wood_engagement_v6','wood_motor_v7','wood_sustain_v8') else .00035,
                      entropy_coef=.06 if args.reward_profile=='wood_engagement_v6' else
-                                  .04 if args.reward_profile in ('wood_progress_v3','wood_persistence_v4','wood_target_v5') else .014,
+                                  .04 if args.reward_profile in ('wood_progress_v3','wood_persistence_v4','wood_target_v5','wood_motor_v7','wood_sustain_v8') else .014,
                      schema=policy_schema(args),
-                     action_sizes=PERSISTENCE_HEAD_SIZES if variable_motor(args) else HEAD_SIZES)
+                     action_sizes=MOTOR_V7_HEAD_SIZES if single_motor_v7(args) else
+                                  PERSISTENCE_HEAD_SIZES if variable_motor(args) else HEAD_SIZES)
     cursor=args.eval_seed_start if args.mode=='eval' else 0
     committed_decisions=0
     total=Counter()

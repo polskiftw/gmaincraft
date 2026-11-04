@@ -13,7 +13,8 @@ sys.path.insert(0,str(ROOT/'src'))
 sys.path.insert(0,str(ROOT/'experiments'))
 from gmaincraft.fresh_seed_schedule import SeedSchedule
 from gmaincraft.fresh_world_manager import FreshWorldManager,names
-from gmaincraft.natural_online_policy import NaturalPPO,PERSISTENCE_SCHEMA,PERSISTENCE_HEAD_SIZES,WOOD_ENGAGEMENT_SCHEMA
+from gmaincraft.natural_online_policy import (NaturalPPO,PERSISTENCE_SCHEMA,PERSISTENCE_HEAD_SIZES,
+                                             MOTOR_V7_SCHEMA,MOTOR_V7_HEAD_SIZES,MOTOR_V7,WOOD_ENGAGEMENT_SCHEMA)
 from fresh_seed_treadmill import (parse_args,metadata,save_json_atomic,
     save_model,restore,recover_inflight,repair_jsonl_tail,quarantine_pending_file)
 
@@ -115,6 +116,45 @@ class StreamRecoveryTests(unittest.TestCase):
         self.assertEqual(a.seed_root,b.seed_root)
         self.assertNotEqual(metadata(a)['policy_seed'],metadata(b)['policy_seed'])
         self.assertNotIn('policy_seed',','.join(__import__('gmaincraft.natural_online_policy',fromlist=['SELF_FEATURES']).SELF_FEATURES))
+
+    def test_v7_motor_metadata_cannot_resume_v4_v5_or_v6(self):
+        previous=parse_args(['--run-tag','v6old','--decisions','120',
+                             '--episode-decisions','120','--update-every','32',
+                             '--reward-profile','wood_engagement_v6'])
+        new=parse_args(['--run-tag','v7new','--decisions','120',
+                        '--episode-decisions','120','--update-every','32',
+                        '--reward-profile','wood_motor_v7'])
+        self.assertEqual(metadata(new)['policy_schema'],MOTOR_V7_SCHEMA)
+        self.assertEqual(metadata(new)['policy_action_heads'],MOTOR_V7_HEAD_SIZES)
+        self.assertEqual(metadata(new)['motor_v7_actions'],MOTOR_V7)
+        self.assertNotEqual(metadata(previous),metadata(new))
+        with tempfile.TemporaryDirectory() as td:
+            path=pathlib.Path(td)/'newv7.pt'
+            model=NaturalPPO(device='cpu',schema=MOTOR_V7_SCHEMA,
+                             action_sizes=MOTOR_V7_HEAD_SIZES)
+            save_model(path,model,metadata(new),2,240,{'wood_inventory_gain':1})
+            other=NaturalPPO(device='cpu',schema=MOTOR_V7_SCHEMA,
+                             action_sizes=MOTOR_V7_HEAD_SIZES)
+            self.assertEqual(restore(path,other,metadata(new)),(2,240,{'wood_inventory_gain':1}))
+            with self.assertRaises(ValueError):restore(path,other,metadata(previous))
+
+    def test_v8_reward_profile_distinct_from_v7_with_exact_same_motor(self):
+        v7=parse_args(['--run-tag','v7old','--decisions','120',
+                       '--episode-decisions','120','--update-every','32',
+                       '--reward-profile','wood_motor_v7'])
+        v8=parse_args(['--run-tag','v8new','--decisions','120',
+                       '--episode-decisions','120','--update-every','32',
+                       '--reward-profile','wood_sustain_v8'])
+        self.assertEqual(metadata(v7)['policy_schema'],metadata(v8)['policy_schema'])
+        self.assertEqual(metadata(v7)['motor_v7_actions'],metadata(v8)['motor_v7_actions'])
+        self.assertNotEqual(metadata(v7),metadata(v8))
+        with tempfile.TemporaryDirectory() as td:
+            path=pathlib.Path(td)/'v8.pt'
+            model=NaturalPPO(device='cpu',schema=MOTOR_V7_SCHEMA,
+                             action_sizes=MOTOR_V7_HEAD_SIZES)
+            save_model(path,model,metadata(v8),1,120,{})
+            with self.assertRaises(ValueError):restore(path,model,metadata(v7))
+            self.assertEqual(restore(path,model,metadata(v8))[1],120)
 
     def test_heldout_seed_offset_cannot_contaminate_training(self):
         eval_args=parse_args(['--run-tag','holdout2','--mode','eval','--control','uniform_random',

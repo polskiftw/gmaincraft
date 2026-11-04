@@ -83,7 +83,7 @@ class NaturalSessionMemory:
     def accrue(self,index,player,surface,stats,action,ticks,*,death=False,
                reward_profile='explore_v1'):
         if index not in self.visits:raise RuntimeError('Must open real world first')
-        if reward_profile not in ('explore_v1','wood_discovery_v2','wood_target_v5','wood_engagement_v6'):
+        if reward_profile not in ('explore_v1','wood_discovery_v2','wood_target_v5','wood_engagement_v6','wood_sustain_v8'):
             raise ValueError('Unknown natural exploration reward version')
         cell=self.cell(player)
         visits=self.visits[index]
@@ -128,7 +128,16 @@ class NaturalSessionMemory:
         # No scripted goal bearing/distance reward. Small curiosity for
         # actually entering unvisited territory, plus first-hit surfaces;
         # real vanilla block events and inventory are distinct external goals.
-        if reward_profile=='wood_engagement_v6':
+        if reward_profile=='wood_sustain_v8':
+            # Prior reward profiles accidentally made scanning new wood much
+            # easier/more lucrative than finishing a real log. Small sparse
+            # navigation novelty remains; sustained visible wood attacks are
+            # rewarded separately in the normal game controller.
+            curiosity=.10*fresh_cell+.002*min(seen_new,6)
+            wood_sighting=.02*min(seen_new_wood,6)
+            task_reward=(.005*min(new_mined,3)+12.*min(new_wood_mined,3)
+                         +45.*min(inventory_gain,3))
+        elif reward_profile=='wood_engagement_v6':
             # V6: genuine player-visible contact, mining and pickup must
             # dominate passive scanning. Both contact and attack are paid
             # separately, once per observed block, in the live loop.

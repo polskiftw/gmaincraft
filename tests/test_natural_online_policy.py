@@ -7,6 +7,8 @@ from gmaincraft.natural_online_policy import (NaturalPPO,NaturalTransition,
      SCHEMA,SELF_FEATURES,MAX_OBJECTS,ID_BYTES,wood_id,observe,action_from_heads,
      PERSISTENCE_SCHEMA,PERSISTENCE_HEAD_SIZES,PERSISTENCE_DURATIONS,
      WOOD_ENGAGEMENT_SCHEMA,WOOD_ENGAGEMENT_SELF_FEATURES,
+     MOTOR_V7_SCHEMA,MOTOR_V7,MOTOR_V7_HEAD_SIZES,
+     action_from_motor_v7,motor_v7_history,motor_v7_duration_index,MOVE_KEYS,
      action_from_persistence_heads)
 from gmaincraft.player_knowledge import PlayerKnowledgeV1,OwnedItem
 from gmaincraft.mcio_status import PlayerStatusV1,CrosshairBlock
@@ -178,6 +180,48 @@ class NaturalPolicyTests(unittest.TestCase):
                          action_sizes=PERSISTENCE_HEAD_SIZES)
         with self.assertRaises(ValueError):prior.restore(saved)
         with self.assertRaises(ValueError):trainer.restore(prior.state())
+
+    def test_v7_motor_primitives_replace_rare_factor_combinations_without_target_selector(self):
+        self.assertEqual(MOTOR_V7_HEAD_SIZES,(20,))
+        self.assertEqual(len(set(row[0] for row in MOTOR_V7)),len(MOTOR_V7))
+        self.assertEqual(len(set(row[1:] for row in MOTOR_V7)),len(MOTOR_V7))
+        self.assertEqual(set(x[6] for x in MOTOR_V7),{6,24,72})
+        for idx, (label,move,look,attack,dx,dy,ticks) in enumerate(MOTOR_V7):
+            action=action_from_motor_v7((idx,))
+            self.assertEqual((action.look_dx,action.look_dy,action.ticks),(dx,dy,ticks))
+            self.assertEqual(action.keys,MOVE_KEYS[move]+(('LEFT_BUTTON',) if attack else ()))
+            self.assertEqual(motor_v7_history((idx,)),(move,look,attack))
+            self.assertEqual(motor_v7_duration_index((idx,)),(6,24,72).index(ticks))
+            self.assertNotIn('commands',vars(action))
+        self.assertEqual(action_from_motor_v7((14,)).keys,('LEFT_BUTTON',))
+        self.assertEqual(action_from_motor_v7((14,)).ticks,72)
+        self.assertEqual(action_from_motor_v7((14,),remaining_ticks=18).ticks,18)
+        self.assertEqual(action_from_motor_v7((6,)).look_dx,-24.)
+        # No branch in the motor implementation can inspect the environment;
+        # these motor choices are intentionally unconditional.
+        for invalid in ((20,),(-1,),(True,),(),(0,1),(2.0,)):
+            with self.assertRaises(ValueError):action_from_motor_v7(invalid)
+        with self.assertRaises(ValueError):action_from_motor_v7((14,),remaining_ticks=0)
+
+    def test_v7_new_policy_schema_and_scratch_ppo_update(self):
+        import torch
+        from dataclasses import replace
+        obs=sample()
+        v7=replace(obs,own=np.concatenate([obs.own,np.array([1.,1/24],np.float32)]))
+        actor=NaturalPPO(device='cpu',seed=719,schema=MOTOR_V7_SCHEMA,
+                         action_sizes=MOTOR_V7_HEAD_SIZES,entropy_coef=.04)
+        heads,logp,value=actor.act(v7)
+        self.assertEqual(len(heads),1)
+        self.assertEqual(actor.state()['feature_order'],WOOD_ENGAGEMENT_SELF_FEATURES)
+        self.assertEqual(actor.update([NaturalTransition(v7,heads,.25,value,logp,72,False)]*8)['update'],1)
+        restored=NaturalPPO(device='cpu',seed=720,schema=MOTOR_V7_SCHEMA,
+                            action_sizes=MOTOR_V7_HEAD_SIZES)
+        restored.restore(actor.state())
+        self.assertEqual(restored.act(v7,greedy=True),actor.act(v7,greedy=True))
+        legacy=NaturalPPO(device='cpu',schema=WOOD_ENGAGEMENT_SCHEMA,
+                          action_sizes=PERSISTENCE_HEAD_SIZES)
+        with self.assertRaises(ValueError):legacy.restore(actor.state())
+        with self.assertRaises(ValueError):actor.restore(legacy.state())
 
     def test_cuda_checkpoint_roundtrip_device_safe(self):
         import torch

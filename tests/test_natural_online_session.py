@@ -10,7 +10,7 @@ from gmaincraft.natural_online_session import NaturalSessionMemory
 from gmaincraft.player_knowledge import PlayerKnowledgeV1, OwnedItem
 from gmaincraft.mcio_surface_objects import SurfaceObjectsV1, ProjectedBlockV1
 from gmaincraft.mcio_status import CrosshairBlock
-from gmaincraft.wood_target_reward import WoodTargetFirstContact,WoodEngagement
+from gmaincraft.wood_target_reward import WoodTargetFirstContact,WoodEngagement,WoodSustainedAttack
 
 
 def player(x=5.5,z=0.5,logs=0):
@@ -120,6 +120,35 @@ class NaturalSessionTests(unittest.TestCase):
                             {'minecraft:mined':{'minecraft:oak_log':1}},(0,0,1),6,
                             reward_profile='wood_engagement_v6')
         self.assertEqual(again['extrinsic_reward'],0.)
+
+    def test_v8_reward_sightings_no_longer_dominate_actual_wood_inventory(self):
+        old=NaturalSessionMemory();new=NaturalSessionMemory()
+        for memory in (old,new):memory.ensure_world(0,player(),{})
+        v7=old.accrue(0,player(),scene(),{},(0,0,1),6,reward_profile='wood_target_v5')
+        v8=new.accrue(0,player(),scene(),{},(0,0,1),6,reward_profile='wood_sustain_v8')
+        self.assertEqual(v8['new_visible_wood'],1)
+        self.assertLess(v8['reward'],v7['reward'])
+        gained=new.accrue(0,player(logs=1),scene(),
+                         {'minecraft:mined':{'minecraft:oak_log':1}},
+                         (0,0,1),6,reward_profile='wood_sustain_v8')
+        self.assertGreaterEqual(gained['extrinsic_reward'],57.)
+        repeat=new.accrue(0,player(logs=1),scene(),
+                         {'minecraft:mined':{'minecraft:oak_log':1}},
+                         (0,0,1),6,reward_profile='wood_sustain_v8')
+        self.assertEqual(repeat['extrinsic_reward'],0.)
+
+    def test_v8_stable_wood_attack_reward_cannot_be_farmed_or_spoofed(self):
+        tracker=WoodSustainedAttack(max_blocks=1,max_samples=3,bonus=.75)
+        oak=CrosshairBlock('minecraft:oak_log',(4,70,6),'west',3.)
+        other=CrosshairBlock('minecraft:birch_log',(5,70,6),'west',3.)
+        self.assertEqual(tracker.observe(None,stationary_attack=True),0.)
+        self.assertEqual(tracker.observe(oak,stationary_attack=False),0.)
+        self.assertEqual([tracker.observe(oak,stationary_attack=True) for _ in range(5)],
+                         [.75,.75,.75,0.,0.])
+        self.assertEqual(tracker.observe(other,stationary_attack=True),0.)
+        with self.assertRaises(TypeError):tracker.observe(oak,stationary_attack=1)
+        with self.assertRaises(TypeError):tracker.observe(object(),stationary_attack=True)
+        with self.assertRaises(ValueError):WoodSustainedAttack(max_samples=0)
 
     def test_cumulative_stats_stay_monotonic_across_bridge_restarts(self):
         memory=NaturalSessionMemory()

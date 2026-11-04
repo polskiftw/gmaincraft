@@ -1,3 +1,14 @@
+## Highest priority after V7/V8 measured real PPO sample-efficiency failure
+
+- [x] Quantify the real training budget: V5 1,118 neural choices, 21 crosshair-wood, nine attack-on-wood, **zero** stationary attack-on-wood; original random four-head stationary long attack before aim has probability 1/252.
+- [x] V7 versioned 20-way learned normal-input motor (no auto-target), one selectable held attack, 10 natural worlds/6,000 units/82 updates: 1 true training wood, heldout 0/4.
+- [x] V8 versioned reward (same motor, player-visible 0.75 per six-tick bounded attack-on-wood, less passive sighting) 10 worlds/6,000 units/82 updates: 2 real training wood; heldout default sampled 1/4, alternate sampled RNG 0/2; random V8 motor mined wood but did not acquire it on seeds6-7.
+- [x] Explicit offline counterfactual probes confirm V7/V8 policy stationary-attack probability changes by less than ~0.3 percentage points when the crosshair switches to wood in one controlled typed player observation. Neither model learned reliable wood-conditional action.
+- [x] Verify 149 pure tests and saved strict-schema ignored checkpoints for original V2-V6, V7 and V8; preserve a full NVIDIA SIGFPE failed eval and successful fresh-name rerun.
+- [ ] NEXT: investigate train-only curriculum from REAL vanilla forest-rich worlds and/or bounded player-own previous visible target + mining stage, with explicit honest training bias and unbiased random heldout noise seeds.
+- [ ] Establish early model-selection gate from conditional response on actual wood-targeted states, not reward-count hacks; evaluate across independent action RNGs and enough unseen seed worlds before long training.
+- [ ] Train item perception/visible dropped-log pickup separately after wood mining is reproducible without any evaluator phase handoff.
+
 ## Latest priorities: V5/V6 complete and CUDA healthy (Nov 3)
 
 - [x] Verified after Gentoo Shell bridge restart: `nvidia_uvm` node available and PyTorch CUDA tensor compute on RTX 4070 SUPER passed.
