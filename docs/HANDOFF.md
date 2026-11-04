@@ -1,3 +1,33 @@
+## NEWEST: geometry-based observation faster, 20-world self-play live (Nov 4)
+
+Read docs/NEXT_SESSION.md and docs/QV2_FRAME_FREE_FOLLOWUP_2026_11_04.md.
+Completed older 100-world training, exported qv2longf1104 snapshot,
+and tested two independent sampled-action RNGs on six unseen seeds
+(new wood13/4 positive runs/10 deaths, prior V2 wood9/4 positive/5
+deaths; NO reliable superiority). Experimental zero-RGB Fabric
+transport passed live memory Q and original RGB compatibility.
+Six-world matched benchmark: game I/O -13.77%, full wall -5.87%.
+Java still renders. NEW 20-world TRAIN tag qv2memtrain1104 is RUNNING
+from never-used TRAIN index306 with tested no-RGB transport and source
+qv2longf1104; launcher/lock/first world verified. Use status and safe
+stop in NEXT_SESSION; no other Minecraft process while running.
+All older policy weights, source worlds and datasets preserved.
+
+## NEWEST: opt-in frame-free transport and matched V2 eval (Nov 4)
+
+Read docs/MCIO_STRUCTURED_ONLY_TRANSPORT_2026_11_04.md. The natural
+V9 / replay-Q policies already receive structured engine observations.
+An experimental, opt-in WindowMixin patch now bypasses glReadPixels and
+RGB payload while maintaining the same actual render callback and
+game-tick synchronization. The Java build and 185 Python tests have passed.
+DO NOT install the new compiled JAR while the sequential frozen eval
+suite is still running, because every comparison must use the same old
+Minecraft mod. Check logs/qv2_heldout_suite_restarted_1104.log first.
+The old Q 100-world run finished, its immutable Q snapshot is
+qv2longf1104; matched heldout 6-world tests on two action RNGs versus
+qv2triplef1104 are pending. The new transport opt-in needs LIVE
+verification after installing a safe backup. All old weights preserved.
+
 ## NEWEST: Memory-as-eyes audit (Nov 4)
 
 Read [MEMORY_AS_EYES_AUDIT_2026_11_04.md](MEMORY_AS_EYES_AUDIT_2026_11_04.md). Active policy does not use RGB, but MCio still captures and transmits it. New opt-in return_view=False eliminates unused Python decoding/copying for memory-only training with legacy compatibility; full frame-free MCio requires a new synchronized protocol. Verify throughput and independently calibrate camera visibility. The 120k training run is completed; heldout assessment remains.

@@ -59,6 +59,12 @@ class InterfaceTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             AgentView.from_packet(p)
 
+    def test_frame_free_packet_rejected_by_legacy_rgb_view(self):
+        p = FakePacket()
+        p.frame = np.zeros((0, 0, 3), dtype=np.uint8)
+        with self.assertRaisesRegex(ValueError, 'nonempty'):
+            AgentView.from_packet(p)
+
 
 if __name__ == '__main__':
     unittest.main()

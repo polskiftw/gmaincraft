@@ -47,7 +47,7 @@ fi
   echo 'Unexpected upstream MCio commit; refusing to apply patch' >&2; exit 1;
 }
 if git -C "$src" apply --reverse --check "$patch" 2>/dev/null; then
-  : # Already applied. Still verify only our exact two files changed.
+  : # Already applied. Still verify only our exact four files changed.
 elif git -C "$src" apply --check "$patch"; then
   git -C "$src" apply "$patch"
 else
@@ -56,15 +56,17 @@ else
 fi
 actual="$root/mcio-data/mcio-current-diff.$$.patch"
 trap 'rm -f -- "$actual"' EXIT
-git -C "$src" diff -- src/client/java/net/twoturtles/MCioNetworkPacket.java \
+git -C "$src" diff -U2 -- src/client/java/net/twoturtles/MCioNetworkPacket.java \
   src/client/java/net/twoturtles/MCioObservationHandler.java \
-  src/client/java/net/twoturtles/MCioClientSync.java > "$actual"
+  src/client/java/net/twoturtles/MCioClientSync.java \
+  src/client/java/net/twoturtles/mixin/client/WindowMixin.java > "$actual"
 if ! cmp -s -- "$actual" "$patch"; then
   echo 'Unexpected source patch divergence; refusing to build an unreviewed mod' >&2
   exit 1
 fi
 [[ -z "$(git -C "$src" status --porcelain | grep -v '^ M src/client/java/net/twoturtles/MCioNetworkPacket.java$' | grep -v '^ M src/client/java/net/twoturtles/MCioObservationHandler.java$' \
-  | grep -v '^ M src/client/java/net/twoturtles/MCioClientSync.java$' || :)" ]] || {
+  | grep -v '^ M src/client/java/net/twoturtles/MCioClientSync.java$' \
+  | grep -v '^ M src/client/java/net/twoturtles/mixin/client/WindowMixin.java$' || :)" ]] || {
   echo 'Unexpected tracked modifications in MCio upstream checkout' >&2; exit 1;
 }
 export JAVA_HOME="$root/mcio-data/instances/DemoInstance/runtime/java-runtime-delta/linux/java-runtime-delta"

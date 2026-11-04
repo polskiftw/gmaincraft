@@ -139,6 +139,8 @@ def parse_args(argv=None):
     ap.add_argument('--retain-worlds',type=int,default=2,
                     help='keep this many most recent completed disposable worlds')
     ap.add_argument('--visible',action='store_true')
+    ap.add_argument('--memory-only-no-rgb',action='store_true',
+                    help='Experimental MCio: keep render/sync but omit glReadPixels and RGB transport; requires patched Fabric JAR')
     ap.add_argument('--record-experience',action='store_true',
                     help='Opt-in bounded player-knowable transition archive for later goal learning')
     ap.add_argument('--experience-limit-gb',type=int,default=20,
@@ -242,6 +244,7 @@ def metadata(args):
                 reward_profile=args.reward_profile,
                 policy_seed=args.policy_seed,settings=dict(OVERRIDES),
                 game_version='1.21.3',spawn_radius=0,gameplay_commands=0,
+                **({'frame_transport':'memory_only_frame_callback_v1'} if args.memory_only_no_rgb else {}),
                 source='minecraft:noise',
                 no_privileged_seed_policy_input=True)
 
@@ -354,6 +357,13 @@ def recover_inflight(marker,committed_episode,world_manager,log):
     marker.unlink()
 
 
+def validate_memory_only_packet(packet):
+    """Fail closed if the selected JAR did not disable the RGB payload."""
+    if (packet.frame_width!=0 or packet.frame_height!=0 or len(packet.frame)!=0
+            or packet.frame_sequence<=0):
+        raise RuntimeError('Opt-in memory-only MCio returned RGB or missing frame tick: verify patched mod and launch environment')
+
+
 def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requested):
     """Run actual vanilla-survival gameplay; return uncommitted on-policy data.
 
@@ -364,6 +374,8 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     world_name=manager.prepare(episode,seed)
     worldgen_s=time.perf_counter()-created
     child_env={**ENV_EXTRA}
+    if args.memory_only_no_rgb:
+        child_env['GMAINCRAFT_MEMORY_ONLY_FRAME_V1']='1'
     if args.nvidia_gl_threading=='off':
         child_env['__GL_THREADED_OPTIMIZATIONS']='0'
     options=types.RunOptions(mcio_dir=MCIO,instance_name='DemoInstance',
@@ -408,6 +420,8 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
             if initial is None:
                 raise RuntimeError('Minecraft returned no initial observation')
             bridge=MCioAgentBridge(ctrl,initial)
+            if args.memory_only_no_rgb:
+                validate_memory_only_packet(bridge.packet)
             memory.ensure_world(0,bridge.player_knowledge(),bridge._stats)
             bridge.apply(AgentAction(ticks=1),request_surface_objects=True,
                          request_mining_feedback=True,return_view=False)
@@ -471,6 +485,8 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                     if previous_frame is not None and current_frame<=previous_frame:
                         raise AssertionError('Minecraft observation sequence stopped advancing')
                     previous_frame=current_frame
+                    if args.memory_only_no_rgb:
+                        validate_memory_only_packet(bridge.packet)
                     next_state,next_player,next_surfaces=read_step(bridge,memory,0,bad_counter=bad_counter,
                                                 observation_schema=policy_schema(args),
                                                 target_history=target_history,

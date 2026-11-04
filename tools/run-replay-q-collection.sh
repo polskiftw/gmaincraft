@@ -114,6 +114,7 @@ opts=(--mode collect --control q_sampled --q-model "$q_model" --q-goal "$q_goal"
 if [[ "$limit" == 'forever' ]]; then opts+=(--until-stopped)
 else opts+=(--decisions "$limit");fi
 if [[ "$operation" == resume ]];then opts+=(--resume);fi
+if [[ "${GMAINCRAFT_MEMORY_ONLY_NO_RGB:-0}" == 1 ]];then opts+=(--memory-only-no-rgb);fi
 printf 'Player-only experience archive: data-local/experience/%s (rolling cap %s GiB)\n' "$tag" "${GMAINCRAFT_EXPERIENCE_LIMIT_GB:-20}"
 printf 'Initial replay-Q model %s, practice goal %s\n' "$q_model" "$q_goal"
 old_bytes=0

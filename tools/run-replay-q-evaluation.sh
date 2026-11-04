@@ -31,6 +31,7 @@ args=(--mode eval --control "$mode" --run-tag "$tag" --q-model "$model"
       --eval-seed-start "$seed_start" --seed-root 917211 --policy-seed "$rng"
       --reward-profile wood_temporal_v9 --retain-worlds 2 --device "${GMAINCRAFT_EVAL_DEVICE:-cuda}" --visible)
 if [[ "$goal" == minecraft:* ]];then args+=(--goal-item "$goal");fi
+if [[ "${GMAINCRAFT_MEMORY_ONLY_NO_RGB:-0}" == 1 ]];then args+=(--memory-only-no-rgb);fi
 printf 'Frozen replay-Q practice goal %s, RNG %s, unseen survival seeds\n' "$goal" "$rng"
 set +e
 GMAINCRAFT_GAMESCOPE_BACKEND="${GMAINCRAFT_GAMESCOPE_BACKEND:-headless}" \

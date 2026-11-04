@@ -1,3 +1,48 @@
+## NEWEST: zero-RGB geometric-sensor training batch LIVE (Nov 4, 2026)
+
+Read docs/QV2_FRAME_FREE_FOLLOWUP_2026_11_04.md and
+docs/MCIO_STRUCTURED_ONLY_TRANSPORT_2026_11_04.md first.
+
+- Historical 100-world V2 run qwood_v2long1104 COMPLETED: 120000 six-tick
+  training units, 283 wood blocks mined, 219 wood inventory gains across
+  49 positive worlds, 3724 cumulative CUDA Q updates. Source preserved.
+  Immutable frozen network qv2longf1104 exported.
+- Real heldout evaluation on same unseen eval indices10-15 under TWO
+  independent action RNGs: new V2 acquired 13 wood items across 4/12
+  runs, original V2 qv2triplef1104 9 items across 4/12; new model had
+  10 deaths vs original 5. Small sample, no reliable superiority claim.
+- Patched opt-in no-RGB MCio transport BUILT and INSTALLED only in
+  disposable DemoInstance, SHA256 42bd0fa0afb680d5d25a1edad3a0d6681750f7cce140986b8fff3d223dd3331f.
+  Prior 28fd3209 build backed up at mcio-data/mod_backups/.
+  It preserves game render/tick callback but skips OpenGL glReadPixels
+  and sends zero RGB bytes when explicitly enabled. Default RGB still
+  passed live 10 screenshot decodes, 10 camera-ray samples and no gaps.
+- Real matched SIX-world 21600-tick frozen performance comparison: default
+  RGB mean game I/O 2.5756ms/tick, zero RGB 2.2209ms/tick (13.77% less);
+  whole-run wall 168.26s vs 158.38s (5.87% less). Both delivered valid
+  real game outcomes, not identical trajectories. Java still renders.
+- **NEW TRAINING ACTUALLY LAUNCHED** tag qv2memtrain1104, 20 fresh
+  vanilla TRAIN worlds indices306..325, 1200 six-tick units each,
+  TOTAL 24000. Starts from immutable qv2longf1104 and keeps
+  the exact V2 rare-success replay/anchor settings (32 Q updates
+  per world, 32 recent worlds, batch48, anchor2, success weight0.6).
+  ONLY changed variable is tested opt-in zero-RGB packet transport.
+  Launcher/journal verified, first world index306 generated, real
+  Minecraft Java/CUDA worker active and exclusive flock HELD.
+
+Safe inspect: tools/run-replay-q-collection.sh status qv2memtrain1104
+Safe stop: tools/run-replay-q-collection.sh stop qv2memtrain1104
+Safe console: logs/qv2memtrain1104_detached.log
+Persistent record: logs/fresh_stream_qv2memtrain1104.jsonl
+Checkpoint: checkpoints/fresh_stream_qv2memtrain1104.pt
+
+If STILL RUNNING, NEVER start a second Minecraft job or delete lock file.
+If FINISHED, export immutable Q snapshot and evaluate on NEW disjoint
+heldout seeds and action RNGs against both V2 snapshots before further
+scale. If paused/crashed inspect actual cursor, checkpoint, reason and lock
+first; SAME settings and total target required to resume. The older
+qwood_v2long1104 instructions below are historical and MUST NOT be rerun.
+
 ## NEWEST: 200-world Q failure analyzed; V2 rare-success learner validated (Nov 4, 2026)
 
 Read [V2_RARE_SUCCESS_REPLAY_AUDIT_2026_11_04.md](V2_RARE_SUCCESS_REPLAY_AUDIT_2026_11_04.md)

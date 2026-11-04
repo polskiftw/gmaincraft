@@ -2,11 +2,16 @@
 
 - [x] Inspect active model inputs, screenshot flow and known visibility failures.
 - [x] Skip unnecessary Python RGB conversion in memory-only training while preserving legacy RGB path.
-- [ ] Benchmark real-game before/after throughput and packet costs.
-- [ ] Design optional RGB-free MCio protocol with capture-independent synchronization; test against original.
+- [x] Benchmark six matched RGB/zero-RGB frozen worlds: 13.77% lower game I/O, 5.87% lower wall time; player sensor unchanged.
+- [x] Build experimental opt-in zero-RGB MCio protocol preserving original capture callback and sync.
+- [x] Install/test zero-RGB protocol in disposable DemoInstance, old JAR backed up, real default RGB with 10 screenshots also verified.
+- [ ] Research a genuinely capture-independent tick protocol separately; current mode still renders but skips readback.
 - [ ] Calibrate visibility across transparent/partial occluders, lighting, FOV and object size.
 - [ ] Add bounded genuinely visible dropped item entity representation.
-- [ ] Freeze and evaluate completed long Q run on heldout seeds and independent action RNG.
+- [x] Freeze completed 100-world Q training as immutable qv2longf1104 checkpoint.
+- [x] Complete matched heldout two-RNG comparison on seeds10-15: new V2 wood13 vs prior wood9, both 4/12 positive runs; new had more deaths.
+- [x] Launch 20-world qv2memtrain1104 at TRAIN index306, immutable previous model with optional zero-RGB only; lock/first world verified.
+- [ ] Check/finish new qv2memtrain1104; freeze committed Q and compare on NEW heldout seeds and independent RNG.
 - [ ] Investigate post-completion launcher segfault separately.
 
 ## CURRENT NOV 4: finished 200-world V1, V2 rare own-success learner / durable lineage

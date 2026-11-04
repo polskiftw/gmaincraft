@@ -2,8 +2,7 @@ diff --git a/src/client/java/net/twoturtles/MCioClientSync.java b/src/client/jav
 index fe285c0..e1ea9dd 100644
 --- a/src/client/java/net/twoturtles/MCioClientSync.java
 +++ b/src/client/java/net/twoturtles/MCioClientSync.java
-@@ -83,6 +83,12 @@ public class MCioClientSync {
-     ActionPacket action = optAction.get();
+@@ -84,4 +84,10 @@ public class MCioClientSync {
      lastActionSequence = action.sequence();
      LOGGER.debug("ACTION {}", action);
 +    observationHandler.requestSurfaceObjects(action.options() != null &&
@@ -14,13 +13,11 @@ index fe285c0..e1ea9dd 100644
 +            o instanceof MiningFeedbackRequest request && request.fresh()));
      actionHandler.processAction(action);
    }
- 
 diff --git a/src/client/java/net/twoturtles/MCioNetworkPacket.java b/src/client/java/net/twoturtles/MCioNetworkPacket.java
 index 92d6661..c37d76c 100644
 --- a/src/client/java/net/twoturtles/MCioNetworkPacket.java
 +++ b/src/client/java/net/twoturtles/MCioNetworkPacket.java
-@@ -91,6 +91,60 @@ record StatsUpdateOption(ArrayList<StatCategory> categories) implements Option {
- @JsonTypeInfo(use = Id.MINIMAL_CLASS, include = As.PROPERTY, property = MCioConfig.MCIO_TYPE)
+@@ -92,4 +92,58 @@ record StatsUpdateOption(ArrayList<StatCategory> categories) implements Option {
  record StatsFullOption(ArrayList<StatCategory> categories) implements Option {}
  
 +/* Opt-in read-only player/actual crosshair knowledge. No chunk map, no seed.
@@ -79,19 +76,17 @@ index 92d6661..c37d76c 100644
 +
  /* Serialize ObservationPacket */
  class ObservationPacketPacker {
-   private static final Logger LOGGER = LogUtils.getLogger();
 diff --git a/src/client/java/net/twoturtles/MCioObservationHandler.java b/src/client/java/net/twoturtles/MCioObservationHandler.java
 index 1e0d5f2..fcd0c33 100644
 --- a/src/client/java/net/twoturtles/MCioObservationHandler.java
 +++ b/src/client/java/net/twoturtles/MCioObservationHandler.java
-@@ -5,15 +5,21 @@ import com.mojang.logging.LogUtils;
- import java.nio.ByteBuffer;
+@@ -6,4 +6,5 @@ import java.nio.ByteBuffer;
  import java.util.ArrayList;
  import java.util.HashMap;
 +import java.util.LinkedHashMap;
  import java.util.List;
  import java.util.Map;
- import java.util.Optional;
+@@ -11,8 +12,13 @@ import java.util.Optional;
  import net.minecraft.client.Minecraft;
  import net.minecraft.client.player.LocalPlayer;
 +import net.minecraft.core.BlockPos;
@@ -105,9 +100,7 @@ index 1e0d5f2..fcd0c33 100644
 +import net.minecraft.world.phys.HitResult;
  import org.lwjgl.glfw.GLFW;
  import org.slf4j.Logger;
- 
-@@ -26,6 +32,28 @@ public class MCioObservationHandler {
-   private final Logger LOGGER = LogUtils.getLogger();
+@@ -27,4 +33,26 @@ public class MCioObservationHandler {
    private static final TrackPerSecond sendFPS = new TrackPerSecond("ObservationsSent");
    private int observationSequence = 0;
 +  private final boolean emitGmaincraftStatus =
@@ -134,9 +127,7 @@ index 1e0d5f2..fcd0c33 100644
 +  }
  
    public MCioObservationHandler(Minecraft client, MCioConfig config) {
-     this.client = client;
-@@ -53,6 +81,27 @@ public class MCioObservationHandler {
-     // XXX For now just manually add the stats update.
+@@ -54,4 +82,25 @@ public class MCioObservationHandler {
      // This will be based on the action packet in the future.
      options.add(getStatsUpdate());
 +    if (emitGmaincraftStatus) {
@@ -162,9 +153,7 @@ index 1e0d5f2..fcd0c33 100644
 +    }
      //        options.add(getStatsFull());
  
-     getCursorPosRV cursorPosRV = getCursorPos(client);
-@@ -126,6 +175,167 @@ public class MCioObservationHandler {
-     return new StatsFullOption(updates);
+@@ -127,4 +176,165 @@ public class MCioObservationHandler {
    }
  
 +  /** Actual client-side crosshair selection (not an inferred X-ray scan).
@@ -330,4 +319,31 @@ index 1e0d5f2..fcd0c33 100644
 +
    float getYaw(LocalPlayer player) {
      float yaw = player.getYRot();
-     // Normalize yaw -180 to 180. Minecraft already normalizes pitch -90 to 90.
+diff --git a/src/client/java/net/twoturtles/mixin/client/WindowMixin.java b/src/client/java/net/twoturtles/mixin/client/WindowMixin.java
+index f12eb37..6ffdb5c 100644
+--- a/src/client/java/net/twoturtles/mixin/client/WindowMixin.java
++++ b/src/client/java/net/twoturtles/mixin/client/WindowMixin.java
+@@ -28,4 +28,10 @@ public class WindowMixin {
+ 
+   @Unique private static boolean checkFrameSize = false;
++  // Opt-in structured-observation transport. Preserve normal rendered frame
++  // callbacks/tick synchronization but omit GPU readback and RGB packet data.
++  // Never enable for screenshot consumers or visibility calibration.
++  @Unique
++  private static final boolean gmaincraftMemoryOnlyFrameV1 =
++      "1".equals(System.getenv("GMAINCRAFT_MEMORY_ONLY_FRAME_V1"));
+ 
+   // This captures frames and stores them to MCioFrameCapture. This plugs in to the Minecraft
+@@ -39,4 +45,12 @@ public class WindowMixin {
+     if (!frameCapture.isEnabled()) return;
+ 
++    if (gmaincraftMemoryOnlyFrameV1) {
++      // Capture listeners drive MCio SYNC observation delivery. A zero-byte
++      // frame still advances the EXACT existing sequence and listener chain,
++      // but avoids glReadPixels, direct pixel allocation and RGB transfer.
++      // The Minecraft renderer/GUI itself remains active and unchanged.
++      frameCapture.capture(ByteBuffer.allocate(0), 0, 0);
++      return;
++    }
+     doCapture(frameCapture);
+   }

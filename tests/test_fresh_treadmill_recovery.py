@@ -6,6 +6,7 @@ import pathlib
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest import mock
 
 ROOT=pathlib.Path(__file__).resolve().parents[1]
@@ -16,7 +17,8 @@ from gmaincraft.fresh_world_manager import FreshWorldManager,names
 from gmaincraft.natural_online_policy import (NaturalPPO,PERSISTENCE_SCHEMA,PERSISTENCE_HEAD_SIZES,
                                              MOTOR_V7_SCHEMA,MOTOR_V7_HEAD_SIZES,MOTOR_V7,WOOD_ENGAGEMENT_SCHEMA)
 from fresh_seed_treadmill import (parse_args,metadata,save_json_atomic,
-    save_model,restore,recover_inflight,repair_jsonl_tail,quarantine_pending_file)
+    save_model,restore,recover_inflight,repair_jsonl_tail,quarantine_pending_file,
+    validate_memory_only_packet)
 
 
 class StreamRecoveryTests(unittest.TestCase):
@@ -41,6 +43,24 @@ class StreamRecoveryTests(unittest.TestCase):
                             '--decisions','10'])
             with self.assertRaises(SystemExit):
                 parse_args(['--run-tag','../x'])
+
+    def test_optin_frame_free_requires_empty_rgb_but_live_sequence(self):
+        old=parse_args(['--run-tag','v9old','--decisions','120',
+                        '--reward-profile','wood_temporal_v9'])
+        frame_free=parse_args(['--run-tag','v9new','--decisions','120',
+                        '--reward-profile','wood_temporal_v9','--memory-only-no-rgb'])
+        self.assertFalse(old.memory_only_no_rgb)
+        self.assertTrue(frame_free.memory_only_no_rgb)
+        self.assertNotIn('frame_transport',metadata(old))
+        self.assertEqual(metadata(frame_free)['frame_transport'],
+                         'memory_only_frame_callback_v1')
+        self.assertEqual(metadata(old)['policy_schema'],metadata(frame_free)['policy_schema'])
+        good=SimpleNamespace(frame_width=0,frame_height=0,frame=b'',frame_sequence=7)
+        self.assertIsNone(validate_memory_only_packet(good))
+        for changed in (dict(frame_width=320),dict(frame_height=180),
+                        dict(frame=b'123'),dict(frame_sequence=0)):
+            with self.subTest(changed=changed),self.assertRaisesRegex(RuntimeError,'Opt-in'):
+                validate_memory_only_packet(SimpleNamespace(**{**vars(good),**changed}))
 
     def test_versioned_v3_reward_does_not_mutate_old_resume_metadata(self):
         old=parse_args(['--run-tag','oldv2','--decisions','96'])

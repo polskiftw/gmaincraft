@@ -59,8 +59,9 @@ class AgentView:
     @classmethod
     def from_packet(cls, packet):
         rgb = np.asarray(packet.get_frame())
-        if rgb.ndim != 3 or rgb.shape[2] != 3 or rgb.dtype != np.uint8:
-            raise ValueError('Expected rendered HxWx3 uint8 pixels')
+        if (rgb.ndim != 3 or rgb.shape[2] != 3 or rgb.dtype != np.uint8
+                or rgb.shape[0] == 0 or rgb.shape[1] == 0):
+            raise ValueError('Expected nonempty rendered HxWx3 uint8 pixels (frame-free mode is memory-only)')
         safe_pixels = np.array(rgb, copy=True)
         safe_pixels.setflags(write=False)
         return cls(safe_pixels)
