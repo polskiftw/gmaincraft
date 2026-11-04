@@ -17,6 +17,7 @@ sys.path.insert(0,str(ROOT/'src'))
 from gmaincraft.fresh_seed_schedule import SCHEMA as STREAM_SCHEMA
 from gmaincraft.natural_online_policy import TEMPORAL_V9_SCHEMA,MOTOR_V7_HEAD_SIZES
 from gmaincraft.replay_q_skill import SCHEMA as Q_SCHEMA
+from gmaincraft.replay_q_rare_v2 import SCHEMA as Q_V2_SCHEMA,WOOD_CRACK_GOAL
 
 
 def export_snapshot(root,collector,tag):
@@ -31,14 +32,15 @@ def export_snapshot(root,collector,tag):
         raise FileExistsError('Refusing to replace an existing or interrupted Q snapshot')
     original=torch.load(source,map_location='cpu',weights_only=True)
     meta=original['metadata']
-    if (original.get('stream')!=STREAM_SCHEMA or original.get('schema')!=Q_SCHEMA or
-        meta.get('kind')!='gmaincraft_q_collect_v1' or
+    if (original.get('stream')!=STREAM_SCHEMA or original.get('schema') not in (Q_SCHEMA,Q_V2_SCHEMA) or
+        meta.get('kind') not in ('gmaincraft_q_collect_v1','gmaincraft_q_collect_v2_rare_outcome') or
         meta.get('reward_profile')!='wood_temporal_v9' or
         meta.get('policy_schema')!=TEMPORAL_V9_SCHEMA or
         tuple(meta.get('policy_action_heads',()))!=MOTOR_V7_HEAD_SIZES or
         original.get('next_episode',0)<=meta.get('collector_start_index',0) or
         original.get('decisions',0)<=0 or
-        original['model'].get('schema')!=Q_SCHEMA):
+        original['model'].get('schema')!=original.get('schema') or
+        (original.get('schema')==Q_V2_SCHEMA and meta.get('collector_q_goal')!=WOOD_CRACK_GOAL)):
         raise ValueError('Source is not a committed compatible real Q self-play collector')
     # Confirm exact last committed save position; incomplete next world's
     # journal rows may follow it but cannot become training evidence.
@@ -55,7 +57,32 @@ def export_snapshot(root,collector,tag):
                  source_q_optimizer_updates=original['model']['updates'],
                  source_starting_q_model=meta['collector_q_model'],
                  provenance='copy_of_committed_self_play_q_checkpoint')
-    output=dict(schema=Q_SCHEMA,metadata=outmeta,model=original['model'],
+    if original['schema']==Q_V2_SCHEMA:
+        # A V2 collection is an extension of PREVIOUS self-play. Never lose
+        # its old genuine positive outcomes when freezing/restarting a newer
+        # V2 collector. Preserve the original committed source identifier,
+        # plus the newly frozen collector's own subsequent self-play.
+        original_frozen=root/'checkpoints'/f"replay_q_{meta['collector_q_model']}.pt"
+        prior=torch.load(original_frozen,map_location='cpu',weights_only=True)
+        if prior.get('schema')!=Q_V2_SCHEMA:
+            raise ValueError('A V2 collector must originate from an actual V2 self-play network')
+        prior_meta=prior['metadata']
+        ancestry=prior_meta.get('protected_prior_source_runs')
+        if ancestry is None:
+            ancestor=prior_meta.get('protected_prior_source_run',prior_meta.get('source_run'))
+            ancestry=(ancestor,)
+        ancestry=tuple(ancestry)
+        immediate=prior_meta.get('source_run')
+        lineage=ancestry+((immediate,) if immediate not in ancestry else ())
+        if (not lineage or len(lineage)>128 or len(lineage)!=len(set(lineage)) or
+            not all(isinstance(name,str) and
+                        re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,22}',name)
+                        for name in lineage) or
+            prior_meta.get('source_seed_root')!=meta['seed_root'] or collector in lineage):
+            raise ValueError('Unverifiable earlier V2 history / seed provenance')
+        outmeta['protected_prior_source_runs']=lineage
+        outmeta['protected_prior_source_run']=lineage[0]  # compatibility
+    output=dict(schema=original['schema'],metadata=outmeta,model=original['model'],
                 source_committed_cursor=original['next_episode'])
     staged=target.with_suffix('.pt.pending')
     with staged.open('xb') as handle:

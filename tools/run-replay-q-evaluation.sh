@@ -11,7 +11,7 @@ model="$1";tag="$2";goal="$3";units="$4"
 horizon="${5:-1200}";seed_start="${6:-0}";rng="${7:-731117}";mode="${8:-q_sampled}"
 if [[ ! "$model" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,22}$ ]] ||
    [[ ! "$tag" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,22}$ ]] ||
-   [[ "$goal" != effect:visible_crack_progress && ! "$goal" =~ ^minecraft:[a-z0-9_./-]+$ ]] ||
+   [[ "$goal" != effect:visible_crack_progress && "$goal" != effect:visible_wood_crack_progress_v2 && ! "$goal" =~ ^minecraft:[a-z0-9_./-]+$ ]] ||
    [[ ! "$units" =~ ^[1-9][0-9]*$ ]] ||
    [[ ! "$horizon" =~ ^[1-9][0-9]*$ ]] ||
    [[ ! "$seed_start" =~ ^[0-9]{1,12}$ ]] ||
@@ -58,6 +58,9 @@ if (last.get('stage')!='completed' or last['decisions']!=int(sys.argv[2]) or
 if sys.argv[3].startswith('minecraft:'):
     print('VERIFIED Q PRACTICE:',sum(bool(x.get('goal_achieved')) for x in episodes),
           '/',len(episodes),'unseen natural worlds gained',sys.argv[3])
+elif sys.argv[3]=='effect:visible_wood_crack_progress_v2':
+    print('VERIFIED Q V2 PRACTICE:',sum(x.get('counts',{}).get('v2_visible_wood_crack_rises',0) for x in episodes),
+          'own visible same-wood crack-rise samples in',len(episodes),'unseen worlds')
 else:
     print('VERIFIED Q PRACTICE:',sum(x.get('visible_target_history_audit',{}).get('visible_crack_rise_samples',0) for x in episodes),
           'player-visible crack-rise samples in',len(episodes),'unseen worlds')

@@ -1,3 +1,22 @@
+## New measured V1 collapse and V2 retained-self-success training (Nov 4)
+
+[Full audit and actual journal tags](V2_RARE_SUCCESS_REPLAY_AUDIT_2026_11_04.md).
+Original V1 200 actual noise survival worlds / 240k six-tick units / 1.44M
+Minecraft ticks / 9,512 cumulative Q updates gained only 3 true logs,
+all early. Frozen Q in 313 SAME real wood-crosshair observations changed
+stationary attack from 11.30% originally to 0.04% final. Q label originally
+rewarded any player-visible crack and rolling replay forgot rare wood
+successes. V2 trains on 52 real target-specific player-visible successes,
+retains older self-trained nonwood action distribution and NO hidden
+world/teacher facts. Frozen V2 acquired 2 logs seed0, 4/3 seed6 at two
+action RNGs, one seed7; zero on barren8/9. Old Q seed6/7 zero.
+Live corrected V2 start/resume acquired 3 oak and1 birch in train worlds
+203-204; independent chained world205 acquired1 log. The three archived
+self-play histories preserve 84 bona fide wood progress decisions in
+`qv2triplef1104`. Early v2 schema-label smoke checkpoint remains
+preserved, not silently changed. Still a local practice skill, not a
+learned general survival/Any% agent.
+
 ## ACTIVE experimental extension: `qselfplay_v1_1104` first world verified
 
 A longer replay-Q self-play run was independently confirmed **detached,

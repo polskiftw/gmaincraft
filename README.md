@@ -1,3 +1,15 @@
+> **Latest (Nov 4): V1 200-world training is COMPLETE, but its low-level
+> wood gathering regressed (only 3 actual log pickups).** New strictly
+> versioned V2 learns rare **player-visible** wood progress from its own
+> previously recorded Minecraft actions, retains original successes during
+> resumed self-play, and has obtained real logs on multiple frozen unseen
+> seed/RNG tests. Three separate completed real V2 training worlds acquired
+> another FIVE logs in total. Neither reliable wood collection, crafting,
+> skill composition nor Any% is solved. Full measured results, failures,
+> versioned CLI and lineage: [V2 rare-success and forgetting audit](docs/V2_RARE_SUCCESS_REPLAY_AUDIT_2026_11_04.md).
+> Use [current handoff](docs/NEXT_SESSION.md) for the next long V2 run,
+> not the historical v1 commands farther below.
+
 > **Latest executable work (Nov 3 local / Nov 4 UTC):**
 > [Real replay-Q self-play, online CUDA training, independent heldout audits](docs/REPLAY_Q_LIVE_LEARNING_2026_11_04.md).
 > New from-scratch Q learning reuses actual player-only V9 action experience,
@@ -9,9 +21,9 @@
 > oak log. These are useful experiments, **not** a proven first-log agent
 > or autonomous Any% speedrunner. See the guide for the new bounded,
 > stoppable longer-training commands; previous V2-V9 work is preserved.
-> **Long fresh-world Q self-play launched:** `qselfplay_v1_1104`,
-> `tools/run-replay-q-collection.sh status qselfplay_v1_1104`.
-> See `docs/NEXT_SESSION.md` before attempting to resume it.
+> **Historical V1 200-world run COMPLETED**: `qselfplay_v1_1104`.
+> Its archived initial launch is no longer an active process. The
+> versioned new V2 continuation is in `docs/NEXT_SESSION.md`.
 
 # gmaincraft
 

@@ -1,3 +1,27 @@
+## NEWEST: 200-world Q failure analyzed; V2 rare-success learner validated (Nov 4, 2026)
+
+Read [docs/V2_RARE_SUCCESS_REPLAY_AUDIT_2026_11_04.md](docs/V2_RARE_SUCCESS_REPLAY_AUDIT_2026_11_04.md)
+FIRST. Original `qselfplay_v1_1104` completed **200** fresh worlds, 1.44
+million Minecraft ticks, 139,165 player motor actions, 9,512 total CUDA Q
+updates, but only **3 genuine log pickups**; all were in first 20 worlds.
+Its frozen stationary attack probability under real wood crosshair fell
+from 11.3% to 0.04% on the SAME 313 saved actual player observations.
+V1 not mastered. New strict V2 own-visible-wood-crack outcome + persistent
+real success replay + nonwood anchor trained from scratch/self weights;
+frozen V2 got actual 2 wood pickups on heldout seed0, 4/3 pickups on
+seed6 (different RNGs), 1 on seed7, 0 on barren 8 and 9. Original Q on
+seeds6/7 got 0; seed7 has imperfect Y-coordinate spawn matching.
+Two REAL V2 online train worlds acquired 3 oak + 1 birch and 16 Q updates,
+with strict model/optimizer resume; another chained world mined2, acquired1,
+with 8 Q updates. Checkpoints/experience original and new preserved.
+Latest frozen model `qv2triplef1104` preserves 84 actual own-achieved
+wood-crack motor successes across all THREE prior completed training runs
+(52+23+9). It is a practice skill, NOT a reliable full-game Any% agent.
+All previous V1/V2 experiment checkpoints and worlds are intact. Next:
+`qwood_v2long1104` protected 100-world V2 training starting at unused
+TRAIN seed index206; see `docs/NEXT_SESSION.md` for exact source chain,
+status, stop and resume. Then frozen multi-seed/alternate-RNG audit.
+
 ## NEWEST VERIFIED: conservative replay Q, real online CUDA self-play (Nov 3 local / Nov 4 UTC)
 
 Read [docs/REPLAY_Q_LIVE_LEARNING_2026_11_04.md](docs/REPLAY_Q_LIVE_LEARNING_2026_11_04.md)

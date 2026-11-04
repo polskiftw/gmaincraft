@@ -72,7 +72,7 @@ if [[ -e "$marker" ]];then
   echo "Stale stop marker exists: $marker. Inspect the previous run before starting or resuming." >&2
   exit 1
 fi
-if [[ ! "$q_model" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,22}$ ]] || [[ "$q_goal" != effect:visible_crack_progress && ! "$q_goal" =~ ^minecraft:[a-z0-9_./-]+$ ]] || [[ ! "$collect_index" =~ ^[0-9]{1,12}$ ]]; then usage; fi
+if [[ ! "$q_model" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,22}$ ]] || [[ "$q_goal" != effect:visible_crack_progress && "$q_goal" != effect:visible_wood_crack_progress_v2 && ! "$q_goal" =~ ^minecraft:[a-z0-9_./-]+$ ]] || [[ ! "$collect_index" =~ ^[0-9]{1,12}$ ]]; then usage; fi
 if [[ "$limit" != 'forever' && ! "$limit" =~ ^[1-9][0-9]*$ ]] ||
    [[ ! "$episode_decisions" =~ ^[1-9][0-9]*$ ]] ||
    (( episode_decisions < 12 || episode_decisions > 100000 )); then usage;fi
@@ -104,6 +104,8 @@ opts=(--mode collect --control q_sampled --q-model "$q_model" --q-goal "$q_goal"
       --q-updates-per-world "${GMAINCRAFT_Q_UPDATES_PER_WORLD:-64}"
       --q-replay-worlds "${GMAINCRAFT_Q_REPLAY_WORLDS:-32}"
       --q-replay-batch-size "${GMAINCRAFT_Q_REPLAY_BATCH_SIZE:-48}"
+      --q-v2-anchor-weight "${GMAINCRAFT_Q_V2_ANCHOR_WEIGHT:-2}"
+      --q-v2-success-weight "${GMAINCRAFT_Q_V2_SUCCESS_WEIGHT:-0.6}"
       --run-tag "$tag" --seed-root 917211 --policy-seed 731117
       --episode-decisions "$episode_decisions" --update-every "$update_every" --report-every 100
       --reward-profile wood_temporal_v9 --retain-worlds 2 --device cuda --visible

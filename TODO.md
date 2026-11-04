@@ -1,3 +1,39 @@
+## CURRENT NOV 4: finished 200-world V1, V2 rare own-success learner / durable lineage
+
+- [x] V1 `qselfplay_v1_1104` finished 200 natural train worlds,
+  240,000 six-tick units, 139,165 motor choices, 9,512 cumulative Q
+  updates but only 3 true inventory log pickups in earliest 20 worlds.
+  No reliable wood skill; MCio I/O stable ~2.0-2.3ms/tick.
+- [x] Frozen SAME-real-state audit: Q stationary attack probability with
+  wood under crosshair collapsed from 0.1130 to 0.00042, despite late
+  worlds containing visible wood; fix sample/reward target before scaling.
+- [x] V2 explicit own-visible wood-crack outcome, rare-success stratified
+  replay with 52 actual positives from archived 200 train worlds,
+  conservative double-Q, trained-action imitation and frozen older own
+  policy anchor outside wood. No invented attacks, target coords or routes.
+- [x] V2 full CUDA offline 500-update train; frozen unseen world0 got
+  2 real logs, world6 4/3 with independent RNGs vs old Q0, world7 1 vs
+  old Q0; world8/9 none (no wood under crosshair). Seed7 spawn Y drift
+  means imperfect matched control. Not statistically reliable mastery.
+- [x] Real corrected V2 start+resume new world indices203-204: 481
+  ordinary actions, 3 oak + 1 birch real pickups, 16 CUDA Q updates,
+  strict V2 outer/inner checkpoint schema and two archived worlds.
+- [x] Real V2 chained smoke index205: one more true log pickup and nine
+  new own successful motor effects, eight CUDA updates; original 52
+  successes + newer 23 retained. Preserve corrupted earlier outer-V1
+  smoke tag202 unchanged, do not silently migrate.
+- [x] Versioned immutable V2 snapshot lineage: `qv2triplef1104` tracks
+  52+23+9=84 actual player-known successes from THREE previous completed
+  train sources; follow source cursors and seed split, NO heldout replay.
+- [ ] Start/inspect `qwood_v2long1104` V2 longer training: 100 fresh
+  1,200-unit survival worlds beginning at NEW TRAIN index206, with
+  84 previous successes protected plus new successful real actions,
+  32 new CUDA updates per committed world and strict versioned resume.
+- [ ] Frozen progress gate on MANY independent unseen natural seeds and
+  sampled RNGs vs original Q/V1 final, matched random, and V2 pretraining.
+- [ ] Improve wood access, dropped item visibility, whole item/vanilla
+  action/crafting UI, general achieved item-goal and learned skill manager.
+
 ## NEWEST: replay Q online self-play and independent frozen gate
 
 - [x] Implement versioned conservative double-Q from only original V9

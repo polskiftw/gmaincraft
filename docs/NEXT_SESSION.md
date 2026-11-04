@@ -1,69 +1,89 @@
-## NEWEST VERIFIED: conservative replay Q, real online CUDA self-play (Nov 3 local / Nov 4 UTC)
+## NEWEST: 200-world Q failure analyzed; V2 rare-success learner validated (Nov 4, 2026)
 
-Read [REPLAY_Q_LIVE_LEARNING_2026_11_04.md](REPLAY_Q_LIVE_LEARNING_2026_11_04.md)
-FIRST. A new strictly versioned double-Q learner trains only from archived
-V9 bounded player-observations/own-inventory outcomes; no external action
-teacher, seed/hidden map or scripted handoff. Scratch real archived V9 data
-contained only four crack-progress outcomes in 449 actual actions. Frozen
-Q obtained genuine wood inventory on heldout seed0 under two independent
-action RNGs (2 and 1), where exact V9/random controls collected 0; however
-it scored **0 wood** on additional heldout seeds1/2. NOT a reliable skill.
-A new Q self-play collector and crash-aligned experience + online Q learner
-were exercised across two REAL new train noise worlds, 470 ordinary actions,
-16 NEW CUDA Q updates (1000->1016), restart+resume, and a real dark oak
-log entering inventory in world2. The collector checkpoint/own replay and
-frozen export were validated; its frozen snapshot acquired zero logs on
-heldout index3. Original V2-V9 weights intact. Tests: 174+ pure expected.
-NEXT run: build a larger diverse train replay, then multi-RNG independent
-heldout inventory comparisons vs same-seed controls; not a speedrun.
+Read [V2_RARE_SUCCESS_REPLAY_AUDIT_2026_11_04.md](V2_RARE_SUCCESS_REPLAY_AUDIT_2026_11_04.md)
+FIRST. Original `qselfplay_v1_1104` completed **200** fresh worlds, 1.44
+million Minecraft ticks, 139,165 player motor actions, 9,512 total CUDA Q
+updates, but only **3 genuine log pickups**; all were in first 20 worlds.
+Its frozen stationary attack probability under real wood crosshair fell
+from 11.3% to 0.04% on the SAME 313 saved actual player observations.
+V1 not mastered. New strict V2 own-visible-wood-crack outcome + persistent
+real success replay + nonwood anchor trained from scratch/self weights;
+frozen V2 got actual 2 wood pickups on heldout seed0, 4/3 pickups on
+seed6 (different RNGs), 1 on seed7, 0 on barren 8 and 9. Original Q on
+seeds6/7 got 0; seed7 has imperfect Y-coordinate spawn matching.
+Two REAL V2 online train worlds acquired 3 oak + 1 birch and 16 Q updates,
+with strict model/optimizer resume; another chained world mined2, acquired1,
+with 8 Q updates. Checkpoints/experience original and new preserved.
+Latest frozen model `qv2triplef1104` preserves 84 actual own-achieved
+wood-crack motor successes across all THREE prior completed training runs
+(52+23+9). It is a practice skill, NOT a reliable full-game Any% agent.
+All previous V1/V2 experiment checkpoints and worlds are intact. Next:
+run the versioned longer V2 protected self-play with new train worlds
+starting at index206; then frozen unbiased multi-seed/alternate-RNG audit.
 
-## Next long experiment — Q fresh-world online self-play
+## Next long versioned V2 experiment — `qwood_v2long1104`
 
-Run tag **`qselfplay_v1_1104`**, intended cumulative cap **240,000 six-tick
-units** across fresh train worlds of **1,200 six-tick units each** (up to
-200 worlds). First index **2** avoids original PPO source indices0/1;
-practice goal is the *player's own observable crack-progress effect*.
-Initial immutable offline Q model `qcrack_v1a1104` has 1,000 updates;
-collector adds max 64 Q minibatch updates after each real closed/saved
-world with bona fide positive outcomes, reading up to 32 recent committed
-worlds. Keep 20 GiB replay retention cap and newest 2 saved worlds. Exact
-command (only `resume` after already launched, same options):
+The completed V1 200-world run had severe target-response forgetting,
+so **DO NOT rerun/resume V1 as the primary experiment.** All its ignored
+worlds, archived transitions, saved weights and journal are intact.
+
+A corrected V2 trainer has passed 181 pure tests and real Minecraft
+start/resume and chained-training evaluations. The new V2 model checkpoint
+`qv2triplef1104` is from the actual completed three-source line of
+self-collected Minecraft experience. It contains 524 cumulative CUDA
+Q optimizer steps and verifiable committed source provenance:
+
+- `qselfplay_v1_1104`: 52 true own visible wood-crack action successes,
+  TRAIN indices [2,202)
+- `qwood_v2smoke2_1104`: 23 further successes, TRAIN indices [203,205)
+- `qv2chain_smoke1104`: 9 further successes, TRAIN indices [205,206)
+
+**New fresh TRAIN seed index = 206** (none above repeated). Fresh new
+run `qwood_v2long1104` has a bounded TOTAL **120,000 six-tick units**
+over a maximum of 100 new REAL vanilla survival worlds of 1,200
+units each (720,000 total in-game ticks). Each completed world gets
+32 CUDA replay minibatches with 48 player-only states each, 32 recent
+worlds plus ALL 84 permanently protected genuine success decisions,
+strength2 nonwood older-own-policy anchor, success weight0.6. Retain
+20GiB max self-replay and newest two disposable worlds. No hidden
+coordinates, preauthored route, human demonstrations or phase handoff.
+This is STILL local wood-progress practice, not general Any%.
+
+To start **only if the tag does not exist and no trainer is active**:
 
 ```bash
 cd "$HOME/Documents/minecraft-discovery"
-GMAINCRAFT_Q_UPDATES_PER_WORLD=64 tools/run-replay-q-collection.sh resume qselfplay_v1_1104 240000 1200 qcrack_v1a1104 effect:visible_crack_progress 2
-tools/run-replay-q-collection.sh status qselfplay_v1_1104
-tools/run-replay-q-collection.sh stop qselfplay_v1_1104
-.venv/bin/python tools/inspect-experience.py qselfplay_v1_1104
+GMAINCRAFT_Q_UPDATES_PER_WORLD=32 GMAINCRAFT_Q_REPLAY_WORLDS=32 GMAINCRAFT_Q_REPLAY_BATCH_SIZE=48 GMAINCRAFT_Q_V2_ANCHOR_WEIGHT=2 GMAINCRAFT_Q_V2_SUCCESS_WEIGHT=0.6 tools/run-replay-q-collection.sh start qwood_v2long1104 120000 1200 qv2triplef1104 effect:visible_wood_crack_progress_v2 206
 ```
 
-**Verified launched in detached mode:** run `qselfplay_v1_1104` was started
-with `start` and the exact configuration above, Nov 4 UTC. Independent
-shell connection confirmed the command survived shell exit (parent PID 1),
-the advisory flock **HELD**, and the REAL Minecraft Java client running
-alongside the collector (not merely a shell launcher). Startup checkpoint
-and stream journal were already present. **FIRST REAL WORLD NOW COMMITTED:** source TRAIN seed index2
-`2449750809322325767`, 1,200 six-tick units / 7,200 true Minecraft
-ticks, **451 ordinary neural actions**, 2 spruce logs, 1 spruce sapling,
-1 stick and 5 dirt items verified by replayed actual own inventory.
-The first world provided 18 genuine own crack-rise transitions, enabled
-64 new CUDA Q optimizer updates (1,000 -> 1,064), and fully committed
-checkpoint `next_episode=3`, `decisions=1200`. The NEXT world
-(index3) started while the collector's lock was still held. Archived
-report `tools/inspect-experience.py qselfplay_v1_1104` verified 1 complete
-replay and actual item gains. The process is NOT complete. It may still finish, crash or stop
-before the next agent session: determine current status from its actual
-journal and checkpoint before attempting any `resume`. Never run `start`
-twice or remove a held `.lock` to evade a live trainer.
-
-Detached console: `logs/qselfplay_v1_1104_detached.log`; full per-world
-console `logs/fresh_treadmill_qselfplay_v1_1104_latest.log`. Original
-command for audit:
+Once the run exists, use **the same exact arguments** with `resume`
+instead of `start`, and a larger **cumulative** total only if explicitly
+continuing beyond this experiment. Do NOT delete a held `.lock`, overwrite
+an existing model or reuse a training seed. To check safely:
 
 ```bash
-GMAINCRAFT_Q_UPDATES_PER_WORLD=64 GMAINCRAFT_Q_REPLAY_WORLDS=32 GMAINCRAFT_Q_REPLAY_BATCH_SIZE=48 tools/run-replay-q-collection.sh start qselfplay_v1_1104 240000 1200 qcrack_v1a1104 effect:visible_crack_progress 2
+tools/run-replay-q-collection.sh status qwood_v2long1104
+.venv/bin/python tools/inspect-experience.py qwood_v2long1104
+tools/run-replay-q-collection.sh stop qwood_v2long1104
 ```
 
+After it finishes or is gracefully paused, compare immutable frozen
+new V2 snapshots against original V2, Q V1 and random controls on
+*multiple disjoint fresh heldout seed indices and independent action
+RNGs*, with actual newly acquired inventory item counts. Do not
+promote a skill based only on policy probabilities or successes in
+training worlds. Archive notes: [V2 audit](V2_RARE_SUCCESS_REPLAY_AUDIT_2026_11_04.md).
+
+**Current launch status:** prepared, awaiting independent process/journal
+verification. Do not infer that the job is running simply from these docs.
+
+## Historical V1 Q replay run (COMPLETED, NOT ACTIVE)
+
+`qselfplay_v1_1104` reached exactly 200 newly generated worlds,
+240,000 six-tick units / 1,440,000 real Minecraft game ticks, model
+cursor202 and 9,512 Q updates, but only THREE actual log gains in early
+worlds. It completed and released the lock. See the V2 audit and do not
+mistake the earlier launch instructions for a currently running job.
 
 ## CURRENT continuation — V7/V8 statistical failure diagnosis
 

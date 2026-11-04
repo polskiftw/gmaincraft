@@ -1,3 +1,10 @@
+> **Historical V1 foundation only — run now completed and behavior regressed.**
+> The follow-up 200-world experiment `qselfplay_v1_1104` finished and
+> collected only 3 real logs. The corrective V2 training, outcomes,
+> genuinely verified goal and new safe continuation are documented in
+> [V2 rare-success audit](V2_RARE_SUCCESS_REPLAY_AUDIT_2026_11_04.md).
+> Do not treat the historical launch instructions below as an active job.
+
 # Replay Q: player-only off-policy learning, real Minecraft audit
 
 **November 3, 2026 Indiana local / November 4 UTC journals.** This is a NEW

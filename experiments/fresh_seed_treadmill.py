@@ -38,7 +38,9 @@ from gmaincraft.experience_archive import (
     EpisodeExperience,owned_inventory,archive_path,reconcile_uncommitted,compact_retention)
 from gmaincraft.hindsight_skills import HindsightSkillModel,SCHEMA as HINDSIGHT_SCHEMA
 from gmaincraft.replay_q_skill import ReplayQSkill,SCHEMA as REPLAY_Q_SCHEMA,CRACK_GOAL
+from gmaincraft.replay_q_rare_v2 import RareOutcomeQSkill,SCHEMA as RARE_Q_V2_SCHEMA,WOOD_CRACK_GOAL
 from gmaincraft.online_q_replay import update_from_player_replay
+from gmaincraft.online_q_rare_v2 import learn_between_real_worlds
 from gmaincraft.fresh_seed_schedule import SeedSchedule,SCHEMA as STREAM_SCHEMA
 from gmaincraft.fresh_world_manager import FreshWorldManager,names
 from gmaincraft.instance_options import temporary_game_options,restore_orphaned_game_options
@@ -126,6 +128,8 @@ def parse_args(argv=None):
     ap.add_argument('--q-replay-worlds',type=int,default=32,
                     help='bounded committed collection episodes replayed for Q updates')
     ap.add_argument('--q-replay-batch-size',type=int,default=48)
+    ap.add_argument('--q-v2-anchor-weight',type=float,default=2.)
+    ap.add_argument('--q-v2-success-weight',type=float,default=.6)
     ap.add_argument('--collect-seed-start',type=int,default=0,
                     help='collection-only index in the TRAIN seed stream; avoid Q source episodes')
     ap.add_argument('--eval-seed-start',type=int,default=0,
@@ -161,6 +165,8 @@ def parse_args(argv=None):
         not 0<=args.q_updates_per_world<=1000 or
         not 1<=args.q_replay_worlds<=128 or not 8<=args.q_replay_batch_size<=256 or
         (args.mode!='collect' and args.q_updates_per_world!=0) or
+        not 0<=args.q_v2_anchor_weight<=10 or
+        not 0<args.q_v2_success_weight<=10 or
         (args.decisions is not None and not 1<=args.decisions<=10**10)):
         ap.error('Invalid episode, update, retention, performance or decision bound')
     if (type(args.eval_seed_start) is not int or not 0<=args.eval_seed_start<2**63 or
@@ -189,7 +195,7 @@ def parse_args(argv=None):
         ap.error('Evaluation is bounded; standard policy uses --model-run, '
                  'goal control uses --goal-model/--goal-item, Q control uses '
                  '--q-model/--q-goal and optional --goal-item score')
-    if is_q and args.q_goal!=CRACK_GOAL:
+    if is_q and args.q_goal not in (CRACK_GOAL,WOOD_CRACK_GOAL):
         if not args.q_goal.startswith('minecraft:'):ap.error('Replay Q requires vanilla item goal')
         from gmaincraft.experience_archive import ObservedItemGoal
         try:ObservedItemGoal(args.q_goal)
@@ -215,13 +221,17 @@ def paths(tag,mode):
 
 
 def metadata(args):
-    return dict(kind='gmaincraft_q_collect_v1' if args.mode=='collect' else
+    return dict(kind=('gmaincraft_q_collect_v2_rare_outcome' if args.q_goal==WOOD_CRACK_GOAL else
+                      'gmaincraft_q_collect_v1') if args.mode=='collect' else
                 'gmaincraft_fresh_stream_v2_fixed_spawn',policy_schema=policy_schema(args),
                 **({'collector_q_model':args.q_model,'collector_q_goal':args.q_goal,
                     'collector_start_index':args.collect_seed_start,
                     'collector_q_updates_per_world':args.q_updates_per_world,
                     'collector_q_replay_worlds':args.q_replay_worlds,
-                    'collector_q_replay_batch_size':args.q_replay_batch_size} if args.mode=='collect' else {}),
+                    'collector_q_replay_batch_size':args.q_replay_batch_size,
+                    **({'collector_q_v2_anchor_weight':args.q_v2_anchor_weight,
+                        'collector_q_v2_success_weight':args.q_v2_success_weight}
+                       if args.q_goal==WOOD_CRACK_GOAL else {})} if args.mode=='collect' else {}),
                 **({'duration_ticks':PERSISTENCE_DURATIONS,'horizon_unit_ticks':DECISION_TICKS} if variable_motor(args) else {}),
                 **({'motor_v7_actions':MOTOR_V7,'policy_action_heads':MOTOR_V7_HEAD_SIZES} if single_motor_v7(args) else {}),
                 **({'visible_target_history_schema':HISTORY_V9_SCHEMA,
@@ -497,6 +507,11 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                     if contact_bonus:events['wood_target_first_contact_reward']+=contact_bonus
                     if engagement_contact:events['wood_engagement_contact_reward']+=engagement_contact
                     if engagement_attack:events['wood_engagement_first_attack_reward']+=engagement_attack
+                    if args.q_goal==WOOD_CRACK_GOAL and (
+                            next_state.own[TEMPORAL_V9_SELF_FEATURES.index('crosshair_is_wood')]>.5 and
+                            next_state.own[TEMPORAL_V9_SELF_FEATURES.index('crack_stage_rose_same_target_div_10')]>0 and
+                            next_state.own[TEMPORAL_V9_SELF_FEATURES.index('same_vanilla_crosshair_target_as_previous')]>.5):
+                        events['v2_visible_wood_crack_rises']+=1
                     for key in ('fresh_cell','new_visible_surfaces','new_visible_wood',
                                 'new_mined_blocks','new_wood_mined','wood_inventory_gain','death'):
                         events[key]+=record[key]
@@ -644,13 +659,15 @@ def load_goal_control(root,args):
 
 class FrozenReplayQController:
     """A bounded Q practice policy; only collection mode permits updates."""
-    schema=REPLAY_Q_SCHEMA
 
     def __init__(self,model,goal):
         self.model=model
         self.goal=goal
         self.torch=model.torch
         self.device=model.device
+        # The outer controller, atomic checkpoint and inner Q model MUST have
+        # the same version. V1 collectors retain their original schema.
+        self.schema=RARE_Q_V2_SCHEMA if isinstance(model,RareOutcomeQSkill) else REPLAY_Q_SCHEMA
 
     @property
     def updates(self):
@@ -672,8 +689,11 @@ def load_replay_q_control(root,args):
     import torch
     record=torch.load(root/'checkpoints'/f'replay_q_{args.q_model}.pt',
                       map_location='cpu',weights_only=True)
-    if record.get('schema')!=REPLAY_Q_SCHEMA:
+    q_schema=record.get('schema')
+    if q_schema not in (REPLAY_Q_SCHEMA,RARE_Q_V2_SCHEMA):
         raise ValueError('Unknown replay Q model schema')
+    if q_schema==RARE_Q_V2_SCHEMA and args.q_goal!=WOOD_CRACK_GOAL:
+        raise ValueError('V2 replay Q only supports its versioned observed wood crack practice goal')
     meta=record['metadata']
     if (meta.get('goal')!=args.q_goal or
         meta.get('source_observation_schema')!=TEMPORAL_V9_SCHEMA or
@@ -688,9 +708,42 @@ def load_replay_q_control(root,args):
         source['metadata']['policy_schema']!=TEMPORAL_V9_SCHEMA or
         policy_schema(args)!=TEMPORAL_V9_SCHEMA or not single_motor_v7(args)):
         raise ValueError('Replay Q source/evaluation stream or player sensor drift')
-    model=ReplayQSkill(seed=args.policy_seed,device=args.device)
+    if q_schema==RARE_Q_V2_SCHEMA and args.mode=='collect' and (
+            args.collect_seed_start<source['next_episode'] or
+            meta['source_run']==args.run_tag):
+        raise ValueError('V2 collection must use never-seen TRAIN indices after prior source cursor')
+    model=(RareOutcomeQSkill if q_schema==RARE_Q_V2_SCHEMA else ReplayQSkill)(
+          seed=args.policy_seed,device=args.device)
     model.restore(record['model'],optimizer=False)
-    return FrozenReplayQController(model,args.q_goal)
+    control=FrozenReplayQController(model,args.q_goal)
+    if q_schema==RARE_Q_V2_SCHEMA:
+        ancestral=meta.get('protected_prior_source_runs')
+        if ancestral is None:
+            ancestral=(meta.get('protected_prior_source_run',meta['source_run']),)
+        if not isinstance(ancestral,(tuple,list)):
+            raise ValueError('Invalid V2 immutable prior replay list')
+        sources=tuple(ancestral)
+        if meta['source_run'] not in sources:sources+=(meta['source_run'],)
+        if (not sources or len(sources)>128 or len(sources)!=len(set(sources)) or
+            any(not isinstance(tag,str) or not re.fullmatch(RUN_TAG_RE,tag)
+                for tag in sources)):
+            raise ValueError('Duplicate/invalid V2 prior source lineage')
+        for protected in sources:
+            prior=torch.load(root/'checkpoints'/f'fresh_stream_{protected}.pt',
+                             map_location='cpu',weights_only=True)
+            if prior.get('stream')!=STREAM_SCHEMA or (
+                    prior['metadata']['seed_root']!=args.seed_root):
+                raise ValueError('V2 protected historical replay uses different seed stream')
+            if args.mode=='collect' and args.collect_seed_start<prior['next_episode']:
+                raise ValueError('V2 cannot replay TRAIN seeds from protected historical source')
+        control.protected_source_runs=sources
+        control.prior_source_run=sources[0]
+        control.additional_prior_source_run=sources[1] if len(sources)>1 else None
+    else:
+        control.protected_source_runs=()
+        control.prior_source_run=None
+        control.additional_prior_source_run=None
+    return control
 
 
 def main(argv=None):
@@ -704,7 +757,9 @@ def main(argv=None):
         print('FRESH PLAN',json.dumps(dict(run=args.run_tag,mode=args.mode,
               options=vars(args),source='Minecraft noise server generation',
               seed_namespace=schedule.namespace,
-              upcoming_seeds=[schedule.seed_at(i) for i in range(5)],
+              upcoming_seeds=[schedule.seed_at((args.collect_seed_start if args.mode=='collect'
+                                      else args.eval_seed_start if args.mode=='eval' else 0)+i)
+                              for i in range(5)],
               journal=str(journal),checkpoint=str(checkpoint),
               no_in_process_switch=True,
               note='Fresh Java integrated-server instance per episode; real benchmark will report restart overhead')),flush=True)
@@ -856,11 +911,21 @@ def main(argv=None):
                     # was published, but no model/episode cursor has committed.
                     # A crash during Q updates reverts to the *previous* exact
                     # Q checkpoint and quarantines this episode on resume.
-                    q_update=update_from_player_replay(model.model,
-                           ROOT/'data-local'/'experience',args.run_tag,cursor,
-                           goal=args.q_goal,updates=args.q_updates_per_world,
-                           batch_size=args.q_replay_batch_size,
-                           max_episodes=args.q_replay_worlds)
+                    if args.q_goal==WOOD_CRACK_GOAL:
+                        q_update=learn_between_real_worlds(model.model,
+                            ROOT,args.run_tag,cursor,
+                            protected_source_runs=model.protected_source_runs,
+                            updates=args.q_updates_per_world,
+                            batch_size=args.q_replay_batch_size,
+                            recent_worlds=args.q_replay_worlds,
+                            anchor_weight=args.q_v2_anchor_weight,
+                            success_weight=args.q_v2_success_weight)
+                    else:
+                        q_update=update_from_player_replay(model.model,
+                            ROOT/'data-local'/'experience',args.run_tag,cursor,
+                            goal=args.q_goal,updates=args.q_updates_per_world,
+                            batch_size=args.q_replay_batch_size,
+                            max_episodes=args.q_replay_worlds)
                     log_row(log,dict(stage='uncommitted_online_q_update',
                                      episode=cursor,**q_update))
                     print('FRESH Q REPLAY UPDATE',json.dumps(q_update),flush=True)
