@@ -1,5 +1,18 @@
 # gmaincraft
 
+> **Latest research direction (Nov 3, 2026):** The real natural survival
+> trainer has completed V7/V8 controlled CUDA runs, but does NOT yet
+> acquire wood reliably on unseen seeds/alternate action RNGs. The new
+> **[bootstrapping-to-Any% design](docs/BOOTSTRAP_TO_ANY_PERCENT.md)**
+> specifies how learned skills should eventually compose into a
+> self-directed strategy without scripted human routes, hidden-world
+> observations, global item-reward ladders or evaluator-selected skill
+> handoffs. It is a DESIGN, not an implemented multi-skill agent.
+> Read [V7/V8 results](docs/V7_V8_WOOD_LEARNING_FAILURE_DIAGNOSIS_2026_11_03.md)
+> and [current handoff](docs/NEXT_SESSION.md) before using the historical
+> V4 training suggestion below; that V4 run was already completed.
+
+
 ## Current milestone — first autonomous log in natural survival
 
 **November 3, 2026:** The new from-scratch **four-head memory-first V4

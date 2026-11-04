@@ -1,5 +1,25 @@
 # Handoff for a brand-new ChatGPT conversation
 
+## New design authority for long-horizon skill composition (November 3, 2026)
+
+The user explicitly asked for a plan *before* training many independent
+wood/stone/crafting/tool systems, to avoid an accidental hardcoded speedrun
+or reward-hacked bundle of skills. Read
+[docs/BOOTSTRAP_TO_ANY_PERCENT.md](BOOTSTRAP_TO_ANY_PERCENT.md).
+The proposed architecture uses ordinary actions and permitted player-memory
+readings, reusable goal-conditioned options, learning their outcomes and
+availability from own episodes, an independently trained high-level chooser,
+replay/hindsight, and a verified terminal win/exit goal. It preserves both
+direct primitive exploration and alternative learned strategies. Do NOT
+hand-code the craft/progression DAG or award arbitrary global item bonuses
+as a proxy for beating the game. No hierarchical planner or full recipe/
+interface layer is implemented; V7/V8 natural first-log transfer remains
+unreliable. Next concrete proof: statistically reliable natural acquisition
+then a measured two-skill autonomous selector with *no evaluator-triggered
+phase switch*. Stage progression and 30-minute target are research goals,
+not promised results. Prior V7/V8 experiments remain untouched.
+
+
 ## MOST RECENT: real V7/V8 training evidence and failure diagnosis
 
 Read [`V7_V8_WOOD_LEARNING_FAILURE_DIAGNOSIS_2026_11_03.md`](V7_V8_WOOD_LEARNING_FAILURE_DIAGNOSIS_2026_11_03.md) FIRST. V5's ten-world PPO dataset was only 1,118 neural choices, nine attack-on-wood actions and **zero** no-look attack-on-wood actions; *not* thousands of positive skill experiences. V7 separately trained new 20-way vanilla move/look/attack/duration motor (no auto-aim, no scripted phase) on 10 true noise worlds/6,000 six-tick units/82 CUDA updates: 175 blocks mined, 1 real wood acquired. V8 kept the same motor, reduced sighting reward and added a bounded 0.75-per-six-tick actual targeted stationary-attack shaping signal: 10 worlds/6,000 units/82 CUDA updates, 140 blocks mined, 2 real wood acquired. Frozen V7 on seeds6-9: 0/4 actual inventory; V8 default sampled: 1/4, but alternate action RNG 0/2 on same seeds, random V8 motor 0/2 (though 2 wood mined). Both learned networks remain almost indifferent to wood presence in controlled policy response probes. **This is NOT a working reliable first-log model.** No next 24k training recommended without changing sample efficiency/skill credit. One NVIDIA native SIGFPE occurred on V8 eval startup; clean separate-tag rerun passed, crash preserved. 149 pure tests pass. All older weights/worlds/logs retained. NEXT: train-only real noise forest-rich curriculum and/or policy-owned previous visible target/crack history, evaluate on unbiased heldout seeds with independent RNG.
@@ -17,7 +37,7 @@ Read [`docs/V4_24000_TRAINING_AND_HELDOUT_AUDIT.md`](V4_24000_TRAINING_AND_HELDO
 
 ## Latest milestone: autonomous natural-world wood acquisition with learned action duration
 
-Read [`docs/NATURAL_WOOD_FIRST_LOG_PERSISTENCE_V4.md`](docs/NATURAL_WOOD_FIRST_LOG_PERSISTENCE_V4.md)
+Read [`docs/NATURAL_WOOD_FIRST_LOG_PERSISTENCE_V4.md`](NATURAL_WOOD_FIRST_LOG_PERSISTENCE_V4.md)
 **first**. V3 `woodv3_01` finished24,000 real vanilla game-time decisions,
 338 ordinary blocks mined, 2,895 new wood surface sightings, **0 wood
 mined or inventoried**. A new V4 **four-head** from-scratch memory policy
@@ -49,7 +69,7 @@ checkpoint/world data, update docs/tests and commit/push validated changes.
 
 ## November 3 update: speedrun01 completed, mining-action collapse measured
 
-Read [`docs/SPEEDRUN01_POLICY_COLLAPSE_2026_11_03.md`](docs/SPEEDRUN01_POLICY_COLLAPSE_2026_11_03.md)
+Read [`docs/SPEEDRUN01_POLICY_COLLAPSE_2026_11_03.md`](SPEEDRUN01_POLICY_COLLAPSE_2026_11_03.md)
 for the committed 24,000-decision/10-seed result, the matched frozen
 policy-vs-random Minecraft baseline and the newly versioned `wood_progress_v3`
 training profile. `speedrun01` is preserved as its own original v2 run: 106

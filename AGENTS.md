@@ -1,5 +1,25 @@
 # AGENTS.md — project instructions for coding assistants
 
+## ARCHITECTURE DECISION — learn composition, not a scripted Minecraft route
+
+**Read [docs/BOOTSTRAP_TO_ANY_PERCENT.md](docs/BOOTSTRAP_TO_ANY_PERCENT.md) before designing
+new skills, reward profiles or long training runs.** This is a documented
+**design plan, not implemented capability**. Goal: eventually beat the real
+Ender Dragon and enter the exit portal on unseen natural seeds, then optimize
+in-game time; prioritize win rate over speed. Use shared, goal-conditioned
+vanilla-action skills with learned applicability, outcomes, termination and
+high-level selection/planning; never encode a fixed wood->stone->Nether->End
+playbook, hardcoded recipe/progression graph, teacher-controlled handoffs, or
+unseen-world route/distance hints. The agent can directly read only
+skilled-player-knowable bounded memory; this restriction applies to the
+manager, skills, replay labels and learned models alike. Preserve direct
+primitive exploration for unexpected strategies. Before training dozens
+of resource-specific networks, first prove reliable first-log pickup, add
+general normal input/UI actions, and benchmark **autonomous two-skill
+composition** against fixed order and flat policies. Do not treat V7/V8
+lucky pickups as proof of reliable skill; no Any% hierarchy is built yet.
+
+
 ## MOST RECENT: real V7/V8 training evidence and failure diagnosis
 
 Read [`docs/V7_V8_WOOD_LEARNING_FAILURE_DIAGNOSIS_2026_11_03.md`](docs/V7_V8_WOOD_LEARNING_FAILURE_DIAGNOSIS_2026_11_03.md) FIRST. V5's ten-world PPO dataset was only 1,118 neural choices, nine attack-on-wood actions and **zero** no-look attack-on-wood actions; *not* thousands of positive skill experiences. V7 separately trained new 20-way vanilla move/look/attack/duration motor (no auto-aim, no scripted phase) on 10 true noise worlds/6,000 six-tick units/82 CUDA updates: 175 blocks mined, 1 real wood acquired. V8 kept the same motor, reduced sighting reward and added a bounded 0.75-per-six-tick actual targeted stationary-attack shaping signal: 10 worlds/6,000 units/82 CUDA updates, 140 blocks mined, 2 real wood acquired. Frozen V7 on seeds6-9: 0/4 actual inventory; V8 default sampled: 1/4, but alternate action RNG 0/2 on same seeds, random V8 motor 0/2 (though 2 wood mined). Both learned networks remain almost indifferent to wood presence in controlled policy response probes. **This is NOT a working reliable first-log model.** No next 24k training recommended without changing sample efficiency/skill credit. One NVIDIA native SIGFPE occurred on V8 eval startup; clean separate-tag rerun passed, crash preserved. 149 pure tests pass. All older weights/worlds/logs retained. NEXT: train-only real noise forest-rich curriculum and/or policy-owned previous visible target/crack history, evaluate on unbiased heldout seeds with independent RNG.

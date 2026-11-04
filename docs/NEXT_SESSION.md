@@ -1,5 +1,16 @@
 ## CURRENT continuation — V7/V8 statistical failure diagnosis
 
+**ADDITIONAL PROJECT-WIDE DESIGN CONTRACT:** Read
+[BOOTSTRAP_TO_ANY_PERCENT.md](BOOTSTRAP_TO_ANY_PERCENT.md) before designing
+the next generation of skills or rewards. We must learn a goal-conditioned
+multi-skill repertoire, its observed consequences and a self-directed
+high-level selector, without a manually scripted Minecraft progression
+route. Reward tiers and two-skill composition gate are documented there.
+**Not yet implemented**; immediate measured V7/V8 first-log priorities
+below remain in effect. Never interpret local skill/curriculum progress as
+proven Any% or presume the high-level architecture already exists.
+
+
 Read [`V7_V8_WOOD_LEARNING_FAILURE_DIAGNOSIS_2026_11_03.md`](V7_V8_WOOD_LEARNING_FAILURE_DIAGNOSIS_2026_11_03.md) FIRST. New from-scratch V7 and V8 ten-natural-noise-world runs each finished6k game-time units, 82 CUDA updates. V7 merged the previously independent 6*7*2*3 heads into one learned 20-way vanilla motor (includes stationary72 tick attack); training wood1/10, heldout0/4. V8 used same motor plus capped sustained visible wood attack reward and almost eliminated passive sighting bonus; training wood2/10, heldout default sampling1/4, independent rollout RNG0/2. Both policies remain insensitive to crosshair wood in controlled probes. V5 had only nine wood-attack choices and zero stationary wood-attack choices in 1,118 PPO samples: skill signal vastly too sparse. Do NOT start another blind 24k run; next test train-only natural wood-exposure curriculum or player-owned temporal break-target memory without hidden map/preaiming, against truly unbiased independent heldout seed schedule and multiple action RNGs. 149 tests pass; all ignored checkpoints/worlds preserved.
 
 ## ACTIVE continuation — V5/V6 finish audit and CUDA repaired
@@ -14,7 +25,7 @@ Read `docs/V4_24000_TRAINING_AND_HELDOUT_AUDIT.md` **first**. The old recommenda
 
 ## Latest milestone: autonomous natural-world wood acquisition with learned action duration
 
-Read [`docs/NATURAL_WOOD_FIRST_LOG_PERSISTENCE_V4.md`](docs/NATURAL_WOOD_FIRST_LOG_PERSISTENCE_V4.md)
+Read [`docs/NATURAL_WOOD_FIRST_LOG_PERSISTENCE_V4.md`](NATURAL_WOOD_FIRST_LOG_PERSISTENCE_V4.md)
 **first**. V3 `woodv3_01` finished24,000 real vanilla game-time decisions,
 338 ordinary blocks mined, 2,895 new wood surface sightings, **0 wood
 mined or inventoried**. A new V4 **four-head** from-scratch memory policy
@@ -46,7 +57,7 @@ checkpoint/world data, update docs/tests and commit/push validated changes.
 
 ## November 3 update: speedrun01 completed, mining-action collapse measured
 
-Read [`docs/SPEEDRUN01_POLICY_COLLAPSE_2026_11_03.md`](docs/SPEEDRUN01_POLICY_COLLAPSE_2026_11_03.md)
+Read [`docs/SPEEDRUN01_POLICY_COLLAPSE_2026_11_03.md`](SPEEDRUN01_POLICY_COLLAPSE_2026_11_03.md)
 for the committed 24,000-decision/10-seed result, the matched frozen
 policy-vs-random Minecraft baseline and the newly versioned `wood_progress_v3`
 training profile. `speedrun01` is preserved as its own original v2 run: 106

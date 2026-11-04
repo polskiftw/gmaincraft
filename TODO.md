@@ -31,6 +31,43 @@
 
 # TODO — gmaincraft
 
+## New project-level goal: discover and compose skills toward Any% (DESIGN ONLY)
+
+**Architecture contract:** [docs/BOOTSTRAP_TO_ANY_PERCENT.md](docs/BOOTSTRAP_TO_ANY_PERCENT.md).
+This explicitly resolves how independently learned capabilities can eventually
+compose without a scripted wood->stone->End route, privileged world knowledge,
+or globally hand-tuned item rewards. Nothing in this section is implemented.
+
+- [x] Document proposed shared goal-conditioned skills, learned initiation/
+  termination, observed-effect model, high-level chooser, primitive fallback,
+  reward separation, curriculum and complete Any% evaluation gates.
+- [ ] Before many specialized resource trainings, design and version
+  goal/option/outcome schema and player-known transition replay, with strict
+  no-leak train/frozen parity and compatibility protection for V2-V8.
+- [ ] Add full normal player interaction API (right-click/place, hotbar and
+  inventory/crafting UI), full item/entity observations and sampled actions
+  without privileged "craft" or "mine block" shortcuts.
+- [ ] Reproduce FIRST robust natural resource->real inventory acquisition,
+  including observed dropped-item pickup, across multiple held-out worlds
+  and independently sampled action RNGs. CURRENT V7/V8 FAIL this gate.
+- [ ] Learn two reusable skills and an independent high-level selector that
+  picks/interrupts/recovers based on its own knowledge. Controlled practice
+  scenarios allowed, but NO scripted handoff in scored tests; compare to
+  flat policy, fixed sequence and random.
+- [ ] Prototype replay/achieved-goal relabeling vs PPO, and only then an
+  uncertain learned consequence model/planner when it wins a held-out
+  data-efficiency and wall-time comparison.
+- [ ] Instrument verified dragon defeat AND vanilla exit portal entry on
+  ordinary survival starts; report win rate before speed, independent
+  sealed seed population and game ticks vs wall clock.
+- [ ] Develop upstream discovery/bootstrap of *rare late-game states* without
+  sneaking known human game routes, scripts, recipes or oracle coordinates
+  into training; make explicit how near-goal training starts are sourced.
+  Do not expect terminal win reward alone to teach full Any% from scratch.
+- [ ] Target: success on fresh natural seeds and eventually <=36,000 in-game
+  ticks for successful runs; not guaranteed on literally every possible seed.
+
+
 ## LATEST: verified first genuine autonomous natural wood mined + picked
 
 - [x] Inspect full `woodv3_01`: 24,000 six-tick decisions/10 noise worlds,

@@ -1,5 +1,13 @@
 # Architecture and research direction
 
+> **Long-horizon architecture design (not implemented):** See
+> [BOOTSTRAP_TO_ANY_PERCENT.md](BOOTSTRAP_TO_ANY_PERCENT.md) for
+> goal-conditioned options, learned consequences, autonomous high-level
+> selection, reward separation, no-scripted-route rules, and pre-scaling
+> evaluation gates. This document's early V5 descriptions are historical;
+> current V7/V8 status is in [NEXT_SESSION.md](NEXT_SESSION.md).
+
+
 ## Objective
 
 Create a from-scratch reinforcement-learning agent that eventually completes Minecraft Java Any% (Ender Dragon defeated and exit achieved) on **unseen random seeds**. This is a long-term research target, not a promised deliverable or a claim of present capability.
