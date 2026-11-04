@@ -1,5 +1,21 @@
 ## CURRENT continuation — V7/V8 statistical failure diagnosis
 
+**NEWEST VERIFIED V9 CODE/EXPERIMENT:** Start with
+[V9_TEMPORAL_TARGET_AND_REAL_GOAL_AUDIT_2026_11_04.md](V9_TEMPORAL_TARGET_AND_REAL_GOAL_AUDIT_2026_11_04.md).
+V9 extends only the player-known observation with temporal crosshair,
+attack and crack history; the V8 reward and 20 vanilla motor actions are
+identical. Real CUDA train/resume 2 x 600 units: 449 neural choices,
+15 optimizer updates, no wood and one gravel gain. Saved per-world
+player-only replay and history sensitivity audit checked. History
+ablation changed action distribution only ~0.00312 mean TV; STILL NOT
+proven target-aware skill. Independent scratch gravel-goal imitation
+from its actual achieved item was evaluated in real heldout Minecraft:
+no gravel on two seeds, incidental wood pickup unstable across action
+RNGs. Fixed the frozen goal evaluator RNG independence and tested.
+Next improve real target exposure/sparse learning, not blindly scale
+unchanged PPO. No indefinite run left active.
+
+
 **NEW EXECUTABLE DATA/GOAL FOUNDATION:** See
 [DURABLE_EXPERIENCE_AND_SELF_GOALS.md](DURABLE_EXPERIENCE_AND_SELF_GOALS.md).
 The archive feature, scratch hindsight item-goal learner, resume and

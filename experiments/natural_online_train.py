@@ -189,7 +189,8 @@ def fresh_memory(bridge,memory,index):
     return player
 
 
-def read_step(bridge,memory,index,*,bad_counter,observation_schema=SCHEMA):
+def read_step(bridge,memory,index,*,bad_counter,observation_schema=SCHEMA,
+              target_history=None,previous_action=None,elapsed_action_ticks=0):
     player=bridge.player_knowledge()
     status=bridge.player_status()
     surfaces=bridge.surface_objects()
@@ -207,9 +208,12 @@ def read_step(bridge,memory,index,*,bad_counter,observation_schema=SCHEMA):
               raw_stage=raw.crack_stage,raw_active=raw.actively_destroying,
               packet_seq=bridge.packet.last_action_sequence)),flush=True)
     visit=memory.cell_visits(index,player)
+    history_features=(target_history.observe(status,mining,elapsed_ticks=elapsed_action_ticks,
+                        previous_action=previous_action) if target_history is not None else None)
     state=observe(player,status,surfaces,mining,start_xyz=memory.starts[index],
                   last_action=memory.last_actions[index],visit_count=visit,
-                  elapsed_ticks=memory.ticks[index],schema=observation_schema)
+                  elapsed_ticks=memory.ticks[index],schema=observation_schema,
+                  target_history=history_features)
     return state,player,surfaces
 
 

@@ -1,5 +1,24 @@
 # Handoff for a brand-new ChatGPT conversation
 
+## NEWEST: V9 temporal target memory and real learned-goal experiment
+
+Read [V9_TEMPORAL_TARGET_AND_REAL_GOAL_AUDIT_2026_11_04.md](V9_TEMPORAL_TARGET_AND_REAL_GOAL_AUDIT_2026_11_04.md).
+A new versioned V9 actor sees its last real vanilla crosshair, own attack
+and observed crack stages, not hidden map/teacher target. Motor/reward
+match V8. Real CUDA V9 240-unit two-seed smoke + separate 1,200-unit
+two-seed start/resume: 449 neural decisions and 15 CUDA updates in the
+long run, zero logs, one gravel item; all player-only replay persisted.
+Frozen history ablation TV ~0.00312, insufficient for claimed skill.
+A scratch learned item-goal network trained from self-generated gravel
+pickup, failed gravel goal on two heldout worlds; lucky wood collection
+did not replicate consistently under independent action sampling.
+Fixed pretrained skill evaluator's incorrect reuse of learner init RNG;
+now evaluation RNG is a distinct actual sampling control and regression
+tested. Historical V2-V8 preserved, no long training left running.
+Next investigate naturally resource-rich train exposure and off-policy
+target credit with unbiased holdouts.
+
+
 ## MOST RECENT code milestone: durable player-owned replay + hindsight goals
 
 Read [DURABLE_EXPERIENCE_AND_SELF_GOALS.md](DURABLE_EXPERIENCE_AND_SELF_GOALS.md).

@@ -130,6 +130,20 @@ class HindsightTests(unittest.TestCase):
             self.assertEqual(len(act),1)
             self.assertTrue(0<=act[0]<20)
             self.assertEqual((logp,value),(0.,0.))
+            # A second frozen action RNG must change sampling, while the
+            # learned checkpoint's weights remain exactly unchanged.
+            original_rng=args.policy_seed
+            seq_a=[ctrl.act(obs(),greedy=False)[0] for _ in range(25)]
+            args.policy_seed=813777
+            alternative=load_goal_control(root,args)
+            seq_b=[alternative.act(obs(),greedy=False)[0] for _ in range(25)]
+            self.assertNotEqual(seq_a,seq_b)
+            args.policy_seed=original_rng
+            replayed=load_goal_control(root,args)
+            replayed.act(obs(),greedy=False)  # match initial controller's earlier test action
+            self.assertEqual([replayed.act(obs(),greedy=False)[0] for _ in range(25)],seq_a)
+            self.assertEqual(ctrl.model.act(obs(),'minecraft:oak_log',greedy=True),
+                             alternative.model.act(obs(),'minecraft:oak_log',greedy=True))
             args.reward_profile='wood_motor_v7'
             with self.assertRaisesRegex(ValueError,'different source'):
                 load_goal_control(root,args)

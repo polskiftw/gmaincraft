@@ -1,5 +1,13 @@
 # From a first log to an autonomous Any% agent: bootstrapping architecture
 
+> **Current implementation status:** The
+> [V9 real Minecraft temporal target audit](V9_TEMPORAL_TARGET_AND_REAL_GOAL_AUDIT_2026_11_04.md)
+> proves own-action/target-history observation, checkpoint+replay
+> integration and a genuine self-achieved item-goal training test.
+> It does NOT yet prove reliable inventory acquisition or autonomous
+> skill composition. The milestones below remain research gates.
+
+
 **Design decision / roadmap, November 3, 2026. NOT an implemented system or a performance claim.**
 This is the long-horizon direction for `gmaincraft`. Read alongside
 [OBSERVATION_POLICY.md](OBSERVATION_POLICY.md) and

@@ -196,13 +196,15 @@ def read_episode(path):
         raise ValueError('Truncated experience archive')
     from .natural_online_policy import (
         SCHEMA as BASIC,PERSISTENCE_SCHEMA,WOOD_ENGAGEMENT_SCHEMA,
-        MOTOR_V7_SCHEMA,SELF_FEATURES,WOOD_ENGAGEMENT_SELF_FEATURES,
+        MOTOR_V7_SCHEMA,TEMPORAL_V9_SCHEMA,SELF_FEATURES,WOOD_ENGAGEMENT_SELF_FEATURES,
+        TEMPORAL_V9_SELF_FEATURES,
         ID_BYTES,MAX_OBJECTS,OBJECT_FEATURES)
     expected_sizes={
         BASIC:len(SELF_FEATURES),
         PERSISTENCE_SCHEMA:len(SELF_FEATURES),
         WOOD_ENGAGEMENT_SCHEMA:len(WOOD_ENGAGEMENT_SELF_FEATURES),
         MOTOR_V7_SCHEMA:len(WOOD_ENGAGEMENT_SELF_FEATURES),
+        TEMPORAL_V9_SCHEMA:len(TEMPORAL_V9_SELF_FEATURES),
     }
     own_size=expected_sizes.get(meta.get('observation_schema'))
     if own_size is None:raise ValueError('Unrecognized archived sensor schema')

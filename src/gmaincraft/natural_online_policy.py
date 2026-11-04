@@ -32,6 +32,7 @@ PERSISTENCE_HEAD_SIZES=HEAD_SIZES+(len(PERSISTENCE_DURATIONS),)
 PERSISTENCE_SCHEMA='natural_memory_online_v2_first_hit_objects_ppo_variable_duration'
 WOOD_ENGAGEMENT_SCHEMA='natural_memory_online_v3_visible_wood_engagement_ppo_variable_duration'
 MOTOR_V7_SCHEMA='natural_memory_online_v4_visible_wood_learned_motor_primitives'
+TEMPORAL_V9_SCHEMA='natural_memory_online_v5_visible_target_temporal_history_v9'
 # Normal game inputs only. A *single* categorical output chooses a motor and
 # duration together, including a stationary held attack, rather than demanding
 # that four independent sampled heads happen to align. NO target selection,
@@ -77,6 +78,22 @@ SELF_FEATURES=(
 # vanilla crosshair / within the SAME top-24 first-hit visible sample.
 # These booleans are not a world scan, target location or steering command.
 WOOD_ENGAGEMENT_SELF_FEATURES=SELF_FEATURES+('crosshair_is_wood','visible_wood_fraction')
+# Distinct V9 observation schema; the V7/V8 motor and reward are unchanged.
+# Strings match the pure player-owned history feature order; no raw target memory
+# coordinates are supplied by the history service.
+TEMPORAL_V9_FEATURES=(
+ 'same_vanilla_crosshair_target_as_previous',
+ 'crosshair_same_target_ticks_div_72',
+ 'previous_sample_crosshair_was_wood',
+ 'last_action_attack_pressed',
+ 'last_action_stationary_attack',
+ 'stationary_attack_same_target_ticks_div_72',
+ 'crack_known_on_current_target',
+ 'crack_stage_rose_same_target_div_10',
+ 'highest_seen_crack_for_current_target_div_10',
+ 'known_crack_no_progress_ticks_div_72',
+)
+TEMPORAL_V9_SELF_FEATURES=WOOD_ENGAGEMENT_SELF_FEATURES+TEMPORAL_V9_FEATURES
 OBJECT_FEATURES=(
  'relative_dx_div_32','relative_dy_div_32','relative_dz_div_32',
  'screen_u_2_minus_1','screen_v_2_minus_1','distance_div_64',
@@ -109,13 +126,13 @@ class NaturalObservation:
 
 
 def observe(player,status,surface,mining,*,start_xyz,last_action=(0,0,0),
-            visit_count=0,elapsed_ticks=0,schema=SCHEMA):
+            visit_count=0,elapsed_ticks=0,schema=SCHEMA,target_history=None):
     if not isinstance(player,PlayerKnowledgeV1) or not isinstance(status,PlayerStatusV1) \
             or not isinstance(surface,SurfaceObjectsV1):
         raise TypeError('Expected real typed player/status/first-hit surfaces')
     if mining is not None and not isinstance(mining,MiningFeedbackV1):
         raise TypeError('Mining feedback must be a typed own-player reading or missing')
-    if schema not in (SCHEMA,PERSISTENCE_SCHEMA,WOOD_ENGAGEMENT_SCHEMA,MOTOR_V7_SCHEMA):
+    if schema not in (SCHEMA,PERSISTENCE_SCHEMA,WOOD_ENGAGEMENT_SCHEMA,MOTOR_V7_SCHEMA,TEMPORAL_V9_SCHEMA):
         raise ValueError('Unknown versioned natural observation schema')
     if len(start_xyz)!=3 or any(not np.isfinite(v) for v in start_xyz):
         raise ValueError('Invalid remembered starting coordinates')
@@ -151,11 +168,19 @@ def observe(player,status,surface,mining,*,start_xyz,last_action=(0,0,0),
         float(last_action[2]),min(log1p(visit_count)/8,1),
         min(elapsed_ticks/72000,4),min(len(surface.objects)/MAX_OBJECTS,4),
     )
-    feature_order=(WOOD_ENGAGEMENT_SELF_FEATURES if schema in (WOOD_ENGAGEMENT_SCHEMA,MOTOR_V7_SCHEMA)
+    feature_order=(TEMPORAL_V9_SELF_FEATURES if schema==TEMPORAL_V9_SCHEMA else
+                   WOOD_ENGAGEMENT_SELF_FEATURES if schema in (WOOD_ENGAGEMENT_SCHEMA,MOTOR_V7_SCHEMA)
                    else SELF_FEATURES)
-    if schema in (WOOD_ENGAGEMENT_SCHEMA,MOTOR_V7_SCHEMA):
+    if schema in (WOOD_ENGAGEMENT_SCHEMA,MOTOR_V7_SCHEMA,TEMPORAL_V9_SCHEMA):
         numbers+= (float(target is not None and wood_id(target.block_id)),
                    sum(wood_id(obj.block_id) for obj in ranked)/MAX_OBJECTS)
+    if schema==TEMPORAL_V9_SCHEMA:
+        if (not isinstance(target_history,tuple) or len(target_history)!=len(TEMPORAL_V9_FEATURES)
+                or not all(type(v) is float and np.isfinite(v) and 0<=v<=1 for v in target_history)):
+            raise ValueError('V9 requires a bounded actual-player target-history snapshot')
+        numbers+=target_history
+    elif target_history is not None:
+        raise ValueError('Historical player target data belongs only to versioned V9')
     own=np.asarray(numbers,dtype=np.float32)
     if own.shape!=(len(feature_order),) or not np.isfinite(own).all():
         raise ValueError('Invalid own-player numeric features')
@@ -263,10 +288,12 @@ class NaturalPPO:
             (schema,tuple(action_sizes)) not in ((SCHEMA,HEAD_SIZES),
                                                  (PERSISTENCE_SCHEMA,PERSISTENCE_HEAD_SIZES),
                                                  (WOOD_ENGAGEMENT_SCHEMA,PERSISTENCE_HEAD_SIZES),
-                                                 (MOTOR_V7_SCHEMA,MOTOR_V7_HEAD_SIZES))):
+                                                 (MOTOR_V7_SCHEMA,MOTOR_V7_HEAD_SIZES),
+                                                 (TEMPORAL_V9_SCHEMA,MOTOR_V7_HEAD_SIZES))):
             raise ValueError('Invalid PPO hyperparameters or versioned motor schema')
         self.schema=schema
-        self.feature_order=(WOOD_ENGAGEMENT_SELF_FEATURES if schema in (WOOD_ENGAGEMENT_SCHEMA,MOTOR_V7_SCHEMA)
+        self.feature_order=(TEMPORAL_V9_SELF_FEATURES if schema==TEMPORAL_V9_SCHEMA else
+                            WOOD_ENGAGEMENT_SELF_FEATURES if schema in (WOOD_ENGAGEMENT_SCHEMA,MOTOR_V7_SCHEMA)
                             else SELF_FEATURES)
         self.action_sizes=tuple(action_sizes)
         self.torch=torch

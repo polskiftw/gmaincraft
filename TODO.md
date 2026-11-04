@@ -31,6 +31,27 @@
 
 # TODO — gmaincraft
 
+## V9 measured continuation: new target memory works; learning not proven
+
+- [x] New V9 own-visible target/crack/action history with 10 bounded numeric
+  features, separate schema and checkpoint; preserve V8 motor and reward.
+- [x] Real two-world 240-unit matched V9/V8 scratch comparison; neither
+  gained real wood inventory. Strict model/replay compatibility tests.
+- [x] Independent V9 real start + resumed new-world 2 x 600 units,
+  449 actions and 15 CUDA updates; 24 regular blocks, one genuine
+  gravel inventory gain, zero wood. Both player-only archives saved.
+- [x] Offline frozen history ablation on 449 ACTUAL own observation states;
+  mean total variation 0.00312, NOT proof of learned memory use.
+- [x] Train separate CUDA item-goal neural network from genuine gravel
+  outcome, then frozen natural seed evaluations; failed gravel objective.
+  Found/fixed goal-controller alternate-RNG reproducibility bug.
+- [ ] NEXT: increase genuine training exposure to naturally occurring
+  resources without target coordinates, preaimed trees or injected routes.
+  Then compare a sample-efficient off-policy learner against current PPO.
+- [ ] Multiple unbiased heldout seeds, multiple action RNGs, actual
+  inventory gains and truly autonomous skill switching before scaling.
+
+
 ## IMPLEMENTED toolchain: years-scale replay and goal-conditioned practice
 
 - [x] Optional, versioned player-knowledge-only before/after action archive

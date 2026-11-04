@@ -1,5 +1,17 @@
 # gmaincraft
 
+> **Latest executed V9 research:** [V9 real-game temporal target, CUDA,
+> replay and goal-transfer audit](docs/V9_TEMPORAL_TARGET_AND_REAL_GOAL_AUDIT_2026_11_04.md).
+> New V9 remembers its own recent crosshair, attack and visible mining
+> progress without changing the V8 reward or normal motor. Two fresh
+> survival training worlds plus resume ran 1,200 units and 15 CUDA updates,
+> acquiring one gravel item and zero wood. A separate self-goal learner
+> trained on that genuine gravel gain but failed gravel acquisition
+> on frozen unseen-world evaluations; incidental wood gains were RNG
+> dependent. Independent goal-action RNG fix is verified. No general
+> wood mastery or learned full-game strategy is claimed.
+
+
 > **New executable research infrastructure:** [Durable self-play replay,
 > real-GPU resume, goal-conditioned skill learning and frozen practice
 > evaluation](docs/DURABLE_EXPERIENCE_AND_SELF_GOALS.md).

@@ -1,5 +1,27 @@
 # AGENTS.md — project instructions for coding assistants
 
+## CURRENT: V9 temporal target history and genuine skill audit (Nov 3 local / Nov 4 UTC)
+
+Read [the November 4 V9 audit](docs/V9_TEMPORAL_TARGET_AND_REAL_GOAL_AUDIT_2026_11_04.md) FIRST.
+V9 is a NEW strictly versioned model with ten bounded features from actual
+vanilla crosshair, preceding normal action and player-visible crack stages.
+It preserves exactly the V8 20-way normal action motor and base reward.
+No auto-aim, hidden map or externally selected phases. A long V9 start and
+resume used 2 real fresh seeds, 1,200 six-tick units, 449 neural actions
+and 15 CUDA PPO updates, but zero wood and one actual gravel gain. Frozen
+offline policy sensitivity to history is still tiny (~0.00312 mean total
+variation); do not call this target-aware mastery. A separate scratch
+hindsight item-goal learner trained on the self-generated gravel experience
+but had zero gravel goals on two fresh held-out worlds. Incidental wood
+collection varied with sampled action RNG, not evidence of learned wood
+competence. Fixed the goal evaluator RNG not honoring the requested seed;
+verified separate action sequences without changing neural weights.
+Existing V2-V8 models/checkpoints and saved data were preserved. Next:
+more actual natural resource-target encounters at TRAINING time without
+preaiming/scripted behaviors, then measured off-policy skill learning
+and multi-RNG heldout inventory results.
+
+
 ## NEW IMPLEMENTED INFRASTRUCTURE: durable self-play -> observed goal learning
 
 Read [docs/DURABLE_EXPERIENCE_AND_SELF_GOALS.md](docs/DURABLE_EXPERIENCE_AND_SELF_GOALS.md)
