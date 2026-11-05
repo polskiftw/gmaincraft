@@ -1,3 +1,21 @@
+## NOV 5 CURRENT: frozen paired natural mining + item transfer
+
+The independent hard-search 1500 Minecraft episode train completed with
+1170 genuine staged pickups, 17892 Q updates, but fresh 200-case hard
+holdout 174/200 vs old 300-model 173/200: no significant advantage.
+New opt-in `--pickup-model hardrep1105b` in fresh normal survival Q
+**evaluation ONLY** exposes actual memory-based camera-filtered item eyes.
+Shadow control sees same sensor without action override; active
+`visible_memory_v1` uses the learned pickup motor only when the PLAYER
+sees/remembers a wood drop. The *switch* is explicitly nonlearned (research
+baseline, NOT solved planner) but NO hidden target coords/seed/admin/mine
+stats in actor inputs. Actual noise seed24 600 units: shadow wood2 vs
+active4 and 13 pickup actions; ZERO gains during those 13 actions. It does
+not prove success from item skill, despite first real continuous coexistence.
+Now test honest paired unseen natural world seeds using
+`tools/run-natural-pickup-transfer.sh start/status`, and follow
+`docs/NATURAL_PICKUP_TRANSFER_2026_11_05.md`.
+
 ## LIVE (Nov 5): independent hard item search training started
 
 `hardrep1105b` is actively running 1500 new `search_hard_v2` real staged

@@ -40,6 +40,8 @@ from gmaincraft.hindsight_skills import HindsightSkillModel,SCHEMA as HINDSIGHT_
 from gmaincraft.replay_q_skill import ReplayQSkill,SCHEMA as REPLAY_Q_SCHEMA,CRACK_GOAL
 from gmaincraft.replay_q_rare_v2 import RareOutcomeQSkill,SCHEMA as RARE_Q_V2_SCHEMA,WOOD_CRACK_GOAL
 from gmaincraft.online_q_replay import update_from_player_replay
+from gmaincraft.natural_pickup_transfer import (
+    NaturalPickupTransfer,coarse_audit_heads,CONTRACT as PICKUP_TRANSFER_CONTRACT)
 from gmaincraft.online_q_rare_v2 import learn_between_real_worlds
 from gmaincraft.fresh_seed_schedule import SeedSchedule,SCHEMA as STREAM_SCHEMA
 from gmaincraft.fresh_world_manager import FreshWorldManager,names
@@ -120,6 +122,9 @@ def parse_args(argv=None):
     ap.add_argument('--goal-item',help='one player-knowable item ID to acquire in skill-only evaluation')
     ap.add_argument('--q-model',help='frozen off-policy replay Q skill tag (eval-only)')
     ap.add_argument('--q-goal',help='the Q model training goal: observed inventory item or crack progress')
+    ap.add_argument('--pickup-model',help='frozen player-visible pickup skill tag; eval-only Q transfer')
+    ap.add_argument('--pickup-selector',choices=('shadow','visible_memory_v1'),default='shadow',
+                    help='shadow measures natural drops without changing actions; visible_memory is an UNLEARNED player-only handoff diagnostic')
     ap.add_argument('--resume',action='store_true')
     cap=ap.add_mutually_exclusive_group()
     cap.add_argument('--decisions',type=int,default=None,help='TOTAL six-tick gameplay units (v4 may hold actions for multiple units), including resume')
@@ -162,7 +167,7 @@ def parse_args(argv=None):
     ap.add_argument('--nvidia-gl-threading',choices=('off','default'),default='off',
                     help='scoped Minecraft-only NVIDIA GL threaded optimization workaround; default off')
     args=ap.parse_args(argv)
-    if not re.fullmatch(RUN_TAG_RE,args.run_tag) or (args.model_run and not re.fullmatch(RUN_TAG_RE,args.model_run)) or (args.q_model and not re.fullmatch(RUN_TAG_RE,args.q_model)) or (
+    if not re.fullmatch(RUN_TAG_RE,args.run_tag) or (args.pickup_model and not re.fullmatch(RUN_TAG_RE,args.pickup_model)) or (args.model_run and not re.fullmatch(RUN_TAG_RE,args.model_run)) or (args.q_model and not re.fullmatch(RUN_TAG_RE,args.q_model)) or (
             args.goal_model and not re.fullmatch(RUN_TAG_RE,args.goal_model)):
         ap.error('Unsafe run/model tag')
     if args.decisions is None and not args.until_stopped:
@@ -205,6 +210,10 @@ def parse_args(argv=None):
         ap.error('Evaluation is bounded; standard policy uses --model-run, '
                  'goal control uses --goal-model/--goal-item, Q control uses '
                  '--q-model/--q-goal and optional --goal-item score')
+    if ((args.pickup_model and (args.mode!='eval' or not is_q or
+                                args.q_goal!=WOOD_CRACK_GOAL)) or
+        (not args.pickup_model and args.pickup_selector!='shadow')):
+        ap.error('Frozen pickup transfer is eval-only with exact V9 Q wood goal; selector requires pickup model')
     if is_q and args.q_goal not in (CRACK_GOAL,WOOD_CRACK_GOAL):
         if not args.q_goal.startswith('minecraft:'):ap.error('Replay Q requires vanilla item goal')
         from gmaincraft.experience_archive import ObservedItemGoal
@@ -253,6 +262,9 @@ def metadata(args):
                 policy_seed=args.policy_seed,settings=dict(OVERRIDES),
                 game_version='1.21.3',spawn_radius=0,gameplay_commands=0,
                 **({'frame_transport':'memory_only_frame_callback_v1'} if args.memory_only_no_rgb else {}),
+                **({'pickup_model':args.pickup_model,'pickup_selector':args.pickup_selector,
+                    'pickup_transfer_contract':PICKUP_TRANSFER_CONTRACT}
+                   if args.pickup_model else {}),
                 source='minecraft:noise',
                 no_privileged_seed_policy_input=True)
 
@@ -372,7 +384,7 @@ def validate_memory_only_packet(packet):
         raise RuntimeError('Opt-in memory-only MCio returned RGB or missing frame tick: verify patched mod and launch environment')
 
 
-def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requested):
+def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requested,pickup_brain=None):
     """Run actual vanilla-survival gameplay; return uncommitted on-policy data.
 
     The caller commits a model checkpoint ONLY if this returns normally and
@@ -382,6 +394,10 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     world_name=manager.prepare(episode,seed)
     worldgen_s=time.perf_counter()-created
     child_env={**ENV_EXTRA}
+    if pickup_brain is not None:
+        from gmaincraft.mcio_visible_items import ENV_NAME,ON_DEMAND_ENV
+        child_env[ENV_NAME]='1'
+        child_env[ON_DEMAND_ENV]='1'
     if args.memory_only_no_rgb:
         child_env['GMAINCRAFT_MEMORY_ONLY_FRAME_V1']='1'
     if args.nvidia_gl_threading=='off':
@@ -399,6 +415,9 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     motor_v7_on_wood_counts=Counter()
     crack_progress=WoodCrackProgress()
     target_history=VisibleTargetHistory() if args.reward_profile=='wood_temporal_v9' else None
+    pickup=(NaturalPickupTransfer(pickup_brain,selector=args.pickup_selector)
+            if pickup_brain is not None else None)
+    pickup_elapsed_ticks=0
     target_reward=WoodTargetFirstContact(bonus=.3 if args.reward_profile in ('wood_sustain_v8','wood_temporal_v9') else .9) if args.reward_profile in ('wood_target_v5','wood_motor_v7','wood_sustain_v8','wood_temporal_v9') else None
     sustain_reward=WoodSustainedAttack() if args.reward_profile in ('wood_sustain_v8','wood_temporal_v9') else None
     engagement=WoodEngagement() if args.reward_profile=='wood_engagement_v6' else None
@@ -432,12 +451,17 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                 validate_memory_only_packet(bridge.packet)
             memory.ensure_world(0,bridge.player_knowledge(),bridge._stats)
             bridge.apply(AgentAction(ticks=1),request_surface_objects=True,
-                         request_mining_feedback=True,return_view=False)
+                         request_mining_feedback=True,
+                         request_visible_items=pickup is not None,return_view=False)
             bad_counter=[0]
             state,player,surfaces=read_step(bridge,memory,0,bad_counter=bad_counter,
                                                 observation_schema=policy_schema(args),
                                                 target_history=target_history)
             peak_own_wood_held=own_wood_held(player)
+            first_player_pose=[round(float(x),4) for x in player.player_xyz]+[
+                round(float(player.yaw_degrees),4),round(float(player.pitch_degrees),4)]
+            if pickup is not None:
+                pickup.observe(player,bridge.visible_items(),elapsed_ticks=0)
             client_startup_s=time.perf_counter()-launch_started
             goal_initial=(owned_inventory(player).get(args.goal_item,0)
                           if args.goal_item else 0)
@@ -464,13 +488,21 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                         if single_motor_v7(args) else
                         action_from_persistence_heads(heads,(budget-decisions)*DECISION_TICKS)
                         if is_v4 else action_from_heads(heads))
-                audit_heads=motor_v7_history(heads) if single_motor_v7(args) else heads[:3]
+                pickup_action=(pickup.choose((budget-decisions)*DECISION_TICKS)
+                               if pickup is not None else None)
+                pickup_active=pickup_action is not None
+                if pickup_active:action=pickup_action
+                audit_heads=(coarse_audit_heads(action) if pickup_active else
+                             motor_v7_history(heads) if single_motor_v7(args) else heads[:3])
                 target_before=bridge.player_status().crosshair_block
-                audit.observe(audit_heads,state,target_before)
-                if single_motor_v7(args):
-                    motor_v7_counts[MOTOR_V7[heads[0]][0]]+=1
-                    if target_before is not None and wood_id(target_before.block_id):
-                        motor_v7_on_wood_counts[MOTOR_V7[heads[0]][0]]+=1
+                if pickup_active:
+                    audit.observe_primitive(action,state,target_before)
+                else:
+                    audit.observe(audit_heads,state,target_before)
+                    if single_motor_v7(args):
+                        motor_v7_counts[MOTOR_V7[heads[0]][0]]+=1
+                        if target_before is not None and wood_id(target_before.block_id):
+                            motor_v7_on_wood_counts[MOTOR_V7[heads[0]][0]]+=1
                 spent_ticks=0
                 macro_reward=0.
                 current_state=state
@@ -488,7 +520,7 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                         ticks=chunk_ticks)
                     before=time.perf_counter()
                     bridge.apply(chunk,request_surface_objects=True,request_mining_feedback=True,
-                                 return_view=False)
+                                 request_visible_items=pickup is not None,return_view=False)
                     elapsed_io+=time.perf_counter()-before
                     current_frame=bridge.packet.frame_sequence
                     if previous_frame is not None and current_frame<=previous_frame:
@@ -502,6 +534,10 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                                                 previous_action=chunk if target_history is not None else None,
                                                 elapsed_action_ticks=chunk_ticks if target_history is not None else 0)
                     died=next_player.health<=0
+                    if pickup is not None:
+                        pickup_elapsed_ticks+=chunk_ticks
+                        pickup.observe(next_player,bridge.visible_items(),
+                                       elapsed_ticks=pickup_elapsed_ticks)
                     record=memory.accrue(0,next_player,next_surfaces,bridge._stats,audit_heads,
                                          chunk_ticks,death=died,
                                          reward_profile=event_reward_profile(args.reward_profile))
@@ -541,6 +577,8 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                     for key in ('fresh_cell','new_visible_surfaces','new_visible_wood',
                                 'new_mined_blocks','new_wood_mined','wood_inventory_gain','death'):
                         events[key]+=record[key]
+                    if pickup_active and record['wood_inventory_gain']:
+                        events['own_log_gain_during_pickup_motor']+=record['wood_inventory_gain']
                     # Semi-Markov transition: discount intermediate rewards
                     # within one motor hold by their true game-tick offsets.
                     macro_reward+=(.9995**spent_ticks)*record['reward']
@@ -552,7 +590,8 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                         log_row(log,dict(stage='uncommitted_game_event',episode=episode,
                              seed=seed,step=decisions+spent_ticks//DECISION_TICKS,**record))
                     if died or stop_requested():break
-                audit.record_duration(motor_v7_duration_index(heads) if single_motor_v7(args) else
+                audit.record_duration((0 if action.ticks<=6 else 1) if pickup_active else
+                                      motor_v7_duration_index(heads) if single_motor_v7(args) else
                                       heads[3] if is_v4 else 0,spent_ticks,attack=audit_heads[2]==1,
                         wood_crosshair=target_before is not None and
                         wood_id(target_before.block_id))
@@ -595,6 +634,7 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                                game_io_ms_per_tick=round(1000*elapsed_io/(decisions*DECISION_TICKS),3),
                                totals=dict(events),action_audit=audit.summary(),
                                invalid_mining_readings=bad_counter[0],
+                               **({'pickup_transfer_audit':pickup.audit()} if pickup else {}),
                                **({'visible_target_history_audit':target_history.summary()} if target_history else {}))
                     log_row(log,pulse)
                     print('FRESH PULSE',json.dumps(pulse),flush=True)
@@ -622,6 +662,7 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     from gmaincraft.fresh_world_manager import verify_noise_world
     verify_noise_world(manager.paths(episode)[1],seed,require_fixed_spawn=True)
     result=dict(episode=episode,seed=seed,decisions=decisions,policy_actions=policy_actions,
+                first_player_pose=first_player_pose,
                 **({'goal_item':args.goal_item,'goal_initial':goal_initial,
                     'goal_max_inventory':goal_max,
                     'goal_achieved':bool(goal_max>goal_initial)}
@@ -635,6 +676,7 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                 game_io_s=round(elapsed_io,3),
                 game_io_ms_per_tick=round(1000*elapsed_io/(max(1,decisions)*DECISION_TICKS),3),
                 invalid_mining_readings=bad_counter[0],
+                **({'pickup_transfer_audit':pickup.audit()} if pickup else {}),
                 **({'visible_target_history_audit':target_history.summary()} if target_history else {}),
                 counts=dict(events),action_audit=audit.summary(),
                 final_own_wood_held=own_wood_held(player),
@@ -643,6 +685,37 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                 stopped_early=decisions<budget)
     return result,experience
 
+
+
+def load_frozen_pickup_control(root,args):
+    """Require an unchanged real-practice model and frozen inference only."""
+    if not args.pickup_model:return None
+    import torch
+    from gmaincraft.numeric_item_pickup_v2 import ReplayPickupQ,SCHEMA as PICKUP_SCHEMA
+    from gmaincraft.numeric_item_pickup import ACTIONS
+    path=root/'checkpoints'/f'numeric_pickup_{args.pickup_model}.pt'
+    if not path.is_file():raise FileNotFoundError('Missing frozen numeric pickup checkpoint')
+    state=torch.load(path,map_location='cpu',weights_only=True)
+    meta=state.get('metadata',{})
+    if (state.get('schema')!=PICKUP_SCHEMA or meta.get('schema')!=PICKUP_SCHEMA or
+        tuple(meta.get('action_names',()))!=tuple(a[0] for a in ACTIONS) or
+        state.get('brain',{}).get('schema')!=PICKUP_SCHEMA or
+        state.get('next_episode',0)<20 or
+        meta.get('world')!='1.21.3'):
+        raise ValueError('Incompatible or untrained pickup checkpoint; cannot test natural-world transfer')
+    # The original Q actor samples with PyTorch's global RNG. Loading this
+    # second frozen network must NOT re-seed the mining actor and invalidate
+    # same-seed sampled-control comparisons. Restore CPU+GPU RNG exactly.
+    cpu_rng=torch.get_rng_state()
+    cuda_rng=(torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None)
+    try:
+        pickup=ReplayPickupQ(seed=args.policy_seed ^ 0x54A15,device=args.device)
+        pickup.restore(state['brain'],optimizer=False)
+        pickup.training=False
+    finally:
+        torch.set_rng_state(cpu_rng)
+        if cuda_rng is not None:torch.cuda.set_rng_state_all(cuda_rng)
+    return pickup
 
 class FrozenHindsightController:
     """Only a restricted goal-conditioned skill EVALUATOR, never a scripted plan."""
@@ -836,6 +909,7 @@ def main(argv=None):
     if args.decisions is not None and committed_decisions>=args.decisions:
         print('FRESH TARGET ALREADY COMPLETED',committed_decisions,flush=True)
         return
+    pickup_brain=load_frozen_pickup_control(ROOT,args)
     manager=FreshWorldManager(MCIO,args.run_tag)
     stopped=[False]
     def on_stop(signum,_):
@@ -904,7 +978,7 @@ def main(argv=None):
                 save_json_atomic(inflight,marker)
                 try:
                     result,experience=play_episode(args,model,manager,NaturalSessionMemory(),cursor,
-                                        seed,budget,log,stop_requested)
+                                        seed,budget,log,stop_requested,pickup_brain=pickup_brain)
                 except (MinecraftProcessExited,MinecraftObservationTimeout) as exc:
                     if args.mode not in ('train','collect'):raise
                     crash_streak+=1

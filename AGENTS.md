@@ -1,3 +1,19 @@
+## NOV 5: first real vanilla item/mine transfer (NOT learned selection)
+
+Read `docs/NATURAL_PICKUP_TRANSFER_2026_11_05.md` first. Independent
+`hardrep1105b` complete 1500 cases 1170 real staged pickups, but FROZEN
+hard heldout only 174/200 vs old `egolearn1105b` 173/200: no reliable
+improvement from more identical curriculum. Implemented separate frozen
+natural survival mining Q + player-camera-visible dropped wood option
+`visible_memory_v1`, with exactly matched `shadow` control and NO scored
+commands, hidden item oracle or evaluator mining-stat phase switch. This
+selector is a TRANSPARENT HANDCODED SENSOR OPPORTUNITY DIAGNOSTIC, not learned.
+FIRST real fresh noise-world 24: shadow Q 3 wood mined/2 acquired/death1;
+paired active 5 mined/4 acquired/death0, 13 actual learned pickup-motor
+choices, but **ZERO gains during pickup motors**. No causal claim from one
+seed; use new paired multi-seed verifier `tools/run-natural-pickup-transfer.sh`
+with untouched heldout seeds and continue toward learned option arbitration.
+
 ## LIVE NOV 5: independent hard item search run under exclusive DemoInstance
 
 `hardrep1105b` was ACTUALLY launched as a detached, 1500-episode

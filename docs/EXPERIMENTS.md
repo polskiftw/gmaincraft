@@ -1,3 +1,19 @@
+## Nov 5: real frozen natural mining/item sensor takeover diagnostic
+
+First truly noise-generated vanilla survival matched 600-unit seed24 test:
+Q-only + shadow item eyes: wood mined3, inventory gained2, deaths1,
+visible dropped wood sensor samples64. Same Q plus camera-visible
+`visible_memory_v1` handcoded opportunity switch, frozen hardrep learned
+pickup motor: mined5, gained4, deaths0, item samples8, 13 real pickup
+motor actions but **ZERO directly timed inventory gains** while pickup
+motor active. No scripts/admin commands during gameplay, no optimizer
+updates, no hidden stat triggers. This is a potentially altered trajectory,
+NOT evidence of a learned skill selector or causal item pickup gain.
+Staged hardrep1500 training complete (1170 true staged pickups) but fresh
+hard holdouts 174/200 vs prior300 173/200. Next paired 12 natural-world
+seed experiment, exact same item eyes on both Q-only and takeover arms;
+see `docs/NATURAL_PICKUP_TRANSFER_2026_11_05.md`.
+
 ## Nov 5: completed user run and unseen hard practice audit
 
 User command `train egolearn1105b` completed 300 staged, real-world Minecraft

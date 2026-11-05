@@ -1,3 +1,27 @@
+## November 5 natural-world learned pickup transfer diagnostics
+
+- [x] Verify hardrep1500 complete: 1170/1500 true oak pickups, 17892 Q
+  updates, but 2 new hard heldout worlds 174/200 vs prior300 173/200;
+  STOP duplicating staged item curriculum to chase a metric.
+- [x] Add true vanilla natural-noise Q wood mining + frozen numeric pickup
+  eval-only interoperation with SAME bounded camera-visible ItemEntity eyes.
+  `shadow` control reads same sensor but never takes control; optional
+  handcoded visible-memory gate uses zero evaluator mined/pickup stats,
+  ordinary motor keys, no commands/teleports during play. Explicitly NOT a
+  learned selector or complete Any%.
+- [x] Real natural smoke seed24: shadow 2 inventory logs/3 mined/1 death;
+  active 4 inventory logs/5 mined/0 death and 13 pickup motor actions,
+  BUT 0 gains occurred during pickup motor. No causal pickup claim.
+- [x] Audit separate primitive Q vs pickup actions, own wood inventory
+  gains, item visibility, RNG fairness, strict matched heldout journal gate,
+  preserve all old checkpoint schemas; pure tests included.
+- [ ] Complete paired naturally generated unseen seeds 25..36 and quantify
+  strict natural inventory gain vs shadow. Determine whether actual pickup
+  motor increases acquisition (not merely mining trajectory changes).
+- [ ] Replace temporary hardcoded player-visible switch with a genuinely
+  TRAINED high-level option selector or joint Q policy with natural player
+  experience and no evaluator stats in its observations.
+
 ## November 5 latest: reported segfault is Gamescope teardown; hard search
 
 - [x] Confirm user's actual 300-episode `egolearn1105b` was completed:

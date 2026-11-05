@@ -1,3 +1,22 @@
+## NOV 5 CURRENT: natural Minecraft pickup composition evaluation
+
+Read `docs/NATURAL_PICKUP_TRANSFER_2026_11_05.md`. Independent hard
+practice run `hardrep1105b` COMPLETED 1500/1500 (1170 true staged logs,
+17892 Q updates), but on two new unseen 100-case hard suites its frozen
+pickup 86+88/200 versus old 300-case 85+88/200: effectively identical.
+NEXT priority is NATURAL world transfer, not more staged rounds. Implemented
+`NaturalPickupTransfer` with opt-in frozen numeric item model, same real
+camera ItemEntity sensor on both Q-only `shadow` and visibility-gated
+`visible_memory_v1` runs. This is NOT a learned selector: hardcoded
+visible-item trigger is research-only, no hidden mine-stat trigger. Natural
+seed24 600-unit matched smoke: shadow wood 2 acquired/3 mined/death1,
+active 4 acquired/5 mined/death0, 13 actual learned pickup actions, **zero
+owned wood gains DURING pickup motor**. Do not claim causal advantage. Use
+new `tools/run-natural-pickup-transfer.sh` paired study (fresh unseen
+seed-start 25,12 worlds x600 units per arm) and strict analyzer. Both frozen
+models' checkpoints unaffected. Training and source worlds preserved.
+Next actual trainable option chooser and rigorous item recognition boundary.
+
 ## LIVE TRAINING ACTUALLY LAUNCHED: hardrep1105b (November 5)
 
 A separate independently initialized harder item-search Q training run is

@@ -5,6 +5,7 @@ subprocess.Popen reaps the compositor's negative-signal exit itself, so
 bash does not misreport a post-child Gamescope SIGSEGV as training failure.
 """
 import argparse
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -27,10 +28,30 @@ def main():
                               bufsize=1) as proc:
             for line in proc.stdout:
                 output.write(line)
-                if (line.startswith(('NUMERIC PICKUP READY',
+                if line.startswith(('FRESH WORLD READY ',
+                                     'FRESH EPISODE COMMITTED ',
+                                     'FRESH STREAM SUMMARY ')):
+                    header,raw=line.rstrip().split(' {',1)
+                    try:
+                        event=json.loads('{'+raw)
+                        if header=='FRESH WORLD READY':
+                            message=f'NATURAL WORLD START seed={event["seed"]} episode={event["episode"]}'
+                        elif header=='FRESH EPISODE COMMITTED':
+                            counts=event.get('counts',{})
+                            skill=event.get('pickup_transfer_audit',{})
+                            message=(f'NATURAL WORLD COMMITTED episode={event["episode"]} '
+                                     f'wood_mined={counts.get("new_wood_mined",0)} '
+                                     f'wood_gained={counts.get("wood_inventory_gain",0)} '
+                                     f'pickup_actions={skill.get("pickup_policy_actions",0)} '
+                                     f'item_sightings={skill.get("visible_wood_item_observations",0)}')
+                        else:
+                            message=f'NATURAL EVAL SUMMARY {event.get("stage")} {event.get("totals",{})}'
+                        print(message,flush=True)
+                    except (ValueError,KeyError):print(line,end='',flush=True)
+                elif line.startswith(('NUMERIC PICKUP READY',
                         'NUMERIC PICKUP PULSE', 'NUMERIC PICKUP SUMMARY',
                         'Traceback', 'RuntimeError:', 'ValueError:',
-                        'AssertionError:', 'FileExistsError:', 'FileNotFoundError:'))):
+                        'AssertionError:', 'FileExistsError:', 'FileNotFoundError:')):
                     print(line,end='',flush=True)
             returncode=proc.wait()
         output.write(f'OUTER PROCESS RETURN CODE: {returncode}\n')

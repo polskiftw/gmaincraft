@@ -10,6 +10,7 @@ from .natural_online_policy import HEAD_SIZES, wood_id
 class NaturalActionAudit:
     def __init__(self):
         self.action_counts = [[0] * n for n in HEAD_SIZES]
+        self.unfactored_primitive_actions = 0
         self.duration_counts = [0,0,0]
         self.action_elapsed_ticks = 0
         self.attacking_elapsed_ticks = 0
@@ -50,6 +51,32 @@ class NaturalActionAudit:
         self.max_attack_still_streak = max(self.max_attack_still_streak,
                                            self.attack_still_streak)
 
+    def observe_primitive(self, action, observation, crosshair_block):
+        """Audit actual vanilla controls not expressible as V7's motor indices.
+
+        Previous factorized-head counters continue to count V7 actions ONLY;
+        independent pickup motors are reported separately, never fabricated
+        into V7 categories. All other action/attack/target totals stay real.
+        """
+        from .agent_interface import AgentAction
+        if not isinstance(action,AgentAction):
+            raise TypeError('Expected an actual vanilla AgentAction')
+        self.unfactored_primitive_actions+=1
+        block_id=crosshair_block.block_id if crosshair_block is not None else None
+        on_wood=wood_id(block_id)
+        attack='LEFT_BUTTON' in action.keys
+        still=action.look_dx==0 and action.look_dy==0
+        self.crosshair_block_decisions+=int(block_id is not None)
+        self.crosshair_wood_decisions+=int(on_wood)
+        self.attack_decisions+=int(attack)
+        self.attack_on_wood_decisions+=int(attack and on_wood)
+        self.attack_without_look_decisions+=int(attack and still)
+        self.wood_attack_without_look_decisions+=int(attack and still and on_wood)
+        self.mining_active_decisions+=int(observation.own[21]>.5)
+        self.mining_stage_known_decisions+=int(observation.own[20]>.5 and observation.own[22]>=0)
+        self.attack_still_streak=self.attack_still_streak+1 if attack and still else 0
+        self.max_attack_still_streak=max(self.max_attack_still_streak,self.attack_still_streak)
+
     def record_duration(self, duration_index, actual_ticks, *, attack, wood_crosshair):
         from .natural_online_policy import PERSISTENCE_DURATIONS
         if (type(duration_index) is not int or
@@ -76,7 +103,9 @@ class NaturalActionAudit:
                     wood_attack_without_look_decisions=self.wood_attack_without_look_decisions,
                     mining_active_decisions=self.mining_active_decisions,
                     mining_stage_known_decisions=self.mining_stage_known_decisions,
-                    max_attack_still_streak=self.max_attack_still_streak)
+                    max_attack_still_streak=self.max_attack_still_streak,
+                    **({'unfactored_primitive_actions':self.unfactored_primitive_actions}
+                      if self.unfactored_primitive_actions else {}))
 
 
 class WoodCrackProgress:
