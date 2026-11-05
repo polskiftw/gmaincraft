@@ -1,3 +1,23 @@
+## NOV 5 CURRENT PRIORITY: real pickup learning beats controls in staged Minecraft
+
+Read [NUMERIC_PICKUP_TRAINING_KIT_2026_11_05.md](NUMERIC_PICKUP_TRAINING_KIT_2026_11_05.md)
+first. Prior numeric item policy failed against random on staged 100-case
+heldout (greedy 55, sampled 54, random 56). New `egoreplay_v2` separate
+item-only, player-memory policy trained 60 real Minecraft staged cases,
+25 actual item gains and 612 replay double-Q updates. FROZEN strict heldout
+on two *different* 100-case randomized bearing/world-yaw suites: greedy
+72 and 67 successes, random 48 and 48, always-forward 53 and 44. All
+journals COMPLETE, no eval optimizer updates. Strongest-control pooled
+margin 21pp; versioned two-seed gate PASS provisional, ONE network only.
+203 pure Python tests pass. Sensor validated under stone/clear/away cases;
+glass/leaves remain geometric-vs-recognizable research caveats. All earlier
+Q and numeric V1 experiments intact. Important: Gamescope wrapper exit139
+occurs after valid Python completed and clean game stop; do not confuse it
+with a failed game/learner run. Pre-scored stale-item reset now retries.
+Next: independent V2 initializations and harder heldout, then naturally
+mined item retrieval under continuous no-cheat play; avoid long identical
+wood-Q reward collection. No game/train process left running now.
+
 ## LIVE NEXT SESSION: frozen heldout then geometric item visibility
 
 Old qv2memtrain1104 is FINISHED and frozen as qv2memf1104.

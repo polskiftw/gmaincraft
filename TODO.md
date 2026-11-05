@@ -1,3 +1,27 @@
+## Nov 5: evidence-gated numeric item learning
+
+- [x] Finish prior staged numeric 200-episode study; frozen model 54-55/100
+  against random 56/100 on 100 independent cases: **no learned advantage**.
+- [x] Implement separately versioned egocentric dropped-item v2 observation
+  + scratch real-transition double Q, persistent success replay and strict
+  resumed checkpoint; no hidden fixture position/action teacher.
+- [x] Improve fixture distribution: world yaw across 360 degrees and item
+  bearings ahead/lateral/behind; keep vanilla inputs and camera-only eyes.
+- [x] Run real 60-case training (25/60 true inventory pickups, 612 Q
+  updates), freeze, evaluate twice (2*100 independent case seeds) against
+  random and fixed forward: pooled greedy 139/200 vs random 96/200 and
+  forward 97/200. Scored command count zero; frozen updates zero.
+- [x] Build a reproducible two-seed, inventory-based real-game promotion
+  gate requiring +10 points above BOTH controls; provisional PASS (+21).
+- [x] Regression suite 203 tests, bounded fixture cleanup retry and docs.
+- [ ] Reproduce advantage with other initial weights / independent run RNGs
+  and independently heldout scenario groups. Track hard/off-screen cases.
+- [ ] Transition from summoned lab item to naturally mined ItemEntity in
+  vanilla survival, with learned motor/skill switching (no test-only phase
+  handoff). Do NOT call this a natural-world speedrunning policy yet.
+- [ ] Investigate Gamescope exit139 after completed valid Python journals;
+  separate from evidence of network/game success.
+
 ## Nov 4: finished Q and visible dropped-item research
 
 - [x] Finished qv2memtrain1104: 20 train worlds, cursor326,

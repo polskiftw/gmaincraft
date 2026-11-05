@@ -1,3 +1,18 @@
+## November 5: real memory-only item pickup generalization gate
+
+See `NUMERIC_PICKUP_TRAINING_KIT_2026_11_05.md` for methods and exact
+unseen case seeds. Legacy numeric 200 train gave 109 true inventory gains
+but failed 100-case frozen control (54-55 vs random 56). New scratch
+`egopilot1105a` performed 60 real practice cases, 25 actual gains, 612
+Q updates; one frozen network on unseen case seeds 912771 and 992771:
+learned greedy 72/100 + 67/100, uniform random 48/100 + 48/100,
+always-forward 53/100 + 44/100. Measured item inventory, no scored
+admin commands. Pooled learned 69.5% vs strongest control 48.5%, 21pp
+higher. Staged training fixture only, no claim of natural autonomous
+collection or independent model replication. Gamescope wrapper exit139
+after completed Python journals documented; gate requires actual complete
+journal and zero frozen optimizer updates. Full suite 203 tests passed.
+
 ## LIVE V2 100-world continued training: first real world committed
 
 Tag `qwood_v2long1104`, fresh original TRAIN seed index206

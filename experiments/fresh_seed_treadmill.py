@@ -85,6 +85,14 @@ def policy_schema(args):
             PERSISTENCE_SCHEMA if variable_motor(args) else SCHEMA)
 
 
+def own_wood_held(player):
+    """Player-visible inventory only, never server-secret mining/pickup stats."""
+    if not hasattr(player,'main_inventory') or not hasattr(player,'offhand_inventory'):
+        raise TypeError('Expected current typed own-player inventory')
+    return sum(int(slot.count) for slot in player.main_inventory+player.offhand_inventory
+               if wood_id(slot.item_id))
+
+
 def event_reward_profile(profile):
     """V9 changes ONLY observed history, never V8's underlying reward.
 
@@ -429,6 +437,7 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
             state,player,surfaces=read_step(bridge,memory,0,bad_counter=bad_counter,
                                                 observation_schema=policy_schema(args),
                                                 target_history=target_history)
+            peak_own_wood_held=own_wood_held(player)
             client_startup_s=time.perf_counter()-launch_started
             goal_initial=(owned_inventory(player).get(args.goal_item,0)
                           if args.goal_item else 0)
@@ -538,6 +547,7 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                     spent_ticks+=chunk_ticks
                     current_state=next_state
                     current_player=next_player
+                    peak_own_wood_held=max(peak_own_wood_held,own_wood_held(current_player))
                     if record['new_mined_blocks'] or record['wood_inventory_gain'] or died:
                         log_row(log,dict(stage='uncommitted_game_event',episode=episode,
                              seed=seed,step=decisions+spent_ticks//DECISION_TICKS,**record))
@@ -627,6 +637,9 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                 invalid_mining_readings=bad_counter[0],
                 **({'visible_target_history_audit':target_history.summary()} if target_history else {}),
                 counts=dict(events),action_audit=audit.summary(),
+                final_own_wood_held=own_wood_held(player),
+                peak_own_wood_held=peak_own_wood_held,
+                final_own_health=round(float(player.health),3),
                 stopped_early=decisions<budget)
     return result,experience
 

@@ -1,3 +1,17 @@
+## CURRENT (Nov 5): measured learning instead of synthetic activity counters
+
+Read `docs/NUMERIC_PICKUP_TRAINING_KIT_2026_11_05.md`. New egocentric
+visible dropped-item replay-Q skill practiced in ACTUAL vanilla Minecraft
+with no scored admin commands. Previously trained numeric actor scored
+54-55/100 vs uniform random 56/100 (not progress). New trained Q frozen
+greedy across two independent 100-case heldout suites: 72/100 and 67/100,
+random 48/100 + 48/100, fixed-forward 53/100 + 44/100. Exactly 25 genuine
+pickups in 60 train practice episodes, 612 real Q updates. Provisional
+strict two-seed gate PASS (+21pp vs strongest control); ONE model only,
+staged drops, not natural worlds/Any%. Tested 203 pure tests. No active
+Minecraft job. Next independent scratch networks / natural-mined drop
+transfer; use unique tags and no command-based phase switch.
+
 ## NEWEST: finished Q, heldout eval active, item sensor staged
 
 Read docs/VISIBLE_DROPPED_ITEM_SENSOR_2026_11_04.md and TODO.md.

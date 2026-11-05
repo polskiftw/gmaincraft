@@ -16,6 +16,8 @@ import re
 import sys
 import time
 
+import numpy as np
+
 from mcio_ctrl import controller,instance,types,world
 from mcio_ctrl.envs import env_util
 
@@ -85,6 +87,23 @@ def run(ctrl,xyz):
             bridge.packet.get_option(VisibleItemsOption) is None)
         checks[label+'_rgb']=scene['rgb_valid']
         checks[label+'_camera_advances']=bridge.packet.frame_sequence>raw.frame_sequence
+        if with_item:
+            # Lab witness ONLY: compare actual rendered camera when the
+            # staged item is present vs immediately removed. Never send
+            # this screenshot/pixel mask to any learned policy.
+            control,_,_=action(ctrl,manager,commands=('kill @e[type=minecraft:item]',),
+                               clear=True)
+            for _ in range(4):
+                control,_,_=action(ctrl,manager)
+            pixels_control=control.get_frame()
+            # Ignore HUD edges/crosshair vicinity, count materially changed
+            # rendered scene pixels as a provisional item-visibility check.
+            a=pixels[20:145,64:256].astype(np.int16)
+            b=pixels_control[20:145,64:256].astype(np.int16)
+            scene['visible_item_pixel_delta_24']=int(
+                np.count_nonzero(np.max(np.abs(a-b),axis=2)>24))
+            print('ITEM RGB DIFFERENCE',label,
+                  scene['visible_item_pixel_delta_24'],flush=True)
         if label=='no_item':checks['empty_when_no_item']=len(detected.items)==0
         if label=='clear_visible':
             checks['visible_oak_in_fov']=any(e.item_id=='minecraft:oak_log'

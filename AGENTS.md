@@ -1,3 +1,18 @@
+## NEWEST VERIFIED: evidence-gated item pickup kit (Nov 5, 2026)
+
+Read [docs/NUMERIC_PICKUP_TRAINING_KIT_2026_11_05.md](docs/NUMERIC_PICKUP_TRAINING_KIT_2026_11_05.md)
+FIRST. Prior 200-case item actor failed heldout random controls (54-55/100 vs
+random 56/100). NEW versioned scratch egoreplay_v2 learned 25 real pickups
+in 60 staged train cases, 612 replay-Q updates and passed TWO independent
+100-case frozen heldouts: greedy 72/100 and 67/100 versus random 48/100
+and 48/100 and fixed forward 53/100 and 44/100. Strongest-control pooled
+margin 21 points across 200 episodes. Numeric-only, item visible to
+geometric camera sensor, no commands during scored play, actual inventory
+success and frozen no-update checks. 203 pure tests passed. ONE trained
+network, staged ground drops; NOT natural-world mastery or Any%. Follow
+promotion gate and independent reinitializations before expanding; Gamescope
+parent exits 139 after valid completed journal (known teardown bug).
+
 ## NEWEST: 200-world Q failure analyzed; V2 rare-success learner validated (Nov 4, 2026)
 
 Read [docs/V2_RARE_SUCCESS_REPLAY_AUDIT_2026_11_04.md](docs/V2_RARE_SUCCESS_REPLAY_AUDIT_2026_11_04.md)
