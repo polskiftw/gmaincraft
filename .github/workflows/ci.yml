@@ -12,8 +12,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Install pure-policy test dependency
-        run: python -m pip install 'numpy>=2,<3'
+      # Use the same pinned controller/CBOR stack as local development.
+      # NumPy alone cannot import MCio-backed modules in the unit suite.
+      - name: Install project test dependencies
+        run: python -m pip install -r requirements.txt
       - name: Check Python syntax
         run: python -m compileall -q experiments src/gmaincraft tests
       - name: Run policy math tests
