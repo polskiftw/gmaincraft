@@ -1,3 +1,17 @@
+## NOV 5 update: validated repair + harder search evaluation
+
+Read [docs/PICKUP_LAUNCHER_AND_HARD_SEARCH_2026_11_05.md](docs/PICKUP_LAUNCHER_AND_HARD_SEARCH_2026_11_05.md).
+The user's `egolearn1105b` round was NOT lost: 300/300 staged Minecraft
+train cases, 258 real oak pickups, 3456 Q updates and correct checkpoint.
+Old launcher propagated a post-child Gamescope SIGSEGV 139. New runner
+strictly checks completed actual inventory journal, schema and optimizer
+and prints clean progress; real child errors still fail. FROZEN 300-case
+model on TWO new 100-case HARD off-camera heldouts 88+93 real item pickups
+vs random 24+26 and always-forward 18+17. This is strong staged-world
+learning evidence, NOT independent network replication or Any%.
+New opt-in hard search profile and detached start/status/stop CLI. Next:
+independent hard-profile scratch learner then natural mined-drop transfer.
+
 ## NEWEST VERIFIED: evidence-gated item pickup kit (Nov 5, 2026)
 
 Read [docs/NUMERIC_PICKUP_TRAINING_KIT_2026_11_05.md](docs/NUMERIC_PICKUP_TRAINING_KIT_2026_11_05.md)

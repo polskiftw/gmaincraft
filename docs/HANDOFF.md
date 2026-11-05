@@ -1,3 +1,17 @@
+## Nov 5 current verified pickup training and launcher repair
+
+User's 300-case `egolearn1105b` successfully learned real staged Minecraft
+pickup, 258/300 real inventory gains, 3456 Q optimizer steps. CLI was
+broken because it propagated native Gamescope teardown signal139 after
+completed child; now independently validates full journal/checkpoint,
+reports success and safe status/stop and detached launch. New hard
+search-only fixture profile increases behind-camera targets; untouched
+old model FROZEN acquired 88/100+93/100 items on two independent hard
+sets vs random24+26 and always-forward18+17. Source docs in
+`docs/PICKUP_LAUNCHER_AND_HARD_SEARCH_2026_11_05.md`; do not claim
+natural-world item acquisition / full speedrun. Next inspect hard scratch
+training results and generalization; no evaluator-only phase switching.
+
 ## CURRENT (Nov 5): measured learning instead of synthetic activity counters
 
 Read `docs/NUMERIC_PICKUP_TRAINING_KIT_2026_11_05.md`. New egocentric

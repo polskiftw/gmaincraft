@@ -1,3 +1,20 @@
+## November 5 latest: reported segfault is Gamescope teardown; hard search
+
+- [x] Confirm user's actual 300-episode `egolearn1105b` was completed:
+  258 real inventory pickups, 3456 genuine Q updates, durable model/journal.
+- [x] Fix **misleading shell exit139** by separately verifying model cursor,
+  complete episode journal, real inventory, frozen no-updates; retain raw log.
+- [x] Add independent `status`, graceful `stop`, detached `start` launcher.
+- [x] Keep old checkpoint compatible with opt-in hard search case generator.
+- [x] FROZEN 300-case learner on TWO 100-case new hard seeds, 181/200 real
+  pickups vs random 50/200 and forward 35/200; no optimizer updates.
+- [ ] Launch and audit independently initialized hard-case model (new tag,
+  long unattended run), then hard heldout with separate seeds/controls.
+- [ ] Advance past staged summons to naturally mined drops in unmodified
+  survival without evaluator-triggered phase handoff.
+- [ ] Native Gamescope still sometimes SIGSEGV after valid child stop; the
+  parent is now isolated and judged on independently verified saved work.
+
 ## Nov 5: evidence-gated numeric item learning
 
 - [x] Finish prior staged numeric 200-episode study; frozen model 54-55/100

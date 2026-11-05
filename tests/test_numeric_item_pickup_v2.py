@@ -41,6 +41,21 @@ class PickupV2Tests(unittest.TestCase):
         self.assertTrue(stale.features[1])
         self.assertGreater(stale.features[9],0.)
 
+    def test_search_hard_profile_has_hidden_starts_without_changing_legacy(self):
+        a=directional_cases_for_seed(812371,500,profile='search_hard_v2')
+        self.assertEqual(a,directional_cases_for_seed(812371,500,profile='search_hard_v2'))
+        self.assertNotEqual(a,directional_cases_for_seed(812371,500,profile='standard_v2'))
+        directions=[egocentric_offset(x.dx,x.dz,x.yaw) for x in a]
+        behind=sum(front<0 for front,_ in directions)
+        self.assertGreater(behind,200)
+        self.assertLess(behind,320)
+        self.assertTrue(all(3. <= np.hypot(x.dx,x.dz) <= 5.8 for x in a))
+        with self.assertRaises(ValueError):directional_cases_for_seed(812371,500,profile='not_a_profile')
+        arg=parse_args(['--run-tag','hardrun','--kit','egoreplay_v2','--case-profile','search_hard_v2'])
+        self.assertEqual(metadata(arg)['case_profile'],'search_hard_v2')
+        old=parse_args(['--run-tag','oldrun','--kit','egoreplay_v2'])
+        self.assertNotIn('case_profile',metadata(old))
+
     def test_real_random_world_bearings_and_no_staged_target_in_observation(self):
         a=directional_cases_for_seed(812371,500)
         self.assertEqual(a,directional_cases_for_seed(812371,500))

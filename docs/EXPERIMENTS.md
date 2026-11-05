@@ -1,3 +1,17 @@
+## Nov 5: completed user run and unseen hard practice audit
+
+User command `train egolearn1105b` completed 300 staged, real-world Minecraft
+pickup episodes: 258 real inventory oak logs, 3456 Q optimizer updates;
+correct checkpoint cursor300. Old Gamescope wrapper returned 139 AFTER
+child completion, resolved at wrapper validation layer (not native crash).
+Frozen model on two independent HARD (more offscreen 3.0–5.8 blocks)
+100-case suites: 88/100 and 93/100 own-inventory successes; random24/100
+and26/100; always-forward18/100 and17/100. Pooled 181/200 versus 50/200
+and35/200, no frozen optimizer updates. Exact schema/seed matches verified,
+NO command actions during policy play. Future independent scratch training
+and natural mined-item transfer still pending. Full methods:
+`docs/PICKUP_LAUNCHER_AND_HARD_SEARCH_2026_11_05.md`.
+
 ## November 5: real memory-only item pickup generalization gate
 
 See `NUMERIC_PICKUP_TRAINING_KIT_2026_11_05.md` for methods and exact

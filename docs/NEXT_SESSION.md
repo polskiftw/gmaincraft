@@ -1,3 +1,20 @@
+## Nov 5: user-run completed, launch repaired, new hard search underway
+
+Read `docs/PICKUP_LAUNCHER_AND_HARD_SEARCH_2026_11_05.md` and
+`docs/NUMERIC_PICKUP_TRAINING_KIT_2026_11_05.md` first. The user's
+`egolearn1105b` actually COMPLETED 300 episodes (258 real item gains,
+3456 Q updates, model/journal aligned). Previously Gamescope's teardown
+SIGSEGV 139 made the CLI falsely fail. New CLI independently verifies
+complete Minecraft child results and reports status, start, stop,
+progress; continues to fail genuine exceptions. User's model FROZEN hard
+evals seeds881735/882735: 88/93 real pickups vs random24/26 and
+forward18/17 on exactly matched staged cases. Hard observations retain
+bounded player-camera item eyes; half initial target bearings behind.
+New train search profile `search_hard_v2` preserves standard checkpoints.
+Next inspect independent hard model, validate new hard frozen benchmarks,
+then transfer to naturally mined logs (NOT a script-controlled phase
+handoff). All previous models and local ignored datasets preserved.
+
 ## NOV 5 CURRENT PRIORITY: real pickup learning beats controls in staged Minecraft
 
 Read [NUMERIC_PICKUP_TRAINING_KIT_2026_11_05.md](NUMERIC_PICKUP_TRAINING_KIT_2026_11_05.md)

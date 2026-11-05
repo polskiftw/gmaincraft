@@ -70,6 +70,7 @@ def parse_args(argv=None):
     p.add_argument('--max-actions',type=int,default=34)
     p.add_argument('--case-seed',type=int,default=221144)
     p.add_argument('--policy-seed',type=int,default=772211)
+    p.add_argument('--case-profile',choices=('standard_v2','search_hard_v2'),default='standard_v2')
     p.add_argument('--device',choices=('auto','cpu','cuda'),default='cpu')
     p.add_argument('--control',choices=('sampled','greedy','uniform_random','always_forward'),default='sampled')
     p.add_argument('--visible',action='store_true')
@@ -82,7 +83,8 @@ def parse_args(argv=None):
         not 1<=args.report_every<=10000 or not 1<=args.case_seed<2**63 or
         not 1<=args.policy_seed<2**63 or
         (args.mode=='train' and (args.model_tag or args.control!='sampled')) or
-        (args.mode=='eval' and (not args.model_tag or args.resume))):
+        (args.mode=='eval' and (not args.model_tag or args.resume)) or
+        (args.kit=='legacy_v1' and args.case_profile!='standard_v2')):
         p.error('Invalid experiment budget, model contract or eval')
     return args
 
@@ -93,7 +95,7 @@ def policy_schema(args):
 
 def metadata(args):
     if args.kit=='egoreplay_v2':
-        return dict(schema=V2_SCHEMA,train_control='sampled',world=GAME_VERSION,
+        result=dict(schema=V2_SCHEMA,train_control='sampled',world=GAME_VERSION,
                     max_actions=args.max_actions,case_seed=args.case_seed,
                     policy_seed=args.policy_seed,
                     action_names=tuple(a[0] for a in ACTIONS),
@@ -103,6 +105,9 @@ def metadata(args):
                     no_admin_commands_during_scored_play=True,
                     output_is_separate_skill_not_full_game=True,
                     memory_only_no_rgb=True)
+        if args.case_profile!='standard_v2':
+            result['case_profile']=args.case_profile
+        return result
     return dict(schema=SCHEMA,train_control='sampled',world=GAME_VERSION,
                 max_actions=args.max_actions,case_seed=args.case_seed,
                 policy_seed=args.policy_seed,action_names=tuple(a[0] for a in ACTIONS),
@@ -306,7 +311,7 @@ def main(argv=None):
             # Evaluation stochastic controls use independent action RNG.
             if args.kit=='legacy_v1':
                 torch.manual_seed(args.policy_seed)
-        cases=(directional_cases_for_seed(args.case_seed,args.episodes)
+        cases=(directional_cases_for_seed(args.case_seed,args.episodes,profile=args.case_profile)
                if args.kit=='egoreplay_v2' else
                cases_for_seed(args.case_seed,args.episodes))
         if not args.resume:

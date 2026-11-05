@@ -36,25 +36,41 @@ class DirectionalCase:
     pitch: float = 30.0
 
 
-def directional_cases_for_seed(seed, count):
+def directional_cases_for_seed(seed, count, *, profile="standard_v2"):
     """Training fixture ONLY. No case-derived value enters observations.
 
     Full 360-degree WORLD yaw means absolute +Z, constant-forward, and
     overfitting the old +/-15-degree yaw can no longer solve the suite.
     The training/evaluation worlds are disjoint by caller-supplied seed.
     """
+    if profile not in ("standard_v2", "search_hard_v2"):
+        raise ValueError("Unknown staged item search profile")
     rng = random.Random(seed)
     cases = []
     for _ in range(count):
         yaw = rng.uniform(-180., 180.)
-        radius = rng.uniform(2.5, 4.8)
-        draw = rng.random()
-        if draw < .40:
-            offset = rng.uniform(-20., 20.)
-        elif draw < .90:
-            offset = rng.choice((-1, 1))*rng.uniform(20., 65.)
+        if profile == "standard_v2":
+            # Keep the preexisting sequence identical for saved checkpoints.
+            radius = rng.uniform(2.5, 4.8)
+            draw = rng.random()
+            if draw < .40:
+                offset = rng.uniform(-20., 20.)
+            elif draw < .90:
+                offset = rng.choice((-1, 1))*rng.uniform(20., 65.)
+            else:
+                offset = rng.choice((-1, 1))*rng.uniform(65., 130.)
         else:
-            offset = rng.choice((-1, 1))*rng.uniform(65., 130.)
+            # Harder but still reachable on the same unmodified bedrock
+            # practice map: more off-camera items, less straight-ahead luck.
+            # Only the fixture generator sees these generated bearings.
+            radius = rng.uniform(3.0, 5.8)
+            draw = rng.random()
+            if draw < .20:
+                offset = rng.uniform(-28., 28.)
+            elif draw < .50:
+                offset = rng.choice((-1, 1))*rng.uniform(28., 95.)
+            else:
+                offset = rng.choice((-1, 1))*rng.uniform(95., 180.)
         # Minecraft yaw=0 looks +Z; yaw=+90 looks -X.
         bearing = radians(yaw + offset)
         dx = -sin(bearing)*radius
