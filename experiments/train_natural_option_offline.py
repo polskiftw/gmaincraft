@@ -41,7 +41,9 @@ def load_committed_real_trace(tag):
         last.get('new_optimizer_updates_in_eval')!=0 or
         meta.get('gameplay_commands')!=0 or
         not meta.get('paired_world_cache') or
-        meta.get('pickup_transfer_contract')!='player_seen_dropped_wood_pickup_transfer_budget_v2' or
+        meta.get('pickup_transfer_contract') not in (
+            'player_seen_dropped_wood_pickup_transfer_budget_v2',
+            'player_seen_stochastic_option_experience_v1') or
         not meta.get('transfer_source_hash')):
         raise ValueError(f'Trainable replay must come from complete, frozen real TRAIN-noise worlds: {tag}')
     episodes=[x for x in rows if x.get('stage')=='episode_committed']

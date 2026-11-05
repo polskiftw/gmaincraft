@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 usage(){
-  echo 'Usage: tools/run-natural-pickup-transfer.sh start PREFIX EVAL_INDEX WORLDS SIX_TICK_UNITS ACTION_RNG [Q_MODEL] [PICKUP_MODEL] [v1|budget_v2|learned_v1] [eval|data_train] [OPTION_MODEL]' >&2
+  echo 'Usage: tools/run-natural-pickup-transfer.sh start PREFIX EVAL_INDEX WORLDS SIX_TICK_UNITS ACTION_RNG [Q_MODEL] [PICKUP_MODEL] [v1|budget_v2|explore_v1|learned_v1] [eval|data_train] [OPTION_MODEL] [AUTO_TRAIN_OPTION_TAG]' >&2
   echo '       tools/run-natural-pickup-transfer.sh status PREFIX' >&2
   echo 'This is independent frozen skill transfer evaluation, NOT new training.' >&2
   exit 2
@@ -50,7 +50,7 @@ PY
    exit 0
    ;;
  start)
-   [[ $# -ge 4 && $# -le 9 ]] || usage
+   [[ $# -ge 4 && $# -le 10 ]] || usage
    [[ ! -e "$log" && ! -e "$report" && ! -e "logs/fresh_eval_${shadow}.jsonl" && ! -e "logs/fresh_eval_${active}.jsonl" ]] || {
       echo 'Existing natural suite data; never overwrite experiments.' >&2;exit 1;
    }
@@ -69,7 +69,7 @@ PY
    exit 0
    ;;
  execute)
-   [[ $# -ge 4 && $# -le 9 ]] || usage
+   [[ $# -ge 4 && $# -le 10 ]] || usage
    ;;
  *)usage;;
 esac
@@ -79,11 +79,23 @@ pickup_model="${6:-hardrep1105b}"
 variant="${7:-v1}"
 data_mode="${8:-eval}"
 option_model="${9:-}"
-[[ "$variant" == v1 || "$variant" == budget_v2 || "$variant" == learned_v1 ]] || usage
+auto_option_tag="${10:-}"
+if [[ -n "$auto_option_tag" ]];then
+  [[ "$data_mode" == data_train && "$auto_option_tag" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,22}$ ]] || usage
+  [[ ! -e "checkpoints/natural_option_${auto_option_tag}.pt" &&
+     ! -e "logs/natural_option_${auto_option_tag}.train.json" ]] || {
+      echo 'Refusing to overwrite previous trained natural option selector' >&2;exit 1;
+  }
+fi
+[[ "$variant" == v1 || "$variant" == budget_v2 || "$variant" == explore_v1 || "$variant" == learned_v1 ]] || usage
 [[ "$data_mode" == eval || "$data_mode" == data_train ]] || usage
 if [[ "$variant" == budget_v2 ]];then
   shadow_selector='shadow_budget_v2'
   active_selector='visible_memory_budget_v2'
+elif [[ "$variant" == explore_v1 ]];then
+  [[ "$data_mode" == data_train ]] || usage
+  shadow_selector='shadow_option_explore_v1'
+  active_selector='option_explore_v1'
 elif [[ "$variant" == learned_v1 ]];then
   [[ "$data_mode" == eval && "$option_model" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,22}$ ]] || usage
   shadow_selector='shadow_learned_option_v1'
@@ -154,5 +166,20 @@ print('NATURAL RUN VERIFIED',tag,'mode',selector,'worlds',count,
       'outer',outer,flush=True)
 PY
 done
-.venv/bin/python tools/analyze-natural-pickup-transfer.py "$shadow" "$active" --output "$report"
+if [[ "$data_mode" == data_train ]];then
+  # Authentic off-policy data remains usable if two independent rollout
+  states differ; the report MUST label them as a diagnostic, never as
+  causal heldout uplift. Offline loader separately verifies every REAL row.
+  .venv/bin/python tools/analyze-natural-pickup-transfer.py \
+    "$shadow" "$active" --diagnose-mismatched-spawns --output "$report"
+else
+  .venv/bin/python tools/analyze-natural-pickup-transfer.py \
+    "$shadow" "$active" --output "$report"
+fi
 echo "NATURAL TRANSFER SUITE COMPLETED $report"
+if [[ -n "$auto_option_tag" ]];then
+  echo "NATURAL OPTION TRAINING FROM COMMITTED REAL TRAIN-ONLY MINE/PICKUP OUTCOMES: $auto_option_tag"
+  .venv/bin/python -u experiments/train_natural_option_offline.py \
+    --tag "$auto_option_tag" --source "$shadow" --source "$active" \
+    --steps 320 --batch-size 64
+fi

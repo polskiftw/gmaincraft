@@ -24,7 +24,8 @@ def read(tag):
         cfg.get('metadata',{}).get('pickup_transfer_contract') not in (
             'player_seen_dropped_wood_pickup_transfer_v1',
             'player_seen_dropped_wood_pickup_transfer_budget_v2',
-            'player_seen_dropped_wood_learned_option_selector_v1') or
+            'player_seen_dropped_wood_learned_option_selector_v1',
+            'player_seen_stochastic_option_experience_v1') or
         not cfg.get('metadata',{}).get('pickup_model') or
         cfg.get('metadata',{}).get('gameplay_commands')!=0 or
         last.get('mode')!='eval' or last.get('new_optimizer_updates_in_eval')!=0 or
@@ -44,7 +45,8 @@ def compare(shadow,active,*,allow_unmatched_pose=False):
     if (cm.get('pickup_selector'),sm.get('pickup_selector')) not in (
             ('shadow','visible_memory_v1'),
             ('shadow_budget_v2','visible_memory_budget_v2'),
-            ('shadow_learned_option_v1','learned_option_v1')):
+            ('shadow_learned_option_v1','learned_option_v1'),
+            ('shadow_option_explore_v1','option_explore_v1')):
         raise ValueError('Order must be mining-only shadow THEN pickup transfer')
     if ({k:v for k,v in cm.items() if k!='pickup_selector'}!=
         {k:v for k,v in sm.items() if k!='pickup_selector'}):

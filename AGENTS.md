@@ -1,3 +1,19 @@
+## NOV 5 latest: do not let previous world change next world's Q RNG
+
+Sampled mining Q evaluations in multiple natural worlds formerly shared
+global Torch RNG state across worlds; two different prior trajectories
+could seed next matched pair differently even on SAME frozen source/pose.
+Opt-in paired tests now use independent SHA-based per-world Q sampler seed
+(NO seed exposed to neural policy). First-eye hash, first action-prefix,
+source checksum, real journal/inventory and pose checks are the evidence
+contract. `npdatap2a` recorded first real genuine option transitions but
+is a diagnostic with unequal next-world RNG; not proof of selector skill.
+Versioned `option_explore_v1 data_train` actually samples both frozen
+options at item-visible and no-item situations so a scratch Q option
+selector can learn from REAL actual action outcomes, not a hardcoded gate.
+No trained option model promoted yet. Read
+`docs/NATURAL_OPTION_LEARNING_2026_11_05.md` before working.
+
 ## NOV 5 (latest): strict natural-world eval + trainable option-Q kit
 
 Read `docs/NATURAL_OPTION_LEARNING_2026_11_05.md` BEFORE another run.

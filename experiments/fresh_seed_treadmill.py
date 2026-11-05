@@ -129,7 +129,8 @@ def parse_args(argv=None):
     ap.add_argument('--natural-option-model',help='frozen actually trained mine-vs-pickup option selector, eval-only')
     ap.add_argument('--pickup-selector',choices=('shadow','visible_memory_v1',
                         'shadow_budget_v2','visible_memory_budget_v2',
-                        'shadow_learned_option_v1','learned_option_v1'),default='shadow',
+                        'shadow_learned_option_v1','learned_option_v1',
+                        'shadow_option_explore_v1','option_explore_v1'),default='shadow',
                     help='shadow measures natural drops without changing actions; visible_memory is an UNLEARNED player-only handoff diagnostic')
     ap.add_argument('--paired-world-cache',help='evaluation-only shared immutable natural-noise source tag, NOT a policy observation')
     ap.add_argument('--record-option-experience',action='store_true',
@@ -225,6 +226,9 @@ def parse_args(argv=None):
     if (bool(args.natural_option_model)!=learned_requested or
         (learned_requested and (args.mode!='eval' or not args.pickup_model))):
         ap.error('Learned option selector needs a frozen natural-option-model and pickup skill in eval')
+    if args.pickup_selector.endswith('option_explore_v1') and (
+            not args.record_option_experience or args.option_data_namespace!='train'):
+        ap.error('Randomized option behavior is TRAIN-data collection ONLY, never a heldout policy')
     if ((args.record_option_experience and (args.mode!='eval' or not args.pickup_model)) or
         (args.option_data_namespace=='train' and not args.record_option_experience)):
         ap.error('Option replay collection requires frozen Q+pickup and an explicit real-data flag')
@@ -259,6 +263,22 @@ def paths(tag,mode):
     stop=ROOT/'logs'/('fresh_stream_'+tag+'.stop')
     lock=ROOT/'checkpoints'/('fresh_stream_'+tag+'.lock')
     return checkpoint,journal,inflight,stop,lock
+
+
+def paired_frozen_q_sampler_seed(args,episode):
+    """Isolate Q action-sampling randomness across independent paired worlds.
+
+    Earlier suites carried PyTorch RNG state over from previous worlds;
+    differing prior action counts made the next seed start with a different
+    Q sampler even when the current world's source and pose matched.
+    This is EVALUATOR RNG only; never a neural observation or target hint.
+    """
+    import hashlib
+    if (not getattr(args,'paired_world_cache',None) or type(episode) is not int or
+        episode<0 or episode>=10**12):
+        raise ValueError('Per-world Q RNG is exclusively for a valid paired evaluation')
+    material=f'paired_q_rng_v1|{args.seed_root}|{args.policy_seed}|{episode}'.encode('ascii')
+    return int.from_bytes(hashlib.sha256(material).digest()[:8],'little') % (2**63-1)
 
 
 def pickup_transfer_source_hash():
@@ -299,6 +319,8 @@ def metadata(args):
                 **({'frame_transport':'memory_only_frame_callback_v1'} if args.memory_only_no_rgb else {}),
                 **({'pickup_model':args.pickup_model,'pickup_selector':args.pickup_selector,
                     'pickup_transfer_contract':contract_for_selector(args.pickup_selector),
+                    **({'paired_q_rng_per_world':'sha256_policy_root_episode_v1'}
+                       if args.paired_world_cache else {}),
                     'transfer_source_hash':pickup_transfer_source_hash(),
                     **({'paired_world_cache':args.paired_world_cache} if args.paired_world_cache else {}),
                     **({'natural_option_model':args.natural_option_model} if args.natural_option_model else {}),
@@ -435,6 +457,9 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     """
     created=time.perf_counter()
     world_name=manager.prepare(episode,seed)
+    if args.paired_world_cache:
+        import torch
+        torch.manual_seed(paired_frozen_q_sampler_seed(args,episode))
     worldgen_s=time.perf_counter()-created
     child_env={**ENV_EXTRA}
     if pickup_brain is not None:
@@ -459,7 +484,9 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     crack_progress=WoodCrackProgress()
     target_history=VisibleTargetHistory() if args.reward_profile=='wood_temporal_v9' else None
     pickup=(NaturalPickupTransfer(pickup_brain,selector=args.pickup_selector,
-                                  option_brain=option_brain)
+                                  option_brain=option_brain,
+                                  exploration_seed=(
+                                    (args.policy_seed ^ ((episode+1)*0xA84DB))%(2**63-1)))
             if pickup_brain is not None else None)
     pickup_elapsed_ticks=0
     option_trace=[] if args.record_option_experience else None

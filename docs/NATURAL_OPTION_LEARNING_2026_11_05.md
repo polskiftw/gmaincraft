@@ -125,3 +125,72 @@ initial player pose, source Q action RNG signatures, and new disjoint
 heldout world seeds. If there is no real event data, report a gap, not a
 fabricated trained policy. Two options do not yet solve exploration,
 crafting, tool-building or learned full speedrun planning.
+
+## November 5 deeper reliability: separate Q RNG for every matched world
+
+The two-world real TRAIN-trace smoke `npdatap2a` successfully committed
+actual action-level records from four genuine Minecraft survival episodes,
+with sum(action.ticks) exactly equal to game ticks and player inventory
+outcomes reconciled. It also exposed a crucial carry-over in earlier
+**sampled** frozen Q rollouts: because two arms took different numbers of
+Q actions in the preceding world, their global PyTorch sampling RNG
+started the NEXT world at a different state. The naive same-seed approach
+was inadequate even with identical shared world source and pose.
+
+New `paired_frozen_q_sampler_seed` is a separate, SHA-256-derived,
+versioned **evaluator-only action RNG** for each tuple of seed root,
+policy RNG seed and episode index. It resets only within opt-in paired
+survival evaluations, leaving all historic checkpoints/rollouts unchanged.
+The first Q sampler RNG hash and exact initial camera/V9 player-observation
+fingerprint are logged and verified per actual world. This eliminates the
+prior-world action-count RNG confound while preserving honest in-game
+stochasticity; it does **not** guarantee deterministic Minecraft outcomes.
+A matched Q-only repeat is still useful to quantify nondeterminism.
+
+### Better-than-hardcoded observational training data
+
+The versioned `explore_v1 data_train` mode uses an **independent seeded
+random behavior policy** to actually sample BOTH frozen options at states
+with current player-visible items and at states with no known item. It
+oversamples rare item opportunities (55% option-pickup sampling if an
+item is visible/remembered, 8% otherwise) to reduce wasted genuine
+Minecraft test ticks, but **never supplies a correct option label, a
+hidden destination, an oracle reward, or a known speedrun strategy**.
+The training objective uses only the resulting actual player inventories
+and mined-block outcomes. Its stochastic choice is not a deployed policy.
+
+```bash
+# Stronger genuine real-world exploration data on a fresh TRAIN-only
+# set of world indices, separate from previous frozen heldout tests:
+tools/run-natural-pickup-transfer.sh start npoexp2ka 2002 12 600 1639393   qv2memf1104 hardrep1105b explore_v1 data_train
+
+# After this fully completes with genuine positive outcomes:
+.venv/bin/python experiments/train_natural_option_offline.py   --tag option1105a --source npoexp2ka_s --source npoexp2ka_p   --steps 320 --batch-size 64
+```
+
+This is a **new trainable research tool**, not proof the option network
+selects useful actions yet. The separate frozen `learned_v1 eval MODEL`
+mode is already implemented but must be compared against its shadow arm
+on independent unseen EVAL seeds before any promotion.
+
+## Unattended real-data to real trained-model handoff (opt-in)
+
+The launcher accepts an optional tenth positional `AUTO_TRAIN_OPTION_TAG`
+**only** for `data_train`. When BOTH actual Minecraft source streams have
+independently completed and the per-game real own-inventory/action journals
+pass validation, it invokes `train_natural_option_offline.py` on those
+TRAIN-only committed journals under the same detached, uniquely named
+workstation job. It does NOT train the source Minecraft miner or pickup
+networks, and never consumes heldout EVAL worlds. If there aren't sufficient
+positive real outcomes for the new option model, offline training exits
+with an explicit error and **DOES NOT publish fake/random trained weights**.
+No automatic claim of improved Minecraft gameplay occurs until an entirely
+separate learned-vs-shadow heldout natural evaluation passes.
+
+Example: `tools/run-natural-pickup-transfer.sh start npoexp2ka 2002 12 600 1639393 qv2memf1104 hardrep1105b explore_v1 data_train '' optdata2ka`.
+The empty ninth argument means no pretrained option model (we are TRAINING
+a new one). When real data qualifies, the checkpoint name will be
+`checkpoints/natural_option_optdata2ka.pt`, otherwise it remains absent.
+The suite's own diagnostic report is explicitly labeled TRAIN-data rather
+than a causal heldout test, and may report initial-state mismatches without
+discarding genuine single-world experiences.

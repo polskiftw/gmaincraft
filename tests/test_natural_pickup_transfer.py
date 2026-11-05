@@ -9,7 +9,8 @@ import numpy as np
 from gmaincraft.agent_interface import AgentAction
 from gmaincraft.natural_pickup_transfer import (
     NaturalPickupTransfer,visible_wood_only,CONTRACT,BUDGET_CONTRACT,
-    BUDGET_ATTEMPT_TICKS,OPTION_CONTRACT,contract_for_selector,coarse_audit_heads)
+    BUDGET_ATTEMPT_TICKS,OPTION_CONTRACT,EXPLORATION_CONTRACT,
+    contract_for_selector,coarse_audit_heads)
 from gmaincraft.mcio_visible_items import VisibleItemsV1,VisibleDroppedItemV1,SCHEMA as ITEM_SCHEMA
 from gmaincraft.player_knowledge import OwnedItem,PlayerKnowledgeV1,SCHEMA as PLAYER_SCHEMA
 from gmaincraft.natural_diagnostics import NaturalActionAudit
@@ -120,6 +121,44 @@ class TransferPolicyTests(unittest.TestCase):
         self.assertEqual(result['unfactored_primitive_actions'],1)
         self.assertEqual(result['action_elapsed_ticks'],12)
         self.assertEqual(sum(result['action_counts'][0]),0)
+
+    def test_stochastic_real_data_behavior_explores_both_options_without_teacher(self):
+        brain=FakeBrain(0)
+        low=NaturalPickupTransfer(brain,selector='option_explore_v1',
+                                  exploration_seed=38173)
+        high=NaturalPickupTransfer(brain,selector='option_explore_v1',
+                                   exploration_seed=38173)
+        self.assertEqual(low.audit()['contract'],EXPLORATION_CONTRACT)
+        no_item=[];yes_item=[]
+        for i in range(120):
+            low.observe(own(),items(),elapsed_ticks=i*6)
+            no_item.append(low.choose(6) is not None)
+            high.observe(own(),items('minecraft:oak_log'),elapsed_ticks=i*6)
+            yes_item.append(high.choose(6) is not None)
+        self.assertGreater(sum(no_item),0)
+        self.assertLess(sum(no_item),35)
+        self.assertGreater(sum(yes_item),35)
+        self.assertLess(sum(yes_item),100)
+        self.assertEqual(low.audit()['random_pickup_exploration_decisions'],sum(no_item))
+        shadow=NaturalPickupTransfer(brain,selector='shadow_option_explore_v1',
+                                     exploration_seed=38173)
+        shadow.observe(own(),items('minecraft:oak_log'),elapsed_ticks=0)
+        self.assertIsNone(shadow.choose(6))
+        self.assertEqual(shadow.audit()['contract'],EXPLORATION_CONTRACT)
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):parse_args(['--run-tag','badexplore',
+              '--mode','eval','--control','q_sampled','--q-model','qv2memf1104',
+              '--q-goal','effect:visible_wood_crack_progress_v2',
+              '--reward-profile','wood_temporal_v9',
+              '--pickup-model','hardrep1105b','--pickup-selector','option_explore_v1'])
+        good=parse_args(['--run-tag','okexplore','--mode','eval','--control','q_sampled',
+              '--q-model','qv2memf1104','--q-goal','effect:visible_wood_crack_progress_v2',
+              '--reward-profile','wood_temporal_v9',
+              '--pickup-model','hardrep1105b',
+              '--record-option-experience','--option-data-namespace','train',
+              '--pickup-selector','option_explore_v1'])
+        self.assertEqual(metadata(good)['option_data_namespace'],'train')
+        self.assertEqual(metadata(good)['pickup_transfer_contract'],EXPLORATION_CONTRACT)
 
     def test_genuinely_learned_option_uses_model_choice_not_item_visibility_gate(self):
         class Option:

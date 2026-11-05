@@ -1,3 +1,17 @@
+## Nov 5 latest: per-world Q sampling RNG + stochastic option data
+
+Do NOT treat `nptr25a` as valid pairing (3 different starts). After
+shared immutable source snapshots, real `npdatap2a` TRAIN-data probe
+recorded full authentic natural-world option transitions, but discovered
+Q sampler RNG carried across worlds; next world2001 had different initial
+Q RNG state between paired arms because world2000 consumed different
+numbers of sampled Q decisions. NEW paired run version seeds frozen Q
+sampled actions independently for each episode and validates both RNG and
+actual camera/own observation hash. Added `option_explore_v1` as
+train-only stochastic data sampler (sampling BOTH frozen options with
+and without visible items, no teacher labels) for the real conservative
+Q option chooser. See `docs/NATURAL_OPTION_LEARNING_2026_11_05.md`.
+
 ## Nov 5 latest: trainable choice between natural mining and item pickup
 
 Natural `nptr25a` fully finished, but cannot claim paired effect because

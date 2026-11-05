@@ -1,3 +1,25 @@
+## CURRENT Nov 5: real option-Q dataset and unbiased per-world RNG
+
+- [x] Real 2-world `npdatap2a` TRAIN-noise smoke: exact own-state/action/
+  next-state journal rows reconciled to actual Minecraft tick counts,
+  pickup actions and genuine inventory gains. Model weights stayed frozen.
+- [x] Detected sampled Q RNG carry from WORLD2000 to WORLD2001 (different
+  prior actions led to different next-world Q sampler states), despite same
+  pre-game snapshot. Fix with a versioned independent per-world PyTorch Q
+  sample seed only for opt-in paired new studies; record first RNG hash.
+- [x] Build distinct stochastic exploration-behavior `explore_v1 data_train`
+  that samples both real frozen options with & without current visible item
+  before optimizing a single learned selector; NEVER a scripted correct
+  option label. Only TRAIN stream can run this data sampler.
+- [ ] Launch and audit longer natural Minecraft TRAIN-only option action
+  exploration with `explore_v1`, first Q-RNG/own-camera state hashes,
+  source world byte cache and actual real inventory outcomes; only then
+  auto-train option Q if sufficient genuine examples. The detached launcher
+  supports explicit `AUTO_TRAIN_OPTION_TAG` after both arms, fail-closed.
+- [ ] Once trained: evaluate genuinely learned option chooser (not gate)
+  versus its exact frozen Q-only shadow and repeated Q-only baselines on
+  disjoint EVAL noise worlds with source/pose/first-eye/Q-RNG gates.
+
 ## Nov 5 latest: reject unfair benchmark; trainable option choice
 
 - [x] `nptr25a` completed 12+12 frozen natural worlds; 13 vs 10 true

@@ -5,7 +5,7 @@ ROOT=pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
 sys.path.insert(0,str(ROOT/'experiments'))
 from gmaincraft.fresh_world_manager import FreshWorldManager,names
-from fresh_seed_treadmill import parse_args,metadata
+from fresh_seed_treadmill import parse_args,metadata,paired_frozen_q_sampler_seed
 
 
 class PairedSourceTests(unittest.TestCase):
@@ -36,6 +36,20 @@ class PairedSourceTests(unittest.TestCase):
             self.assertEqual(mclass.return_value.copy.call_count,2)
             self.assertGreaterEqual(verify.call_count,4)
             fix.assert_called()
+
+    def test_frozen_q_episode_sampler_is_stable_and_separate_between_worlds(self):
+        args=parse_args(['--run-tag','paired_s','--mode','eval',
+            '--control','q_sampled','--q-model','qv2memf1104',
+            '--q-goal','effect:visible_wood_crack_progress_v2',
+            '--reward-profile','wood_temporal_v9','--pickup-model','hardrep1105b',
+            '--paired-world-cache','sharedsrc'])
+        a=paired_frozen_q_sampler_seed(args,2000)
+        self.assertEqual(a,paired_frozen_q_sampler_seed(args,2000))
+        self.assertNotEqual(a,paired_frozen_q_sampler_seed(args,2001))
+        self.assertEqual(metadata(args)['paired_q_rng_per_world'],
+                         'sha256_policy_root_episode_v1')
+        args.paired_world_cache=None
+        with self.assertRaises(ValueError):paired_frozen_q_sampler_seed(args,2000)
 
     def test_shared_cache_validation_and_v9_eval_only(self):
         with tempfile.TemporaryDirectory() as d, mock.patch(

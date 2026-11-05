@@ -1,3 +1,34 @@
+## NEWEST Nov 5: opt-in real-data -> trainable selector pipeline
+
+Longer natural experiment launcher now supports `explore_v1 data_train`
+with OPTIONAL auto-learn after BOTH real Minecraft arms complete:
+`tools/run-natural-pickup-transfer.sh start PREFIX INDEX WORLDS UNITS RNG
+QMODEL PICKUPMODEL explore_v1 data_train '' NEWOPTIONTAG`.
+The tenth positional name is ONLY for a future genuine scratch-trained
+option model; never a manual/synthetic label. Source Q/Pickup remain frozen.
+If sufficient authentic real outcomes exist, the detached runner itself
+calls `experiments/train_natural_option_offline.py`. This does not promote
+success: unseen frozen EVAL-world generalization is a separate gate.
+`docs/NATURAL_OPTION_LEARNING_2026_11_05.md` has full contracts and model
+input limitations. Keep source files and launcher snapshots untouched while
+a pair is running; checksums fail closed on in-flight code drift.
+
+## NEWEST Nov 5: paired RNG fairness and real option training data
+
+Read `docs/NATURAL_OPTION_LEARNING_2026_11_05.md`. A new actual Minecraft
+2-world TRAIN-namespace record `npdatap2a` generated true own-state,
+chosen option, actual ticks and own wood outcomes, but did NOT meet a
+reproducible paired Q RNG gate on the SECOND world: previous-world action
+counts shifted the PyTorch sampling state. Fixed in NEW versioned optional
+paired eval: each world now gets its own deterministic Q sampling seed
+from evaluation seed root, model RNG seed and world index. This is evaluator
+RNG only, NOT network input. Also implemented distinct stochastic
+`explore_v1 data_train` to generate both-option examples in item/no-item
+situations; the 2-option double Q will only train from authentic committed
+Minecraft player outcomes and never from expert route labels. Strict
+seed namespaces and checkpoint schemas still apply. Next current run
+may be tracked by `tools/run-natural-pickup-transfer.sh status TAG`.
+
 ## CURRENT NOV 5: FIRST TRAINABLE NATURAL MINE/PICKUP OPTION KIT
 
 Read `docs/NATURAL_OPTION_LEARNING_2026_11_05.md`. Old `nptr25a`

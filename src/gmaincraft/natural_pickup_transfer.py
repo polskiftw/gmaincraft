@@ -8,6 +8,7 @@ spawned objects or controller-only phase flags are used to select an action.
 """
 from collections import Counter
 from math import dist
+import random
 
 from .agent_interface import AgentAction
 from .mcio_visible_items import VisibleItemsV1
@@ -19,13 +20,16 @@ from .natural_option_q_v1 import option_features
 CONTRACT='player_seen_dropped_wood_pickup_transfer_v1'
 BUDGET_CONTRACT='player_seen_dropped_wood_pickup_transfer_budget_v2'
 OPTION_CONTRACT='player_seen_dropped_wood_learned_option_selector_v1'
+EXPLORATION_CONTRACT='player_seen_stochastic_option_experience_v1'
 SELECTORS=('shadow','visible_memory_v1','shadow_budget_v2','visible_memory_budget_v2',
-           'shadow_learned_option_v1','learned_option_v1')
+           'shadow_learned_option_v1','learned_option_v1',
+           'shadow_option_explore_v1','option_explore_v1')
 BUDGET_ATTEMPT_TICKS=96
 
 def contract_for_selector(selector):
     if selector not in SELECTORS:raise ValueError('Unknown pickup transfer version')
-    return (OPTION_CONTRACT if selector.endswith('learned_option_v1') else
+    return (EXPLORATION_CONTRACT if selector.endswith('option_explore_v1') else
+            OPTION_CONTRACT if selector.endswith('learned_option_v1') else
             BUDGET_CONTRACT if selector.endswith('budget_v2') else CONTRACT)
 
 MAX_OWN_MEMORY_PURSUIT_TICKS=90
@@ -40,7 +44,7 @@ def visible_wood_only(items):
 
 
 class NaturalPickupTransfer:
-    def __init__(self,brain,*,selector='shadow',greedy=True,option_brain=None):
+    def __init__(self,brain,*,selector='shadow',greedy=True,option_brain=None,exploration_seed=1):
         if selector not in SELECTORS:
             raise ValueError('Unknown diagnostic pickup selector')
         if brain is None or not callable(getattr(brain,'act',None)):
@@ -49,6 +53,9 @@ class NaturalPickupTransfer:
             raise ValueError('Learned option selector requires frozen trained option checkpoint')
         self.brain=brain
         self.option_brain=option_brain
+        if type(exploration_seed) is not int or exploration_seed<0 or exploration_seed>=2**63:
+            raise ValueError('Bad independent exploration RNG seed')
+        self.exploration_rng=random.Random(exploration_seed)
         self.latest_mining=None
         self.selector=selector
         self.greedy=bool(greedy)
@@ -104,6 +111,33 @@ class NaturalPickupTransfer:
             raise ValueError('No vanilla game time remaining')
         if self.latest is None:raise RuntimeError('Pickup selector never observed Minecraft')
         was=self.in_pursuit
+        if self.selector.endswith('option_explore_v1'):
+            if self.selector=='shadow_option_explore_v1':
+                self.in_pursuit=False
+                self.last_action=0
+                return None
+            # This is a TRAIN-data behavior sampler, NOT a correct-action
+            # teacher. Both frozen options are explored in item-visible and
+            # no-item states; the network is trained only from real outcomes.
+            # Higher opportunity sampling merely improves rare-item coverage.
+            visible=bool(self.latest.item_seen or self.latest.features[1]>.5)
+            propensity=.55 if visible else .08
+            self.stats['random_option_decisions']+=1
+            self.stats['random_option_visible_decisions']+=int(visible)
+            if self.exploration_rng.random()>=propensity:
+                self.in_pursuit=False
+                self.last_action=0
+                return None
+            self.in_pursuit=True
+            self.stats['random_pickup_exploration_decisions']+=1
+            index=self.brain.act(self.latest,greedy=self.greedy)
+            action=motor_action(index)
+            self.last_action=index
+            self.stats['pickup_policy_actions']+=1
+            self.action_names[ACTIONS[index][0]]+=1
+            return AgentAction(keys=action.keys,look_dx=action.look_dx,
+                               look_dy=action.look_dy,
+                               ticks=min(action.ticks,remaining_ticks))
         if self.selector.endswith('learned_option_v1'):
             if self.latest_mining is None:
                 raise RuntimeError('Learned option never observed actual current mining state')
