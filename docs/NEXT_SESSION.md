@@ -1,3 +1,27 @@
+## LIVE ACTIVE — npoexp2ka real survival option experience collection
+
+`tools/run-natural-pickup-transfer.sh start npoexp2ka 2002 12 600 1639393
+qv2memf1104 hardrep1105b explore_v1 data_train '' optdata2ka` was ACTUALLY
+launched on the Gentoo workstation with immutable shell launcher snapshot,
+valid TRAIN seed namespace, world generation and an exclusive suite lock.
+First three shadow worlds 2002..2004 were committed and audited: action
+rows exactly matched actual policy-actions and Minecraft game ticks; true
+inventory event sum reconciled, real Q sampler RNG hashes recorded.
+This is genuine TRAIN data, NOT heldout generalization or completed learned
+option training. The sequential shadow arm (`npoexp2ka_s`) is followed by
+stochastic pickup-option arm (`npoexp2ka_p`) over the identical 12 natural
+TRAIN seeds. On BOTH fully verified journals, the launcher ATTEMPTS to
+train tiny scratch option-Q and publish `checkpoints/natural_option_optdata2ka.pt`
+ONLY if sufficient real pickup outcomes and option actions exist; failure
+prints a reason, no checkpoint fabricated. Status via
+`tools/run-natural-pickup-transfer.sh status npoexp2ka` and
+`tail -f logs/natural_transfer_npoexp2ka_launcher.console`.
+DO NOT run another DemoInstance JVM or edit instrumented Python code until
+job ends. Source hash `25a8fd35f80aecb931784163`. After full completion,
+check model existence and real outcome counts; ONLY then stage a distinct
+frozen learned_option vs shadow test in previously unused EVAL seeds.
+All source and model code pushed, 225 pure tests passed.
+
 ## NEWEST Nov 5: opt-in real-data -> trainable selector pipeline
 
 Longer natural experiment launcher now supports `explore_v1 data_train`

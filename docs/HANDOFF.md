@@ -1,3 +1,20 @@
+## ACTIVE (Nov 5): actual long-running real option training-data job
+
+`npoexp2ka` was launched in detached, immutable launcher on the user
+Gentoo workstation: natural TRAIN-noise seed indexes2002..2013 x600 units,
+first `npoexp2ka_s` source mining Q shadow and then `npoexp2ka_p`
+stochastic explore BOTH frozen mine/pickup options, same immutable world
+source and per-world Q sampler. Strict own/player-only action traces are
+recorded. First three shadow Minecraft episodes committed with valid
+per-action tick and inventory sum reconciliation. Do not run another
+Minecraft process while held suite lock is active. Status:
+`tools/run-natural-pickup-transfer.sh status npoexp2ka`.
+After 24 genuine worlds the launcher attempts offline scratch option
+training `optdata2ka`, and will FAIL CLOSED / NOT publish an under-evidenced
+model. Do not claim learning or success before verifying checkpoint and
+heldout natural generalization. Source hash: `25a8fd35f80aecb931784163`.
+See `docs/NATURAL_OPTION_LEARNING_2026_11_05.md`.
+
 ## Nov 5 latest: per-world Q sampling RNG + stochastic option data
 
 Do NOT treat `nptr25a` as valid pairing (3 different starts). After

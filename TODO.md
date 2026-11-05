@@ -1,3 +1,19 @@
+## ACTIVE real-data learning run, launched November 5
+
+- [x] Start and verify an unattended **24 real natural Minecraft world**
+  train-only option-exploration collection `npoexp2ka`: 12 Q shadow
+  worlds then 12 randomized real mine/pickup option worlds, natural
+  TRAIN seed indices2002..2013, 600 six-tick units/world. First three
+  source worlds committed with actual action/tick/inventory reconciliation.
+- [ ] When `npoexp2ka` finishes, verify BOTH real journals, first Q RNG
+  signatures and immutable source. Check auto-trained option model
+  `checkpoints/natural_option_optdata2ka.pt` exists ONLY if sufficient
+  real events. If no model, diagnose genuine scarcity, do NOT fabricate
+  expert/correct option labels or count visibility as objective success.
+- [ ] After genuine option model exists, benchmark on unseen EVAL worlds,
+  with same source noise-world bytes and frozen source Q/pickup models,
+  quantify earned inventory vs shadow plus stochastic Q-only repeats.
+
 ## CURRENT Nov 5: real option-Q dataset and unbiased per-world RNG
 
 - [x] Real 2-world `npdatap2a` TRAIN-noise smoke: exact own-state/action/

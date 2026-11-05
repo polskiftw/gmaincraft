@@ -1,3 +1,22 @@
+## LIVE NOV 5: first unattended natural Minecraft option training-data run
+
+Actual workstation job `npoexp2ka` was launched and verified under its
+exclusive paired suite lock. Two SEQUENTIAL frozen-source arms process
+12 brand-new natural-noise TRAIN indices 2002..2013 each (600 six-tick
+units/world); first `npoexp2ka_s` mines Q-only, then `npoexp2ka_p`
+uses independent randomized exploration of BOTH frozen mine/pickup options.
+Honest real own-state/action/outcome trace recording is ON. Shared world
+snapshot and per-world Q RNG are ON. When BOTH arms finish, the immutable
+launcher snapshot AUTOMATICALLY attempts `optdata2ka` option-model training
+only if strict actual inventory/coverage gates pass; otherwise no model.
+DO NOT start another Minecraft JVM while suite lock is held. Check:
+`tools/run-natural-pickup-transfer.sh status npoexp2ka` and
+`logs/natural_transfer_npoexp2ka_launcher.console`.
+Code hash recorded: `25a8fd35f80aecb931784163`; do not modify instrumented
+source modules until both arms and the optional offline training finish.
+No learned option generalization claim yet. See
+`docs/NATURAL_OPTION_LEARNING_2026_11_05.md`.
+
 ## NOV 5 latest: do not let previous world change next world's Q RNG
 
 Sampled mining Q evaluations in multiple natural worlds formerly shared
