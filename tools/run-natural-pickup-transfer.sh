@@ -20,6 +20,16 @@ report="logs/natural_transfer_${prefix}.summary.json"
 case "$mode" in
  status)
    [[ $# == 0 ]] || usage
+   suite_lock="checkpoints/natural_transfer_${prefix}.lock"
+   if [[ -f "$suite_lock" ]];then
+     exec 8<"$suite_lock"
+     if flock -n 8;then
+       echo "NATURAL SUITE LOCK FREE: $prefix is not currently running"
+       flock -u 8
+     else
+       echo "NATURAL SUITE LOCK HELD: $prefix has an active sequential worker"
+     fi
+   fi
    for tag in "$shadow" "$active";do
      .venv/bin/python - "$tag" <<'PY'
 import json,sys

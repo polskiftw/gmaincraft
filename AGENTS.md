@@ -1,3 +1,15 @@
+## ACTIVE PAIRED NATURAL SURVIVAL VALIDATION — nptr25a
+
+`nptr25a` launched 12 real untouched heldout natural noise-world seeds
+EVAL25..36, 600 six-tick units/world sequential Q shadow then item pickup
+transfer. This is FROZEN, not a new training run; it tests real natural
+mined item acquisition rather than more staged logs. Verify with
+`tools/run-natural-pickup-transfer.sh status nptr25a` and inspect eventual
+`logs/natural_transfer_nptr25a.summary.json` only when both arms complete.
+The worker holds an exclusive lock; NEVER start another Minecraft JVM
+while it runs. See `docs/NATURAL_PICKUP_TRANSFER_2026_11_05.md`. The
+visibility-gated skill switch is UNLEARNED, strictly research-only.
+
 ## NOV 5: first real vanilla item/mine transfer (NOT learned selection)
 
 Read `docs/NATURAL_PICKUP_TRANSFER_2026_11_05.md` first. Independent

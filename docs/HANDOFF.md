@@ -1,3 +1,16 @@
+## ACTIVE: 12 natural-world paired Q-only vs learned pickup motor
+
+`nptr25a` frozen natural-world suite was launched with true Minecraft JVM,
+held exclusive suite lock and first committed seed25 verified, scheduled
+12 real EVAL seed indices25..36 per arm x600 6-tick decisions. Shadow Q
+miner reads the same player-visible item packets but never switches,
+followed by frozen Q plus diagnostic handoff to learned pickup motor.
+No new weights trained; only first empirical one-world smoke 24 is complete
+(shadow2 vs active4 own log gains, ZERO gains during actual pickup actions).
+Check `tools/run-natural-pickup-transfer.sh status nptr25a` and final
+`logs/natural_transfer_nptr25a.summary.json` when available. DO NOT start
+another Minecraft JVM while suite lock is held. Old worlds/models safe.
+
 ## NOV 5 CURRENT: frozen paired natural mining + item transfer
 
 The independent hard-search 1500 Minecraft episode train completed with

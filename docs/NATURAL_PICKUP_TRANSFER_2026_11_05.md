@@ -114,3 +114,24 @@ turn-away, but actual recognizable small objects through transparent
 materials/leaves/low light are not completely calibrated. A candidate is
 not an X-ray target or a long-range target oracle. Do not call the current
 memory eyes fully human-equivalent yet.
+
+## LIVE November 5 unattended natural study
+
+The **new** paired frozen study `nptr25a` was ACTUALLY LAUNCHED with 12
+never-used noise-world EVAL indices25..36, 600 six-tick game-time units
+per world, Q action sampling RNG1639377. The separate controlled run lock,
+Python process, real Minecraft JVM, correct heldout seed25 and first
+committed real-game episode were independently checked. The run goes
+`nptr25a_s` (Q shadow; same extra item-eye sensor) followed sequentially
+by `nptr25a_p` (temporary player-visible item switch), never in parallel.
+The binary and model versions, seed split, both exact run tags and console
+instructions are in `tools/run-natural-pickup-transfer.sh`.
+
+This is a FROZEN EVALUATION, not another 1500-case stage learner and not
+an automated background delivery by ChatGPT. It may be checked next session
+using `tools/run-natural-pickup-transfer.sh status nptr25a`; only AFTER
+both arms finish may `logs/natural_transfer_nptr25a.summary.json` exist.
+Do not delete, restart or accidentally run another DemoInstance game until
+this paired worker finishes. Native Gamescope may exit 139 **after** each
+valid completed arm; the wrapper validates the actual committed Minecraft
+journal rather than mislabeling a successful game as a failed test.

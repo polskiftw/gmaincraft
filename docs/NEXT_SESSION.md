@@ -1,3 +1,18 @@
+## ACTIVE REAL MINE+PICKUP MATCHED FROZEN EVALUATION — nptr25a
+
+`tools/run-natural-pickup-transfer.sh start nptr25a 25 12 600 1639377`
+was ACTUALLY launched on the user workstation. Exclusive suite lock and
+Minecraft JVM verified, world25 committed, 11 further shadow Q worlds then
+12 active player-visible handoff worlds scheduled sequentially (not two
+concurrent games). This is NOT training and does not update either network.
+DO NOT launch another DemoInstance game while `status nptr25a` shows the
+suite lock held. Check `tools/run-natural-pickup-transfer.sh status nptr25a`,
+`tail -f logs/natural_transfer_nptr25a_launcher.console`; the expected
+finished report is `logs/natural_transfer_nptr25a.summary.json`, but
+it is NOT guaranteed until both arms have finished and passed the strict
+paired seed/pose/time/optimizer validation. Source docs in
+`docs/NATURAL_PICKUP_TRANSFER_2026_11_05.md`.
+
 ## NOV 5 CURRENT: natural Minecraft pickup composition evaluation
 
 Read `docs/NATURAL_PICKUP_TRANSFER_2026_11_05.md`. Independent hard
