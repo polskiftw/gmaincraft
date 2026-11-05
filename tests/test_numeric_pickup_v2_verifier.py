@@ -1,7 +1,7 @@
 """Test that Gamescope crashes are nonfatal only with true committed evidence."""
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import importlib.util,json,sys,unittest
+import importlib.util,json,sys,unittest,fcntl
 from unittest.mock import patch
 import torch
 ROOT=Path(__file__).resolve().parents[1]
@@ -36,6 +36,31 @@ class VerifyPickupTest(unittest.TestCase):
             with journal.open('w') as f:
                 for r in (config,committed):f.write(json.dumps(r)+'\n')
             with self.assertRaises(ValueError):module.inspect('goodrun',require_complete=True,verbose=False)
+
+
+    def test_active_status_does_not_reject_racing_atomic_checkpoint(self):
+        with TemporaryDirectory() as d,patch.object(module,'ROOT',Path(d)):
+            journal,checkpoint,lock=module.paths('live')
+            journal.parent.mkdir();checkpoint.parent.mkdir()
+            schema='numeric_pickup_egocentric_replay_q_v2'
+            cfg={'stage':'config','mode':'train','metadata':{'schema':schema},
+                 'frozen_source':None}
+            row={'stage':'episode_committed','episode':0,'actual_acquired':True,
+                 'own_inventory_gain':1,'final_held_oak':1,'scored_controller_commands':0,
+                 'actor_updates':12,'item_visible_at_first_action':False}
+            journal.write_text(json.dumps(cfg)+'\n'+json.dumps(row)+'\n')
+            # Status took journal snapshot while later 3 episodes committed.
+            torch.save({'schema':schema,'metadata':cfg['metadata'],
+                'next_episode':4,'brain':{'episodes_seen':4,'updates':48}},checkpoint)
+            with lock.open('a+') as held:
+                fcntl.flock(held,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                result=module.inspect('live',verbose=False)
+                self.assertTrue(result['active'])
+                self.assertEqual(result['checkpoint_cursor'],4)
+                self.assertEqual(result['episodes'],1)
+                fcntl.flock(held,fcntl.LOCK_UN)
+            # An orphaned checkpoint with no held live lock must be flagged.
+            with self.assertRaises(ValueError):module.inspect('live',verbose=False)
 
     def test_empty_and_bad_path(self):
         with TemporaryDirectory() as d,patch.object(module,'ROOT',Path(d)):

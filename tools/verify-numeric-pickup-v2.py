@@ -82,19 +82,21 @@ def inspect(tag, *, target=None, require_complete=False, mode=None,
         import torch
         saved=torch.load(checkpoint,map_location='cpu',weights_only=True)
         cursor=saved.get('next_episode')
-        # Atomic checkpoint is published *before* its matching JSONL episode.
-        # A live status check may observe the one-episode in-flight gap.
-        pending=(active and not require_complete and
-                 cursor==len(attempts)+1 and
-                 saved.get('latest_result',{}).get('episode')==len(attempts))
+        # A status request reads the journal BEFORE loading a potentially
+        # multi-megabyte checkpoint. Real Minecraft may commit several
+        # episodes in the meantime; allow checkpoint to be ahead ONLY while
+        # that run holds the actual lock. Completed checks remain strict.
+        live_snapshot=(active and not require_complete and
+                       type(cursor) is int and len(attempts)<=cursor<=len(attempts)+100)
         if (saved.get('schema')!='numeric_pickup_egocentric_replay_q_v2' or
             json.loads(json.dumps(saved.get('metadata')))!=cfg['metadata'] or
-            (cursor!=len(attempts) and not pending) or
+            (cursor!=len(attempts) and not live_snapshot) or
             saved.get('brain',{}).get('episodes_seen')!=cursor):
             raise ValueError('Checkpoint cursor / schema does not match journal')
         saved_updates=saved['brain']['updates']
-        if attempts and saved_updates!=attempts[-1].get('actor_updates') and not pending:
-            raise ValueError('Training checkpoint optimizer not synced to journal')
+        if attempts and saved_updates!=attempts[-1].get('actor_updates'):
+            if not (live_snapshot and saved_updates>=attempts[-1]['actor_updates']):
+                raise ValueError('Training checkpoint optimizer not synced to journal')
         if complete and last['optimizer_updates']!=saved_updates:
             raise ValueError('Training summary optimizer updates disagree')
     elif cfg.get('mode')=='eval':
@@ -116,7 +118,8 @@ def inspect(tag, *, target=None, require_complete=False, mode=None,
                 stage=stage,active=active,episodes=len(attempts),
                 successes=sum(int(x['actual_acquired']) for x in attempts),
                 seen_at_start=sum(int(x['item_visible_at_first_action']) for x in attempts),
-                expected=target,optimizer_updates=saved_updates)
+                expected=target,optimizer_updates=saved_updates,
+                **({'checkpoint_cursor':cursor} if cfg['mode']=='train' else {}))
     if verbose:
         print('NUMERIC PICKUP VERIFIED',json.dumps(result,sort_keys=True),flush=True)
     return result

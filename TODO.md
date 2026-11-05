@@ -8,8 +8,13 @@
 - [x] Keep old checkpoint compatible with opt-in hard search case generator.
 - [x] FROZEN 300-case learner on TWO 100-case new hard seeds, 181/200 real
   pickups vs random 50/200 and forward 35/200; no optimizer updates.
-- [ ] Launch and audit independently initialized hard-case model (new tag,
-  long unattended run), then hard heldout with separate seeds/controls.
+- [x] Launch NEW independently initialized hard-profile run `hardrep1105b`:
+  1500 staged real Minecraft practice cases, seed531151, actor seed971153,
+  separate checkpoint/journal and held game lock, started and first hundreds
+  of real game episodes verified. No scored commands or RGB policy input.
+- [ ] AFTER `hardrep1105b` finishes, audit all actual committed episode
+  inventory successes and checkpoint, freeze and compare against the 300-case
+  standard-trained Q on NEW hard heldout seeds with random/forward controls.
 - [ ] Advance past staged summons to naturally mined drops in unmodified
   survival without evaluator-triggered phase handoff.
 - [ ] Native Gamescope still sometimes SIGSEGV after valid child stop; the

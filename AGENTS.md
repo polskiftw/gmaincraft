@@ -1,3 +1,18 @@
+## LIVE NOV 5: independent hard item search run under exclusive DemoInstance
+
+`hardrep1105b` was ACTUALLY launched as a detached, 1500-episode
+`search_hard_v2` scratch self-training run; real Minecraft and first
+hundreds of committed inventory-linked decisions verified. Source seeds:
+case531151, actor971153, profile `search_hard_v2` (half initially behind).
+Read `docs/NEXT_SESSION.md` and
+`docs/PICKUP_LAUNCHER_AND_HARD_SEARCH_2026_11_05.md` first. Do NOT launch
+second Minecraft process until this job finishes/stops; safe status via
+`tools/run-numeric-pickup-v2.sh status hardrep1105b`. Already verified old
+300-case learned policy scored 181/200 actual pickups on two independent
+hard heldout sets vs random50/200. Next test new independently initialized
+weights on fresh seeds, then natural mined-item pickup without scripted
+skill switching. Neither actor is a Minecraft speedrunner yet.
+
 ## NOV 5 update: validated repair + harder search evaluation
 
 Read [docs/PICKUP_LAUNCHER_AND_HARD_SEARCH_2026_11_05.md](docs/PICKUP_LAUNCHER_AND_HARD_SEARCH_2026_11_05.md).

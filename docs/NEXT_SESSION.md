@@ -1,3 +1,25 @@
+## LIVE TRAINING ACTUALLY LAUNCHED: hardrep1105b (November 5)
+
+A separate independently initialized harder item-search Q training run is
+CURRENTLY underway with `tools/run-numeric-pickup-v2.sh start hardrep1105b
+--episodes 1500 --case-seed 531151 --policy-seed 971153 --case-profile
+search_hard_v2 --report-every 50`. It was verified with live Minecraft Java,
+correct `search_hard_v2` journal metadata, held run lock, valid checkpoint,
+real committed episodes and an active Python trainer. Do NOT launch any
+other DemoInstance Minecraft process while it runs. Safe checks:
+
+- `tools/run-numeric-pickup-v2.sh status hardrep1105b`
+- `tail -f logs/numeric_pickup_hardrep1105b_launcher.console`
+- `tools/run-numeric-pickup-v2.sh stop hardrep1105b` (only if user wants to stop)
+
+Do NOT rerun with the same tag in train mode. If interrupted use `resume`
+with SAME original budget, profile, case and policy seeds. After completion
+compare independent hard frozen eval with its controls and the previous
+`egolearn1105b` model on genuinely new scenarios. Headless Gamescope native
+exit139 is verified separately from actual episode success; new status
+allows in-flight checkpoint/journal races while maintaining strict final
+validation. See `docs/PICKUP_LAUNCHER_AND_HARD_SEARCH_2026_11_05.md`.
+
 ## Nov 5: user-run completed, launch repaired, new hard search underway
 
 Read `docs/PICKUP_LAUNCHER_AND_HARD_SEARCH_2026_11_05.md` and

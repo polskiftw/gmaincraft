@@ -1,3 +1,17 @@
+## LIVE (Nov 5): independent hard item search training started
+
+`hardrep1105b` is actively running 1500 new `search_hard_v2` real staged
+item search cases with new actor seed971153 and case seed531151. Verified
+active Minecraft, committed episodes and checkpoint. Do not start another
+Minecraft job. Use `tools/run-numeric-pickup-v2.sh status hardrep1105b`
+(and `.stop` only on user's request) and the run's launcher console. Old
+`egolearn1105b` 300-case model froze and passed TWO hard heldout controls:
+181/200 true pickups vs random50/200, fixed forward35/200. New launcher
+independently confirms full cursor/checkpoint and knows post-child Gamescope
+segfault139 without falsely failing a successful child. Run status is
+race-tolerant for active snapshot but final verification is strict. Pure tests
+and docs updated; never mistake this staged practice for natural Any%.
+
 ## Nov 5 current verified pickup training and launcher repair
 
 User's 300-case `egolearn1105b` successfully learned real staged Minecraft

@@ -85,3 +85,16 @@ Minecraft wood mining/pickup or composition and not independent-network
 replication. Next step: compare the fresh hard-trained network on new heldout
 hard seeds against the frozen standard-trained network and controls, then
 work toward mined-drop collection in a natural unmodified survival episode.
+
+## New independent hard-profile training (launched, not a planned command)
+
+`hardrep1105b` was started detached via the repaired `start` CLI with
+1500 practice episodes, run seed531151 and policy seed971153. The actual
+Python process arguments and first committed journal entries explicitly
+confirmed `search_hard_v2` and the distinct seeds; held lock and Java
+process were observed. This is independent scratch training, NOT resuming
+old standard-trained weights. Live `status` checks tolerate legitimate
+race conditions between the worker's atomic checkpoint and its JSONL
+commit; the **final** completed validation remains strict. On completion,
+run fresh unseen hard-evaluation comparisons, then investigate natural
+mined-log transfer. No extra Minecraft jobs concurrently.
