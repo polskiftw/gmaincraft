@@ -1,3 +1,27 @@
+## CURRENT NOV 5: FIRST TRAINABLE NATURAL MINE/PICKUP OPTION KIT
+
+Read `docs/NATURAL_OPTION_LEARNING_2026_11_05.md`. Old `nptr25a`
+completed but INVALID as paired benchmark (3 spawn mismatches among12).
+Frozen log totals shadow13, active10, active 8 log gains during pickup
+motor but no causal lift claim. Historical invalid unpaired JSON preserved.
+Immutable shared vanilla world snapshot now lets both arms truly start
+from same file bytes: `npfix31a` same pose31/32 and `npbud28a` same
+pose28/29. `npbud28a` has **ZERO actual pickup actions** yet different
+sampled-miner outcomes (shadow3 vs other0); model/control stochasticity
+needs independent action repetitions before trusting 1-world changes.
+Bounded v2 sensor-gated pickup prevents indefinite pursuit on same item;
+old v1 remains untouched. Detached script snapshot repairs previous
+Bash parsing error after completion. New tiny trainable OPTION double-Q
+(keep frozen miner vs invoke frozen pickup) uses only real current camera/
+own/player-V9 observation and learns only from real game outcome traces,
+never invented teacher actions. `--record-option-experience` opt-in,
+`--option-data-namespace train` for training ONLY, strict
+`experiments/train_natural_option_offline.py` refuses junk zero-outcome
+sets. `--pickup-selector learned_option_v1 --natural-option-model TAG`
+will permit real frozen EVAL after true training succeeded. This is NOT
+speedrun success or learned goal selection proven yet. See current run
+status + instructions under latest section of docs.
+
 ## ACTIVE REAL MINE+PICKUP MATCHED FROZEN EVALUATION — nptr25a
 
 `tools/run-natural-pickup-transfer.sh start nptr25a 25 12 600 1639377`

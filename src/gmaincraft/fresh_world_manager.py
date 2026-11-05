@@ -53,19 +53,30 @@ def fix_spawn_radius(path,expected_seed):
 
 
 class FreshWorldManager:
-    def __init__(self,mcio_dir,run_tag,instance='DemoInstance'):
+    def __init__(self,mcio_dir,run_tag,instance='DemoInstance',*,paired_source_tag=None):
         self.root=Path(mcio_dir)
         self.run_tag=run_tag
         self.instance=instance
+        # Opt-in evaluation-only snapshots: same GENERATED world files for
+        # both policy arms, never relabel a different seed or touch user saves.
+        if paired_source_tag is not None:
+            names(paired_source_tag,0)  # exact safe tag validation
+            if paired_source_tag==run_tag:
+                raise ValueError('Shared source namespace cannot be a live run tag')
+        self.paired_source_tag=paired_source_tag
         self.manager=world.WorldManager(mcio_dir=self.root)
 
     def paths(self,episode):
         source,live=names(self.run_tag,episode)
+        if self.paired_source_tag is not None:
+            source=names(self.paired_source_tag,episode)[0]
         return (self.root/'world_storage'/source,
                 self.root/'instances'/self.instance/'saves'/live)
 
     def prepare(self,episode,seed,*,resume=False):
         source,live=names(self.run_tag,episode)
+        if self.paired_source_tag is not None:
+            source=names(self.paired_source_tag,episode)[0]
         src_path,dest_path=self.paths(episode)
         if resume:
             if not dest_path.is_dir():
@@ -77,7 +88,8 @@ class FreshWorldManager:
         if src_path.exists():
             # An interrupted generation can leave a complete source to reuse
             # but never re-label an incomplete or wrong-seed source.
-            verify_noise_world(src_path,seed)
+            verify_noise_world(src_path,seed,
+                               require_fixed_spawn=self.paired_source_tag is not None)
         else:
             self.manager.create(source,mc_version='1.21.3',gamemode='survival',
                 difficulty='normal',seed=seed,reset_server_properties=True,
@@ -88,9 +100,11 @@ class FreshWorldManager:
         fix_spawn_radius(src_path,seed)
         self.manager.copy('storage',source,self.instance,live,force=False)
         verify_noise_world(dest_path,seed,require_fixed_spawn=True)
-        # This source world is an immutable disposable generator output, and
-        # no longer needed after a verified live copy exists.
-        self.manager.delete('storage',source)
+        # Paired source is an immutable disposable natural-world snapshot:
+        # preserve so the other frozen eval arm gets IDENTICAL initial bytes.
+        # Never change source after creating it; the live copy is independent.
+        if self.paired_source_tag is None:
+            self.manager.delete('storage',source)
         return live
 
     def retire(self,episode,*,keep=False):
@@ -98,7 +112,7 @@ class FreshWorldManager:
         src_path,dest_path=self.paths(episode)
         if not keep and dest_path.is_dir():
             self.manager.delete(self.instance,live)
-        if src_path.is_dir():
+        if src_path.is_dir() and self.paired_source_tag is None:
             self.manager.delete('storage',source)
 
     def quarantine(self,episode):
@@ -112,7 +126,8 @@ class FreshWorldManager:
         quarantine_root=self.root/'aborted_fresh_streams'
         quarantine_root.mkdir(parents=True,exist_ok=True)
         moved=[]
-        for path in (dest_path,src_path):
+        for path in ((dest_path,) if self.paired_source_tag is not None else
+                     (dest_path,src_path)):
             if not path.exists():continue
             dest=quarantine_root/path.name
             if dest.exists():raise FileExistsError('Quarantine target already exists: '+str(dest))
@@ -122,6 +137,6 @@ class FreshWorldManager:
         # It cannot delete the moved files.
         if dest_path.parent.exists():
             self.manager.delete(self.instance,live)
-        if src_path.parent.exists():
+        if src_path.parent.exists() and self.paired_source_tag is None:
             self.manager.delete('storage',source)
         return moved

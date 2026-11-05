@@ -1,3 +1,22 @@
+## NOV 5 (latest): strict natural-world eval + trainable option-Q kit
+
+Read `docs/NATURAL_OPTION_LEARNING_2026_11_05.md` BEFORE another run.
+Old natural `nptr25a` actually completed 12+12 worlds but three pair
+spawns differed; preserved invalid diagnostic, NO reported uplift. New
+`FreshWorldManager` shared immutable world source ensured identical initial
+pose in live `npfix31a` control+active tests; `npbud28a` also passed strict
+pose gate, but even with ZERO takeover, separate sampled Q rollouts produced
+different outcomes: quantify environmental/RNG variance, not pickup benefit.
+Limited player-visible `visible_memory_budget_v2` prevents endless pursuit;
+old v1 preserved. Launcher immutable snapshot prevents mid-run Bash parse
+failure. Added honest scratch 2-option conservative Q network and real
+TRAIN-seed journal traces with own-state before/action/after, inventory/
+wood-mine/death labels ONLY after play; no invented expert chooser. Offline
+training strictly rejects zero-outcome/uncommitted/EVAL-seed data, and an
+opt-in learned selector can run frozen on disjoint real survival EVAL worlds.
+NO claim of learned option success until authentic model and strict natural
+heldout gate. Do not start another Minecraft if a suite lock is held.
+
 ## ACTIVE PAIRED NATURAL SURVIVAL VALIDATION — nptr25a
 
 `nptr25a` launched 12 real untouched heldout natural noise-world seeds

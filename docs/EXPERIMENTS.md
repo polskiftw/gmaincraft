@@ -1,3 +1,20 @@
+## Nov 5: natural pairing validity + real option-Q training design
+
+`nptr25a` both 12-world arms completed: frozen mining Q 13 wood pickups,
+active Q+pickup 10, 8 temporally during pickup primitive. Three matched
+world indices31/34/35 had *different initial player poses*, so the
+whole batch is INVALID for strict paired causality; raw report kept under
+`logs/natural_transfer_nptr25a.invalid_unpaired.json`. New pre-game
+immutable shared world source made `npfix31a` true pose-match on 31/32,
+`npbud28a` true pose-match on 28/29. In `npbud28a` no pickup override
+occurred but shadow wood3 vs other0, a measured stochastic-rollout risk.
+Dedicated 96-real-tick target cap prevents endless visible drop chase.
+Added player-visible option transitions and train-only seeded natural
+collection, tiny real-outcome conservative double Q; does NOT synthesize
+correct actions, train with heldout EVAL or claim actual selector success
+before fresh natural-world outcomes. Source fingerprints and first Q sampled
+RNG/eye hashes audit future comparisons. See `docs/NATURAL_OPTION_LEARNING_2026_11_05.md`.
+
 ## Nov 5: real frozen natural mining/item sensor takeover diagnostic
 
 First truly noise-generated vanilla survival matched 600-unit seed24 test:

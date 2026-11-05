@@ -1,3 +1,20 @@
+## Nov 5 latest: trainable choice between natural mining and item pickup
+
+Natural `nptr25a` fully finished, but cannot claim paired effect because
+three starts mismatched; complete invalid diagnostic saved. Shared immutable
+natural-noise pregame world cache now tested on original seed31 and seed28:
+both arms start from same world/pose. `npbud28a` two-world paired test
+found zero pickup actions, yet mining results diverged (3 vs0), proving
+rollout variance independent of item skill. Player-visible item-gated
+pickup now has a versioned 96-tick stuck-target cap; old selector preserved.
+Source SHA + first V9 observation hash + Q sampler RNG and action prefix
+are logged for NEW tests. New two-option conservative real-outcome Q kit
+and strict train-only offline loader implemented; it will REFUSE to train
+without authentic Minecraft inventory and both option choices. Avoid
+running same practice rounds. Next gather real TRAIN-noise option traces,
+train network if sufficient, then frozen paired independent EVAL seeds.
+Full guide: `docs/NATURAL_OPTION_LEARNING_2026_11_05.md`.
+
 ## ACTIVE: 12 natural-world paired Q-only vs learned pickup motor
 
 `nptr25a` frozen natural-world suite was launched with true Minecraft JVM,

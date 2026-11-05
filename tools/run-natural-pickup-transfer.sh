@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 usage(){
-  echo 'Usage: tools/run-natural-pickup-transfer.sh start PREFIX EVAL_INDEX WORLDS SIX_TICK_UNITS ACTION_RNG [Q_MODEL] [PICKUP_MODEL]' >&2
+  echo 'Usage: tools/run-natural-pickup-transfer.sh start PREFIX EVAL_INDEX WORLDS SIX_TICK_UNITS ACTION_RNG [Q_MODEL] [PICKUP_MODEL] [v1|budget_v2|learned_v1] [eval|data_train] [OPTION_MODEL]' >&2
   echo '       tools/run-natural-pickup-transfer.sh status PREFIX' >&2
   echo 'This is independent frozen skill transfer evaluation, NOT new training.' >&2
   exit 2
@@ -50,24 +50,50 @@ PY
    exit 0
    ;;
  start)
-   [[ $# -ge 4 && $# -le 6 ]] || usage
+   [[ $# -ge 4 && $# -le 9 ]] || usage
    [[ ! -e "$log" && ! -e "$report" && ! -e "logs/fresh_eval_${shadow}.jsonl" && ! -e "logs/fresh_eval_${active}.jsonl" ]] || {
       echo 'Existing natural suite data; never overwrite experiments.' >&2;exit 1;
    }
-   nohup setsid bash "$0" execute "$prefix" "$@" > "$log" 2>&1 < /dev/null &
+   # The user may ask for changes while a long study runs. Bash reads its
+   # script on demand, so editing the original in place can corrupt the
+   # executing shell (previous suite completed but failed after both arms).
+   # Freeze EXACT verified launcher source bytes under this run tag.
+   snapshot="logs/natural_transfer_${prefix}_launcher_snapshot.sh"
+   if [[ -e "$snapshot" ]];then echo "Launcher snapshot exists: $snapshot" >&2;exit 1;fi
+   cp -- "$0" "$snapshot"
+   chmod 500 "$snapshot"
+   nohup setsid bash "$snapshot" execute "$prefix" "$@" > "$log" 2>&1 < /dev/null &
    echo "NATURAL SUITE LAUNCHED prefix=$prefix pid=$!"
    echo "STATUS: tools/run-natural-pickup-transfer.sh status $prefix"
    echo "WATCH: tail -f $log"
    exit 0
    ;;
  execute)
-   [[ $# -ge 4 && $# -le 6 ]] || usage
+   [[ $# -ge 4 && $# -le 9 ]] || usage
    ;;
  *)usage;;
 esac
 index="$1";count="$2";units="$3";rng="$4"
 q_model="${5:-qv2memf1104}"
 pickup_model="${6:-hardrep1105b}"
+variant="${7:-v1}"
+data_mode="${8:-eval}"
+option_model="${9:-}"
+[[ "$variant" == v1 || "$variant" == budget_v2 || "$variant" == learned_v1 ]] || usage
+[[ "$data_mode" == eval || "$data_mode" == data_train ]] || usage
+if [[ "$variant" == budget_v2 ]];then
+  shadow_selector='shadow_budget_v2'
+  active_selector='visible_memory_budget_v2'
+elif [[ "$variant" == learned_v1 ]];then
+  [[ "$data_mode" == eval && "$option_model" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,22}$ ]] || usage
+  shadow_selector='shadow_learned_option_v1'
+  active_selector='learned_option_v1'
+else
+  shadow_selector='shadow'
+  active_selector='visible_memory_v1'
+fi
+# Source name is consistent between arms, independent of live-world tags.
+cache_tag="${prefix}_paired"
 [[ "$index" =~ ^[0-9]{1,12}$ && "$count" =~ ^[1-9][0-9]*$ &&
    "$units" =~ ^[1-9][0-9]*$ && "$rng" =~ ^[1-9][0-9]*$ &&
    "$q_model" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,22}$ &&
@@ -80,26 +106,31 @@ flock -n 9 || { echo "Natural pair suite $prefix already running" >&2;exit 1; }
 [[ ! -e "logs/fresh_eval_${shadow}.jsonl" && ! -e "logs/fresh_eval_${active}.jsonl" ]] || {
   echo 'Partial prior suite must be inspected; refusing automatic restart.' >&2;exit 1;
 }
-for selector in shadow visible_memory_v1;do
-  if [[ "$selector" == shadow ]];then tag="$shadow";else tag="$active";fi
+for selector in "$shadow_selector" "$active_selector";do
+  if [[ "$selector" == "$shadow_selector" ]];then tag="$shadow";else tag="$active";fi
   console="logs/natural_transfer_${prefix}_${selector}.console"
   echo "NATURAL SUITE START tag=$tag selector=$selector count=$count index=$index"
   args=(--mode eval --control q_sampled --run-tag "$tag" --q-model "$q_model"
         --q-goal effect:visible_wood_crack_progress_v2
         --pickup-model "$pickup_model" --pickup-selector "$selector"
+        --paired-world-cache "$cache_tag"
         --decisions "$((count*units))" --episode-decisions "$units"
         --eval-seed-start "$index" --seed-root 917211 --policy-seed "$rng"
         --reward-profile wood_temporal_v9 --memory-only-no-rgb
-        --retain-worlds 1 --device cpu --visible --report-every "$units")
+        --retain-worlds 1 --device cpu --visible --report-every "$units"
+        --record-option-experience --option-data-namespace "${data_mode#data_}")
+  if [[ "$variant" == learned_v1 ]];then
+    args+=(--natural-option-model "$option_model")
+  fi
   set +e
   .venv/bin/python -u tools/stream-numeric-pickup.py "$console" -- \
     tools/run-mcio-viewer.sh .venv/bin/python -u experiments/fresh_seed_treadmill.py "${args[@]}"
   code=$?
   set -e
-  .venv/bin/python - "$tag" "$count" "$units" "$index" "$q_model" "$pickup_model" "$selector" "$code" <<'PY'
+  .venv/bin/python - "$tag" "$count" "$units" "$index" "$q_model" "$pickup_model" "$selector" "$code" "$data_mode" <<'PY'
 import json,sys
 from pathlib import Path
-tag,count,units,index,model,pickup,selector,outer=sys.argv[1:]
+tag,count,units,index,model,pickup,selector,outer,data_mode=sys.argv[1:]
 count=int(count);units=int(units);index=int(index);outer=int(outer)
 path=Path('logs/fresh_eval_'+tag+'.jsonl')
 rows=[json.loads(x) for x in path.read_text().splitlines() if x.strip()]
@@ -111,6 +142,9 @@ if (outer not in (0,139) or last.get('stage')!='completed' or
     config.get('q_model')!=model or config.get('q_goal')!='effect:visible_wood_crack_progress_v2' or
     meta.get('pickup_model')!=pickup or meta.get('pickup_selector')!=selector or
     meta.get('gameplay_commands')!=0 or len(eps)!=count or
+    meta.get('record_real_option_experience') is not True or
+    meta.get('option_data_namespace')!=('train' if data_mode=='data_train' else 'eval') or
+    last.get('seed_namespace')!=('train' if data_mode=='data_train' else 'eval') or
     any('first_player_pose' not in e or e.get('updates')!=0 or e.get('episode')!=index+i or e['decisions']!=units
         for i,e in enumerate(eps))):
     sys.exit('FAILED NATURAL EVAL: incomplete or mismatched frozen/real-game evidence for '+tag)

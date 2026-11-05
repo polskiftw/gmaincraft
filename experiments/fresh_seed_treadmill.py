@@ -41,7 +41,10 @@ from gmaincraft.replay_q_skill import ReplayQSkill,SCHEMA as REPLAY_Q_SCHEMA,CRA
 from gmaincraft.replay_q_rare_v2 import RareOutcomeQSkill,SCHEMA as RARE_Q_V2_SCHEMA,WOOD_CRACK_GOAL
 from gmaincraft.online_q_replay import update_from_player_replay
 from gmaincraft.natural_pickup_transfer import (
-    NaturalPickupTransfer,coarse_audit_heads,CONTRACT as PICKUP_TRANSFER_CONTRACT)
+    NaturalPickupTransfer,coarse_audit_heads,contract_for_selector)
+from gmaincraft.natural_option_q_v1 import (
+    option_features,own_observation_fingerprint,NaturalOptionQ,
+    SCHEMA as OPTION_TRACE_SCHEMA,FEATURES as OPTION_TRACE_FEATURES)
 from gmaincraft.online_q_rare_v2 import learn_between_real_worlds
 from gmaincraft.fresh_seed_schedule import SeedSchedule,SCHEMA as STREAM_SCHEMA
 from gmaincraft.fresh_world_manager import FreshWorldManager,names
@@ -123,8 +126,16 @@ def parse_args(argv=None):
     ap.add_argument('--q-model',help='frozen off-policy replay Q skill tag (eval-only)')
     ap.add_argument('--q-goal',help='the Q model training goal: observed inventory item or crack progress')
     ap.add_argument('--pickup-model',help='frozen player-visible pickup skill tag; eval-only Q transfer')
-    ap.add_argument('--pickup-selector',choices=('shadow','visible_memory_v1'),default='shadow',
+    ap.add_argument('--natural-option-model',help='frozen actually trained mine-vs-pickup option selector, eval-only')
+    ap.add_argument('--pickup-selector',choices=('shadow','visible_memory_v1',
+                        'shadow_budget_v2','visible_memory_budget_v2',
+                        'shadow_learned_option_v1','learned_option_v1'),default='shadow',
                     help='shadow measures natural drops without changing actions; visible_memory is an UNLEARNED player-only handoff diagnostic')
+    ap.add_argument('--paired-world-cache',help='evaluation-only shared immutable natural-noise source tag, NOT a policy observation')
+    ap.add_argument('--record-option-experience',action='store_true',
+                    help='record real Minecraft own-observation/binary option/own outcome action transitions; frozen models unchanged')
+    ap.add_argument('--option-data-namespace',choices=('eval','train'),default='eval',
+                    help='train only for opt-in offline option data, never a held-out model benchmark')
     ap.add_argument('--resume',action='store_true')
     cap=ap.add_mutually_exclusive_group()
     cap.add_argument('--decisions',type=int,default=None,help='TOTAL six-tick gameplay units (v4 may hold actions for multiple units), including resume')
@@ -167,7 +178,7 @@ def parse_args(argv=None):
     ap.add_argument('--nvidia-gl-threading',choices=('off','default'),default='off',
                     help='scoped Minecraft-only NVIDIA GL threaded optimization workaround; default off')
     args=ap.parse_args(argv)
-    if not re.fullmatch(RUN_TAG_RE,args.run_tag) or (args.pickup_model and not re.fullmatch(RUN_TAG_RE,args.pickup_model)) or (args.model_run and not re.fullmatch(RUN_TAG_RE,args.model_run)) or (args.q_model and not re.fullmatch(RUN_TAG_RE,args.q_model)) or (
+    if not re.fullmatch(RUN_TAG_RE,args.run_tag) or (args.pickup_model and not re.fullmatch(RUN_TAG_RE,args.pickup_model)) or (args.natural_option_model and not re.fullmatch(RUN_TAG_RE,args.natural_option_model)) or (args.model_run and not re.fullmatch(RUN_TAG_RE,args.model_run)) or (args.q_model and not re.fullmatch(RUN_TAG_RE,args.q_model)) or (
             args.goal_model and not re.fullmatch(RUN_TAG_RE,args.goal_model)):
         ap.error('Unsafe run/model tag')
     if args.decisions is None and not args.until_stopped:
@@ -210,6 +221,17 @@ def parse_args(argv=None):
         ap.error('Evaluation is bounded; standard policy uses --model-run, '
                  'goal control uses --goal-model/--goal-item, Q control uses '
                  '--q-model/--q-goal and optional --goal-item score')
+    learned_requested=args.pickup_selector.endswith('learned_option_v1')
+    if (bool(args.natural_option_model)!=learned_requested or
+        (learned_requested and (args.mode!='eval' or not args.pickup_model))):
+        ap.error('Learned option selector needs a frozen natural-option-model and pickup skill in eval')
+    if ((args.record_option_experience and (args.mode!='eval' or not args.pickup_model)) or
+        (args.option_data_namespace=='train' and not args.record_option_experience)):
+        ap.error('Option replay collection requires frozen Q+pickup and an explicit real-data flag')
+    if (args.paired_world_cache and (args.mode!='eval' or not args.pickup_model or
+                                      not re.fullmatch(RUN_TAG_RE,args.paired_world_cache) or
+                                      args.paired_world_cache==args.run_tag)):
+        ap.error('Only frozen transfer evaluations may reuse safe paired world source snapshots')
     if ((args.pickup_model and (args.mode!='eval' or not is_q or
                                 args.q_goal!=WOOD_CRACK_GOAL)) or
         (not args.pickup_model and args.pickup_selector!='shadow')):
@@ -239,6 +261,19 @@ def paths(tag,mode):
     return checkpoint,journal,inflight,stop,lock
 
 
+def pickup_transfer_source_hash():
+    """Checksum real controller code, not only git HEAD (uncommitted edits matter)."""
+    import hashlib
+    sha=hashlib.sha256()
+    for rel in ('experiments/fresh_seed_treadmill.py',
+                'src/gmaincraft/natural_pickup_transfer.py',
+                'src/gmaincraft/natural_option_q_v1.py',
+                'src/gmaincraft/fresh_world_manager.py'):
+        sha.update(rel.encode('ascii'))
+        sha.update((ROOT/rel).read_bytes())
+    return sha.hexdigest()[:24]
+
+
 def metadata(args):
     return dict(kind=('gmaincraft_q_collect_v2_rare_outcome' if args.q_goal==WOOD_CRACK_GOAL else
                       'gmaincraft_q_collect_v1') if args.mode=='collect' else
@@ -263,7 +298,14 @@ def metadata(args):
                 game_version='1.21.3',spawn_radius=0,gameplay_commands=0,
                 **({'frame_transport':'memory_only_frame_callback_v1'} if args.memory_only_no_rgb else {}),
                 **({'pickup_model':args.pickup_model,'pickup_selector':args.pickup_selector,
-                    'pickup_transfer_contract':PICKUP_TRANSFER_CONTRACT}
+                    'pickup_transfer_contract':contract_for_selector(args.pickup_selector),
+                    'transfer_source_hash':pickup_transfer_source_hash(),
+                    **({'paired_world_cache':args.paired_world_cache} if args.paired_world_cache else {}),
+                    **({'natural_option_model':args.natural_option_model} if args.natural_option_model else {}),
+                    **({'record_real_option_experience':True,
+                        'option_trace_schema':OPTION_TRACE_SCHEMA,
+                        'option_data_namespace':args.option_data_namespace}
+                       if args.record_option_experience else {})}
                    if args.pickup_model else {}),
                 source='minecraft:noise',
                 no_privileged_seed_policy_input=True)
@@ -384,7 +426,8 @@ def validate_memory_only_packet(packet):
         raise RuntimeError('Opt-in memory-only MCio returned RGB or missing frame tick: verify patched mod and launch environment')
 
 
-def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requested,pickup_brain=None):
+def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requested,
+                 pickup_brain=None,option_brain=None):
     """Run actual vanilla-survival gameplay; return uncommitted on-policy data.
 
     The caller commits a model checkpoint ONLY if this returns normally and
@@ -415,9 +458,14 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     motor_v7_on_wood_counts=Counter()
     crack_progress=WoodCrackProgress()
     target_history=VisibleTargetHistory() if args.reward_profile=='wood_temporal_v9' else None
-    pickup=(NaturalPickupTransfer(pickup_brain,selector=args.pickup_selector)
+    pickup=(NaturalPickupTransfer(pickup_brain,selector=args.pickup_selector,
+                                  option_brain=option_brain)
             if pickup_brain is not None else None)
     pickup_elapsed_ticks=0
+    option_trace=[] if args.record_option_experience else None
+    first_q_action_trace=[]
+    first_observation_hash=None
+    first_q_rng_hash=None
     target_reward=WoodTargetFirstContact(bonus=.3 if args.reward_profile in ('wood_sustain_v8','wood_temporal_v9') else .9) if args.reward_profile in ('wood_target_v5','wood_motor_v7','wood_sustain_v8','wood_temporal_v9') else None
     sustain_reward=WoodSustainedAttack() if args.reward_profile in ('wood_sustain_v8','wood_temporal_v9') else None
     engagement=WoodEngagement() if args.reward_profile=='wood_engagement_v6' else None
@@ -461,7 +509,12 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
             first_player_pose=[round(float(x),4) for x in player.player_xyz]+[
                 round(float(player.yaw_degrees),4),round(float(player.pitch_degrees),4)]
             if pickup is not None:
-                pickup.observe(player,bridge.visible_items(),elapsed_ticks=0)
+                pickup.observe(player,bridge.visible_items(),elapsed_ticks=0,
+                               mining_observation=state)
+            if pickup is not None:
+                import hashlib,torch
+                first_observation_hash=own_observation_fingerprint(state)
+                first_q_rng_hash=hashlib.sha256(torch.get_rng_state().numpy().tobytes()).hexdigest()[:24]
             client_startup_s=time.perf_counter()-launch_started
             goal_initial=(owned_inventory(player).get(args.goal_item,0)
                           if args.goal_item else 0)
@@ -492,6 +545,10 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                                if pickup is not None else None)
                 pickup_active=pickup_action is not None
                 if pickup_active:action=pickup_action
+                if pickup is not None and len(first_q_action_trace)<48:
+                    first_q_action_trace.append((int(decisions),int(heads[0]),int(pickup_active)))
+                option_before=(option_features(pickup.latest,state).tolist()
+                               if option_trace is not None else None)
                 audit_heads=(coarse_audit_heads(action) if pickup_active else
                              motor_v7_history(heads) if single_motor_v7(args) else heads[:3])
                 target_before=bridge.player_status().crosshair_block
@@ -505,6 +562,8 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                             motor_v7_on_wood_counts[MOTOR_V7[heads[0]][0]]+=1
                 spent_ticks=0
                 macro_reward=0.
+                own_mined_in_action=0
+                own_wood_gains_in_action=0
                 current_state=state
                 current_player=player
                 died=False
@@ -537,7 +596,8 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                     if pickup is not None:
                         pickup_elapsed_ticks+=chunk_ticks
                         pickup.observe(next_player,bridge.visible_items(),
-                                       elapsed_ticks=pickup_elapsed_ticks)
+                                       elapsed_ticks=pickup_elapsed_ticks,
+                                       mining_observation=next_state)
                     record=memory.accrue(0,next_player,next_surfaces,bridge._stats,audit_heads,
                                          chunk_ticks,death=died,
                                          reward_profile=event_reward_profile(args.reward_profile))
@@ -579,6 +639,9 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                         events[key]+=record[key]
                     if pickup_active and record['wood_inventory_gain']:
                         events['own_log_gain_during_pickup_motor']+=record['wood_inventory_gain']
+                    if option_trace is not None:
+                        own_mined_in_action+=record['new_wood_mined']
+                        own_wood_gains_in_action+=record['wood_inventory_gain']
                     # Semi-Markov transition: discount intermediate rewards
                     # within one motor hold by their true game-tick offsets.
                     macro_reward+=(.9995**spent_ticks)*record['reward']
@@ -595,6 +658,17 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
                                       heads[3] if is_v4 else 0,spent_ticks,attack=audit_heads[2]==1,
                         wood_crosshair=target_before is not None and
                         wood_id(target_before.block_id))
+                if option_trace is not None and spent_ticks:
+                    option_trace.append(dict(schema=OPTION_TRACE_SCHEMA,
+                        before=option_before,
+                        option=int(pickup_active),
+                        after=option_features(pickup.latest,current_state).tolist(),
+                        ticks=int(spent_ticks),wood_mined=int(own_mined_in_action),
+                        wood_inventory_gain=int(own_wood_gains_in_action),
+                        death=bool(died),
+                        done=bool(died or decisions+spent_ticks//DECISION_TICKS>=budget)))
+                    if len(option_trace)>20000:
+                        raise RuntimeError('Real player-only option trace cap exceeded')
                 if args.mode=='train':
                     trajectory.append(NaturalTransition(state,heads,macro_reward,
                                          value,logp,spent_ticks,died))
@@ -663,6 +737,10 @@ def play_episode(args,model,manager,memory,episode,seed,budget,log,stop_requeste
     verify_noise_world(manager.paths(episode)[1],seed,require_fixed_spawn=True)
     result=dict(episode=episode,seed=seed,decisions=decisions,policy_actions=policy_actions,
                 first_player_pose=first_player_pose,
+                **({'first_observation_hash':first_observation_hash,
+                    'first_q_rng_hash':first_q_rng_hash,
+                    'first_q_action_prefix':first_q_action_trace} if pickup is not None else {}),
+                **({'option_trace':option_trace} if option_trace is not None else {}),
                 **({'goal_item':args.goal_item,'goal_initial':goal_initial,
                     'goal_max_inventory':goal_max,
                     'goal_achieved':bool(goal_max>goal_initial)}
@@ -716,6 +794,34 @@ def load_frozen_pickup_control(root,args):
         torch.set_rng_state(cpu_rng)
         if cuda_rng is not None:torch.cuda.set_rng_state_all(cuda_rng)
     return pickup
+
+def load_frozen_natural_option_control(root,args):
+    if not args.natural_option_model:return None
+    import torch
+    path=root/'checkpoints'/f'natural_option_{args.natural_option_model}.pt'
+    if not path.is_file():raise FileNotFoundError('Missing real-trained option selector checkpoint')
+    record=torch.load(path,map_location='cpu',weights_only=True)
+    meta=record.get('metadata',{})
+    if (record.get('schema')!=OPTION_TRACE_SCHEMA or
+        meta.get('schema')!=OPTION_TRACE_SCHEMA or
+        meta.get('seed_namespace')!='train' or
+        meta.get('optimizer_updates',0)<1 or
+        meta.get('training_outcomes',{}).get('wood_gained',0)<2 or
+        not meta.get('real_train_sources') or
+        record.get('learner',{}).get('schema')!=OPTION_TRACE_SCHEMA or
+        tuple(record['learner'].get('features',()))!=OPTION_TRACE_FEATURES):
+        raise ValueError('Natural option selector lacks verified real TRAIN-noise outcomes')
+    # Frozen loading must not alter source Q actor's sampled action RNG.
+    cpu_state=torch.get_rng_state()
+    cuda_state=torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+    try:
+        control=NaturalOptionQ(seed=args.policy_seed^0xB17,device=args.device)
+        control.restore(record['learner'],optimizer=False)
+    finally:
+        torch.set_rng_state(cpu_state)
+        if cuda_state is not None:torch.cuda.set_rng_state_all(cuda_state)
+    return control
+
 
 class FrozenHindsightController:
     """Only a restricted goal-conditioned skill EVALUATOR, never a scripted plan."""
@@ -852,7 +958,9 @@ def load_replay_q_control(root,args):
 def main(argv=None):
     args=parse_args(argv)
     meta=metadata(args)
-    schedule=SeedSchedule(args.seed_root,'train' if args.mode in ('train','collect') else 'eval')
+    stream_namespace=(args.option_data_namespace if args.record_option_experience and
+                      args.mode=='eval' else 'eval' if args.mode=='eval' else 'train')
+    schedule=SeedSchedule(args.seed_root,stream_namespace)
     checkpoint,journal,inflight,stop_file,lock_path=paths(args.run_tag,args.mode)
     frozen_checkpoint=(ROOT/'checkpoints'/f'fresh_stream_{args.model_run}.pt'
                        if args.mode=='eval' and args.model_run else None)
@@ -910,7 +1018,9 @@ def main(argv=None):
         print('FRESH TARGET ALREADY COMPLETED',committed_decisions,flush=True)
         return
     pickup_brain=load_frozen_pickup_control(ROOT,args)
-    manager=FreshWorldManager(MCIO,args.run_tag)
+    option_brain=load_frozen_natural_option_control(ROOT,args)
+    manager=FreshWorldManager(MCIO,args.run_tag,
+                 paired_source_tag=args.paired_world_cache)
     stopped=[False]
     def on_stop(signum,_):
         stopped[0]=True
@@ -978,7 +1088,8 @@ def main(argv=None):
                 save_json_atomic(inflight,marker)
                 try:
                     result,experience=play_episode(args,model,manager,NaturalSessionMemory(),cursor,
-                                        seed,budget,log,stop_requested,pickup_brain=pickup_brain)
+                                        seed,budget,log,stop_requested,pickup_brain=pickup_brain,
+                                        option_brain=option_brain)
                 except (MinecraftProcessExited,MinecraftObservationTimeout) as exc:
                     if args.mode not in ('train','collect'):raise
                     crash_streak+=1

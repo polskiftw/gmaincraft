@@ -21,7 +21,10 @@ def read(tag):
     es=[r for r in rows if r.get('stage')=='episode_committed']
     if (cfg.get('mode')!='eval' or cfg.get('evaluation_control')!='q_sampled' or
         cfg.get('q_goal')!='effect:visible_wood_crack_progress_v2' or
-        cfg.get('metadata',{}).get('pickup_transfer_contract')!='player_seen_dropped_wood_pickup_transfer_v1' or
+        cfg.get('metadata',{}).get('pickup_transfer_contract') not in (
+            'player_seen_dropped_wood_pickup_transfer_v1',
+            'player_seen_dropped_wood_pickup_transfer_budget_v2',
+            'player_seen_dropped_wood_learned_option_selector_v1') or
         not cfg.get('metadata',{}).get('pickup_model') or
         cfg.get('metadata',{}).get('gameplay_commands')!=0 or
         last.get('mode')!='eval' or last.get('new_optimizer_updates_in_eval')!=0 or
@@ -29,16 +32,19 @@ def read(tag):
         sum(e.get('decisions',0) for e in es)!=last.get('decisions') or
         any(e['episode']!=cfg['evaluation_seed_start']+i or
             e['updates']!=0 or
-            e.get('pickup_transfer_audit',{}).get('contract')!='player_seen_dropped_wood_pickup_transfer_v1'
+            e.get('pickup_transfer_audit',{}).get('contract')!=cfg['metadata']['pickup_transfer_contract']
             for i,e in enumerate(es))):
         raise ValueError(f'{tag}: sensor/motor/evaluation contract invalid')
     return cfg,es,last
 
 
-def compare(shadow,active):
+def compare(shadow,active,*,allow_unmatched_pose=False):
     control=read(shadow);switch=read(active)
     cm,sm=control[0]['metadata'],switch[0]['metadata']
-    if cm.get('pickup_selector')!='shadow' or sm.get('pickup_selector')!='visible_memory_v1':
+    if (cm.get('pickup_selector'),sm.get('pickup_selector')) not in (
+            ('shadow','visible_memory_v1'),
+            ('shadow_budget_v2','visible_memory_budget_v2'),
+            ('shadow_learned_option_v1','learned_option_v1')):
         raise ValueError('Order must be mining-only shadow THEN pickup transfer')
     if ({k:v for k,v in cm.items() if k!='pickup_selector'}!=
         {k:v for k,v in sm.items() if k!='pickup_selector'}):
@@ -54,7 +60,20 @@ def compare(shadow,active):
             for a,b in zip(es0,es1))):
         raise ValueError('Not real matched Minecraft seed/time horizon evaluations')
     poses=[]
+    mismatched=[]
+    startup_state_mismatch=[]
+    action_rng_mismatch=[]
     for a,b in zip(es0,es1):
+        ha,hb=a.get('first_observation_hash'),b.get('first_observation_hash')
+        if ha and hb and ha!=hb:
+            if not allow_unmatched_pose:
+                raise ValueError(f'Initial player/camera observation differs at {a["episode"]}: {ha} vs {hb}')
+            startup_state_mismatch.append(a['episode'])
+        ra,rb=a.get('first_q_rng_hash'),b.get('first_q_rng_hash')
+        if ra and rb and ra!=rb:
+            if not allow_unmatched_pose:
+                raise ValueError(f'Frozen Q sampler RNG differs at {a["episode"]}: {ra} vs {rb}')
+            action_rng_mismatch.append(a['episode'])
         pa,pb=a.get('first_player_pose'),b.get('first_player_pose')
         if pa is None and pb is None:
             poses.append(None)  # Older smoke lacked pose-level matching.
@@ -62,7 +81,10 @@ def compare(shadow,active):
                   len(pa)==5 and len(pb)==5):
             raise ValueError('Missing pose in one of the paired Minecraft worlds')
         elif any(abs(x-y)>0.13 for x,y in zip(pa,pb)):
-            raise ValueError(f'Minecraft initial spawn pose differs on eval index {a["episode"]}: {pa} vs {pb}')
+            if not allow_unmatched_pose:
+                raise ValueError(f'Minecraft initial spawn pose differs on eval index {a["episode"]}: {pa} vs {pb}')
+            mismatched.append(dict(index=a['episode'],shadow_pose=pa,active_pose=pb))
+            poses.append(False)
         else:
             poses.append(True)
     def summarize(name,events):
@@ -87,11 +109,18 @@ def compare(shadow,active):
            e['action_audit'].get('unfactored_primitive_actions',0) for e in es1):
         raise ValueError('Pickup action audit does not match actual game motor count')
     result=dict(schema='natural_pickup_transfer_eval_v1',
+                comparison_valid=(not mismatched and not startup_state_mismatch and
+                                  not action_rng_mismatch and all(v is True for v in poses)),
+                initial_observation_mismatches=startup_state_mismatch,
+                first_q_sampler_rng_mismatches=action_rng_mismatch,
+                spawn_pose_mismatches=mismatched,
                 q_model=control[0]['q_model'],pickup_model=cm['pickup_model'],
                 start_index=control[0]['evaluation_seed_start'],
                 q_action_rng=cm['policy_seed'],
                 seed_root=cm['seed_root'],
                 units_per_world=cm['episode_decisions'],
+                dataset_namespace=cm.get('option_data_namespace','eval'),
+                heldout_evaluation=(cm.get('option_data_namespace','eval')=='eval'),
                 pose_matched_worlds=sum(v is True for v in poses),
                 historical_pose_unverified=sum(v is None for v in poses),
                 shadow=a,visible_memory=b,
@@ -102,7 +131,9 @@ def compare(shadow,active):
                     active_visible=e1['pickup_transfer_audit'].get('seen_opportunities',0),
                     active_pickup_actions=e1['pickup_transfer_audit'].get('pickup_policy_actions',0))
                     for e0,e1 in zip(es0,es1)],
-                warning='Visibility-gated handoff is NOT learned; inventory success not causal effect of takeover')
+                warning=('INVALID PAIRED BENCHMARK: initial spawn/observation/RNG differ; only raw run totals shown, NEVER promote or compare uplift'
+                         if mismatched or startup_state_mismatch or action_rng_mismatch else
+                         'Visibility-gated handoff is NOT learned; inventory gains during active action are temporally associated, not causal uplift evidence'))
     print('NATURAL TRANSFER REPORT',json.dumps(result,sort_keys=True),flush=True)
     return result
 
@@ -111,8 +142,11 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('shadow_tag');p.add_argument('active_tag')
     p.add_argument('--output',type=Path)
+    p.add_argument('--diagnose-mismatched-spawns',action='store_true',
+                   help='Show invalid historical unpaired metrics ONLY; never certifies benchmark')
     args=p.parse_args()
-    result=compare(args.shadow_tag,args.active_tag)
+    result=compare(args.shadow_tag,args.active_tag,
+                   allow_unmatched_pose=args.diagnose_mismatched_spawns)
     if args.output:
         if args.output.exists():p.error(f'Refusing to overwrite existing report {args.output}')
         args.output.write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')

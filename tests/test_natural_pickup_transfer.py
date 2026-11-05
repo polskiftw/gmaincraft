@@ -5,14 +5,19 @@ ROOT=pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
 sys.path.insert(0,str(ROOT/'experiments'))
 import torch
+import numpy as np
 from gmaincraft.agent_interface import AgentAction
 from gmaincraft.natural_pickup_transfer import (
-    NaturalPickupTransfer,visible_wood_only,CONTRACT,coarse_audit_heads)
+    NaturalPickupTransfer,visible_wood_only,CONTRACT,BUDGET_CONTRACT,
+    BUDGET_ATTEMPT_TICKS,OPTION_CONTRACT,contract_for_selector,coarse_audit_heads)
 from gmaincraft.mcio_visible_items import VisibleItemsV1,VisibleDroppedItemV1,SCHEMA as ITEM_SCHEMA
 from gmaincraft.player_knowledge import OwnedItem,PlayerKnowledgeV1,SCHEMA as PLAYER_SCHEMA
 from gmaincraft.natural_diagnostics import NaturalActionAudit
 from gmaincraft.numeric_item_pickup_v2 import PickupReading
-from fresh_seed_treadmill import parse_args,metadata,load_frozen_pickup_control
+from fresh_seed_treadmill import (parse_args,metadata,load_frozen_pickup_control,
+    load_frozen_natural_option_control)
+from gmaincraft.natural_online_policy import NaturalObservation,TEMPORAL_V9_SELF_FEATURES
+from gmaincraft.natural_option_q_v1 import NaturalOptionQ,SCHEMA as OPTION_SCHEMA
 
 
 def own(x=0.,logs=0,health=20.):
@@ -65,6 +70,30 @@ class TransferPolicyTests(unittest.TestCase):
         self.assertEqual(pickup.audit()['inventory_gains_seen'],1)
         self.assertEqual(pickup.audit()['contract'],CONTRACT)
 
+    def test_new_version_budget_quarantines_stubborn_visible_log_without_teacher(self):
+        agent=FakeBrain(0)
+        p=NaturalPickupTransfer(agent,selector='visible_memory_budget_v2')
+        for tick in range(0,186,6):
+            p.observe(own(),items('minecraft:oak_log'),elapsed_ticks=tick)
+            move=p.choose(6)
+            if tick<BUDGET_ATTEMPT_TICKS:
+                self.assertIsNotNone(move)
+            else:
+                self.assertIsNone(move)
+        self.assertEqual(agent.calls,BUDGET_ATTEMPT_TICKS//6)
+        self.assertEqual(p.audit()['pickup_effort_budget_exhaustions'],1)
+        self.assertEqual(p.audit()['contract'],BUDGET_CONTRACT)
+        p.observe(own(),items('minecraft:birch_log'),elapsed_ticks=192)
+        self.assertIsNotNone(p.choose(6))
+        # A real own inventory gain resets the blocked item, no oracle needed.
+        p.observe(own(logs=1),items('minecraft:oak_log'),elapsed_ticks=198)
+        self.assertIsNotNone(p.choose(6))
+        shadow=NaturalPickupTransfer(agent,selector='shadow_budget_v2')
+        shadow.observe(own(),items('minecraft:oak_log'),elapsed_ticks=0)
+        self.assertIsNone(shadow.choose(6))
+        self.assertEqual(shadow.audit()['contract'],BUDGET_CONTRACT)
+        self.assertNotEqual(contract_for_selector('shadow'),BUDGET_CONTRACT)
+
     def test_shadow_never_takes_control_and_stale_target_expires(self):
         brain=FakeBrain()
         shadow=NaturalPickupTransfer(brain,selector='shadow')
@@ -91,6 +120,43 @@ class TransferPolicyTests(unittest.TestCase):
         self.assertEqual(result['unfactored_primitive_actions'],1)
         self.assertEqual(result['action_elapsed_ticks'],12)
         self.assertEqual(sum(result['action_counts'][0]),0)
+
+    def test_genuinely_learned_option_uses_model_choice_not_item_visibility_gate(self):
+        class Option:
+            def __init__(self):self.choice=0;self.calls=0
+            def act(self,features,*,greedy=False):
+                self.calls+=1
+                self.asserted=features.shape[0]>15
+                assert greedy
+                return self.choice
+        option=Option()
+        pickup=NaturalPickupTransfer(FakeBrain(1),selector='learned_option_v1',
+                                     option_brain=option)
+        miner=NaturalObservation(np.zeros(len(TEMPORAL_V9_SELF_FEATURES),np.float32),
+            np.zeros(48,np.uint8),np.zeros((24,48),np.uint8),
+            np.zeros((24,10),np.float32),np.zeros(24,np.float32))
+        pickup.observe(own(),items(),elapsed_ticks=0,mining_observation=miner)
+        self.assertIsNone(pickup.choose(24))
+        option.choice=1
+        # No item is visible. A TRAINED option model can still choose its
+        # pretrained pickup SEARCH motor; there is no if-visible script gate.
+        action=pickup.choose(24)
+        self.assertIsInstance(action,AgentAction)
+        self.assertEqual(action.keys,('W',))
+        self.assertEqual(action.ticks,24)
+        self.assertEqual(option.calls,2)
+        self.assertTrue(option.asserted)
+        self.assertEqual(pickup.audit()['contract'],OPTION_CONTRACT)
+        self.assertEqual(pickup.audit()['learned_pickup_option_selections'],1)
+        shadow=NaturalPickupTransfer(FakeBrain(),selector='shadow_learned_option_v1',
+                                     option_brain=option)
+        shadow.observe(own(),items('minecraft:oak_log'),elapsed_ticks=0,
+                       mining_observation=miner)
+        self.assertIsNone(shadow.choose(6))
+        self.assertEqual(option.calls,2)
+        with self.assertRaises(ValueError):NaturalPickupTransfer(
+            FakeBrain(),selector='learned_option_v1')
+        with self.assertRaises(ValueError):pickup.observe(own(),items(),elapsed_ticks=6)
 
     def test_strict_eval_optin_only_and_metadata_version(self):
         def args(*flags):

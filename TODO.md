@@ -1,3 +1,31 @@
+## Nov 5 latest: reject unfair benchmark; trainable option choice
+
+- [x] `nptr25a` completed 12+12 frozen natural worlds; 13 vs 10 true
+  pickups, 8 during active pickup motor, BUT indices31/34/35 began at
+  different player poses. Preserve invalid diagnostic, **NOT a PASS**.
+- [x] Separate immutable pre-game natural-noise shared source for BOTH
+  arms; `npfix31a` passed identical first player pose on 31/32; `npbud28a`
+  passed on 28/29. No scoring teleports, world secrets or admin commands.
+- [x] Fix Bash launcher self-modification by making a snapshot of the
+  tested script before detached execution; valid reports now generated.
+- [x] `visible_memory_budget_v2`: 96-tick single-target real-time effort
+  cap prevents indefinite pickup override on one persistently visible item.
+- [x] Evaluate no-takeover control comparison: `npbud28a` source mining
+  had 3 actual logs vs budgeted arm 0 but NO pickup motor actions, hence
+  natural sampled-game rollout variance is real; no causal conclusion.
+- [x] Build versioned scratch conservative double-Q **learned OPTION**
+  controller (Q miner or pickup Q). Learns from real natural own-state
+  action/outcome traces, NO scripted correct labels; strict train-only
+  offline loader refuses missing pickups, non-committed or EVAL seeds.
+- [ ] Collect real TRAIN-namespace 2-option exploration traces (dedicated
+  natural noise worlds) and actually train the versioned selector with
+  enough positive pickup events; reject if insufficient, not junk rewards.
+- [ ] Evaluate trained selector on independent unseen noise-world EVAL
+  indices with frozen sources, same source snapshots/pose and independent
+  Q policy RNGs; measure inventory per world and no-takeover variance.
+- [ ] Add a learned third exploration/wood-engagement option from natural
+  player experience after proving two-option choice helps, not by a script.
+
 ## November 5 natural-world learned pickup transfer diagnostics
 
 - [x] Verify hardrep1500 complete: 1170/1500 true oak pickups, 17892 Q
